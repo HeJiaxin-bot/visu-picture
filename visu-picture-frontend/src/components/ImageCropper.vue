@@ -44,6 +44,9 @@
 
 <script lang="ts" setup>
 import { computed, onUnmounted, ref, watchEffect } from 'vue'
+// vue-cropper 局部引入（不再全局注册），模板中的 <vue-cropper> 可匹配到 VueCropper
+import { VueCropper } from 'vue-cropper'
+import 'vue-cropper/dist/index.css'
 import { uploadPictureUsingPost } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'

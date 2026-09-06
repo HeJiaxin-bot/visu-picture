@@ -227,10 +227,13 @@ watch(
 )
 
 const router = useRouter()
-// 打开图片详情弹窗（不再跳转页面）
+// 打开图片详情弹窗（不再跳转页面），传入同组 id 列表以支持左右键切换
 const detailModalRef = ref()
 const doClickPicture = (picture: API.PictureVO) => {
-  detailModalRef.value?.openModal(picture.id)
+  detailModalRef.value?.openModal(
+    picture.id,
+    props.dataList.map((p) => p.id).filter((id) => id != null) as (string | number)[],
+  )
 }
 
 // 弹窗内删除成功后刷新列表

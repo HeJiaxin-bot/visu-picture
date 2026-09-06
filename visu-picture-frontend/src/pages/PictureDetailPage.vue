@@ -86,8 +86,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
-import { deletePictureUsingPost, getPictureVoByIdUsingGet } from '@/api/pictureController.ts'
+import { h, onMounted, ref } from 'vue'
+import { deletePictureUsingPost } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import {
   DeleteOutlined,
@@ -96,46 +96,20 @@ import {
   ShareAltOutlined,
 } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
-import { downloadImage, formatSize, toHexColor } from '@/utils'
+import { formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
-import { SPACE_PERMISSION_ENUM } from '@/constants/space.ts'
+import { usePictureDetail } from '@/composables/usePictureDetail.ts'
 
 interface Props {
   id: string | number
 }
 
 const props = defineProps<Props>()
-const picture = ref<API.PictureVO>({})
-
-// 通用权限检查函数
-function createPermissionChecker(permission: string) {
-  return computed(() => {
-    return (picture.value.permissionList ?? []).includes(permission)
-  })
-}
-
-// 定义权限检查
-const canEdit = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_EDIT)
-const canDelete = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_DELETE)
-
-// 获取图片详情
-const fetchPictureDetail = async () => {
-  try {
-    const res = await getPictureVoByIdUsingGet({
-      id: props.id,
-    })
-    if (res.data.code === 0 && res.data.data) {
-      picture.value = res.data.data
-    } else {
-      message.error('获取图片详情失败，' + res.data.message)
-    }
-  } catch (e: any) {
-    message.error('获取图片详情失败：' + e.message)
-  }
-}
+const { picture, canEdit, canDelete, fetchDetail, download, shareLink, setShareLink } =
+  usePictureDetail()
 
 onMounted(() => {
-  fetchPictureDetail()
+  fetchDetail(props.id)
 })
 
 const router = useRouter()
@@ -169,16 +143,14 @@ const doDelete = async () => {
 
 // 下载图片
 const doDownload = () => {
-  downloadImage(picture.value.url)
+  download()
 }
 
 // ----- 分享操作 ----
 const shareModalRef = ref()
-// 分享链接
-const shareLink = ref<string>()
 // 分享
 const doShare = () => {
-  shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.value.id}`
+  setShareLink()
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }

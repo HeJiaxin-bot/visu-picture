@@ -11,14 +11,44 @@
       <div class="modal-title">
         <PictureOutlined />
         <span class="title-text">{{ picture.name ?? '图片详情' }}</span>
+        <a-tag v-if="canSwitch" class="switch-tip">← → 切换</a-tag>
       </div>
     </template>
     <a-spin :spinning="loading">
       <div class="detail-body">
-        <!-- 左：图片预览（点击可全屏查看） -->
-        <div class="preview-area">
-          <a-image v-if="picture.url" :src="picture.url" class="preview-img" />
-        </div>
+        <!-- 左：图片预览（点击全屏；右键弹出操作菜单） -->
+        <a-dropdown
+          :trigger="['contextmenu']"
+          :visible="menuVisible"
+          @visibleChange="(v) => (menuVisible = v)"
+        >
+          <div class="preview-area" @contextmenu.prevent>
+            <a-image v-if="picture.url" :src="picture.url" class="preview-img" />
+          </div>
+          <template #overlay>
+            <a-menu @click="onMenuClick">
+              <a-menu-item key="copy">
+                <CopyOutlined /> 复制图片链接
+              </a-menu-item>
+              <a-menu-item key="download">
+                <DownloadOutlined /> 下载图片
+              </a-menu-item>
+              <a-menu-item key="search">
+                <SearchOutlined /> 以图搜图
+              </a-menu-item>
+              <a-menu-item key="share">
+                <ShareAltOutlined /> 分享
+              </a-menu-item>
+              <a-menu-divider v-if="canEdit || canDelete" />
+              <a-menu-item v-if="canEdit" key="edit">
+                <EditOutlined /> 编辑图片
+              </a-menu-item>
+              <a-menu-item v-if="canDelete" key="delete" danger>
+                <DeleteOutlined /> 删除图片
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
         <!-- 右：图片信息 -->
         <div class="info-area">
           <!-- 作者 -->
@@ -76,7 +106,7 @@
           </div>
           <!-- 操作按钮 -->
           <div class="action-area">
-            <a-button type="primary" @click="doDownload">
+            <a-button type="primary" @click="download">
               <template #icon><DownloadOutlined /></template>
               免费下载
             </a-button>
@@ -101,72 +131,132 @@
 </template>
 
 <script setup lang="ts">
-import { computed, createVNode, ref } from 'vue'
+import { computed, createVNode, onMounted, onUnmounted, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import {
+  CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
   PictureOutlined,
+  SearchOutlined,
   ShareAltOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
-import { deletePictureUsingPost, getPictureVoByIdUsingGet } from '@/api/pictureController.ts'
-import { downloadImage, formatSize, toHexColor } from '@/utils'
+import { deletePictureUsingPost } from '@/api/pictureController.ts'
+import { formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
-import { SPACE_PERMISSION_ENUM } from '@/constants/space.ts'
+import { usePictureDetail } from '@/composables/usePictureDetail.ts'
 
 const emit = defineEmits<{
   (e: 'deleted'): void
 }>()
 
-const visible = ref(false)
-const loading = ref(false)
-const picture = ref<API.PictureVO>({})
+const {
+  picture,
+  loading,
+  canEdit,
+  canDelete,
+  fetchDetail,
+  download,
+  shareLink,
+  setShareLink,
+} = usePictureDetail()
 
-// 通用权限检查函数
-function createPermissionChecker(permission: string) {
-  return computed(() => {
-    return (picture.value.permissionList ?? []).includes(permission)
-  })
+const visible = ref(false)
+
+// ----- 键盘左右切换（需外部传入同组图片 id 列表） -----
+const idList = ref<(string | number)[]>([])
+const currentId = ref<string | number>()
+const canSwitch = computed(() => idList.value.length > 1)
+const currentIndex = computed(() =>
+  idList.value.findIndex((id) => String(id) === String(currentId.value)),
+)
+
+const switchTo = (id: string | number) => {
+  currentId.value = id
+  fetchDetail(id)
 }
 
-// 定义权限检查
-const canEdit = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_EDIT)
-const canDelete = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_DELETE)
+const goPrev = () => {
+  if (!canSwitch.value) return
+  const len = idList.value.length
+  switchTo(idList.value[(currentIndex.value - 1 + len) % len])
+}
+const goNext = () => {
+  if (!canSwitch.value) return
+  const len = idList.value.length
+  switchTo(idList.value[(currentIndex.value + 1) % len])
+}
 
-// 获取图片详情
-const fetchPictureDetail = async (id: string | number) => {
-  try {
-    const res = await getPictureVoByIdUsingGet({ id })
-    if (res.data.code === 0 && res.data.data) {
-      picture.value = res.data.data
-    } else {
-      message.error('获取图片详情失败，' + res.data.message)
-      visible.value = false
-    }
-  } catch (e: any) {
-    message.error('获取图片详情失败：' + e.message)
-    visible.value = false
-  } finally {
-    loading.value = false
+// 打开弹窗：id 当前图片，idList 可选（同一列表的图片 id，用于左右切换）
+const openModal = (id: string | number, list?: (string | number)[]) => {
+  visible.value = true
+  currentId.value = id
+  idList.value =
+    list && list.length ? list : [id]
+  fetchDetail(id)
+}
+
+// 键盘导航
+const onKeydown = (e: KeyboardEvent) => {
+  if (!visible.value) return
+  if (e.key === 'ArrowLeft') {
+    goPrev()
+  } else if (e.key === 'ArrowRight') {
+    goNext()
   }
 }
 
-// 打开弹窗（传入图片 id，弹窗内自行拉取完整详情与权限）
-const openModal = (id?: string | number) => {
-  if (!id) return
-  visible.value = true
-  loading.value = true
-  picture.value = {}
-  fetchPictureDetail(id)
-}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 defineExpose({ openModal })
 
-const router = useRouter()
+// ----- 右键菜单 -----
+const menuVisible = ref(false)
+const onMenuClick = ({ key }: { key: string }) => {
+  menuVisible.value = false
+  switch (key) {
+    case 'copy':
+      doCopyLink()
+      break
+    case 'download':
+      download()
+      break
+    case 'search':
+      doSearch()
+      break
+    case 'share':
+      doShare()
+      break
+    case 'edit':
+      doEdit()
+      break
+    case 'delete':
+      doDelete()
+      break
+  }
+}
+
+// 复制图片链接
+const doCopyLink = async () => {
+  const url = picture.value.url
+  if (!url) return
+  try {
+    await navigator.clipboard.writeText(url)
+    message.success('图片链接已复制')
+  } catch {
+    message.error('复制失败')
+  }
+}
+
+// 以图搜图（站内）
+const doSearch = () => {
+  window.open(`/search_picture?pictureId=${picture.value.id}`)
+}
 
 // 编辑
 const doEdit = () => {
@@ -179,12 +269,10 @@ const doEdit = () => {
   })
 }
 
-// 删除数据（弹窗内二次确认，删除成功后通知父组件刷新）
+// 删除（二次确认，成功后关闭弹窗并通知父组件刷新）
 const doDelete = () => {
   const id = picture.value.id
-  if (!id) {
-    return
-  }
+  if (!id) return
   Modal.confirm({
     title: '确认删除这张图片吗？',
     icon: createVNode(ExclamationCircleOutlined),
@@ -205,24 +293,18 @@ const doDelete = () => {
   })
 }
 
-// 下载图片
-const doDownload = () => {
-  downloadImage(picture.value.url)
-}
-
-// ----- 分享操作 ----
+// ----- 分享 -----
 const shareModalRef = ref()
-// 分享链接
-const shareLink = ref<string>()
-// 分享
 const doShare = () => {
-  shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.value.id}`
+  setShareLink()
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }
 }
 
-// 时间格式化：兼容 ISO（带 T）与空格分隔两种格式，转为本地时间
+const router = useRouter()
+
+// 时间格式化：兼容 ISO（带 T）与空格分隔两种格式
 const formatDate = (time?: string) => {
   if (!time) return ''
   let d = new Date(time)
@@ -245,6 +327,14 @@ const formatDate = (time?: string) => {
 
 .modal-title :deep(.anticon) {
   color: #3d5af5;
+}
+
+.switch-tip {
+  margin-left: auto;
+  font-size: 12px;
+  color: rgba(61, 90, 245, 0.7);
+  background: rgba(61, 90, 245, 0.06);
+  border: 1px solid rgba(61, 90, 245, 0.16);
 }
 
 .detail-body {
