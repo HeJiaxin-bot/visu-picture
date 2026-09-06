@@ -74,6 +74,14 @@
           />
         </a-form-item>
         <a-form-item>
+          <a-checkbox v-model:checked="agree">
+            我已阅读并同意
+            <RouterLink to="/agreement?type=user" target="_blank">《用户协议》</RouterLink>
+            和
+            <RouterLink to="/agreement?type=privacy" target="_blank">《隐私政策》</RouterLink>
+          </a-checkbox>
+        </a-form-item>
+        <a-form-item>
           <a-button type="primary" html-type="submit" size="large" style="width: 100%">
             注册
           </a-button>
@@ -161,6 +169,11 @@ onUnmounted(() => {
  * @param values
  */
 const handleSubmit = async (values: any) => {
+  // 校验协议勾选
+  if (!agree.value) {
+    message.warning('请先阅读并同意《用户协议》和《隐私政策》')
+    return
+  }
   // 校验两次输入的密码是否一致
   if (values.userPassword !== values.checkPassword) {
     message.error('两次输入的密码不一致')

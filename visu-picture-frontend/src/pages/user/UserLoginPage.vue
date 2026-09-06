@@ -24,6 +24,14 @@
           />
         </a-form-item>
         <a-form-item>
+          <a-checkbox v-model:checked="agree">
+            我已阅读并同意
+            <RouterLink to="/agreement?type=user" target="_blank">《用户协议》</RouterLink>
+            和
+            <RouterLink to="/agreement?type=privacy" target="_blank">《隐私政策》</RouterLink>
+          </a-checkbox>
+        </a-form-item>
+        <a-form-item>
           <a-button type="primary" html-type="submit" size="large" style="width: 100%">
             登录
           </a-button>
@@ -37,7 +45,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { userLoginUsingPost } from '@/api/userController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 import { message } from 'ant-design-vue'
@@ -49,6 +57,9 @@ const formState = reactive<API.UserLoginRequest>({
   userPassword: '',
 })
 
+// 协议勾选（登录前必须勾选）
+const agree = ref(false)
+
 const loginUserStore = useLoginUserStore()
 
 /**
@@ -56,6 +67,11 @@ const loginUserStore = useLoginUserStore()
  * @param values
  */
 const handleSubmit = async (values: any) => {
+  // 校验协议勾选
+  if (!agree.value) {
+    message.warning('请先阅读并同意《用户协议》和《隐私政策》')
+    return
+  }
   const res = await userLoginUsingPost(values)
   // 登录成功，把登录态保存到全局状态中
   if (res.data.code === 0 && res.data.data) {
