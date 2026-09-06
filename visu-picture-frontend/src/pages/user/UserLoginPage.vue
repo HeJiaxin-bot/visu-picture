@@ -7,8 +7,8 @@
       <h2 class="title">用户登录</h2>
       <div class="desc">加入视界云图库，开启你的创作之旅</div>
       <a-form :model="formState" name="basic" autocomplete="off" @finish="handleSubmit">
-        <a-form-item name="userAccount" :rules="[{ required: true, message: '请输入账号' }]">
-          <a-input v-model:value="formState.userAccount" size="large" placeholder="请输入账号" />
+        <a-form-item name="userAccount" :rules="[{ required: true, message: '请输入邮箱' }]">
+          <a-input v-model:value="formState.userAccount" size="large" placeholder="请输入邮箱" />
         </a-form-item>
         <a-form-item
           name="userPassword"

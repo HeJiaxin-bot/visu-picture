@@ -14,6 +14,7 @@ import com.visupicture.model.dto.user.*;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.vo.LoginUserVO;
 import com.visupicture.model.vo.UserVO;
+import com.visupicture.service.EmailService;
 import com.visupicture.service.UserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -31,16 +32,30 @@ public class UserController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private EmailService emailService;
+
     /**
-     * 用户注册
+     * 发送邮箱注册验证码
+     */
+    @PostMapping("/email/code")
+    public BaseResponse<Boolean> sendEmailVerifyCode(@RequestBody EmailVerifyCodeRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        emailService.sendVerifyCode(request.getEmail());
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 用户注册（邮箱 + 密码 + 验证码）
      */
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
-        String userAccount = userRegisterRequest.getUserAccount();
+        String email = userRegisterRequest.getEmail();
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
-        long result = userService.userRegister(userAccount, userPassword, checkPassword);
+        String captcha = userRegisterRequest.getCaptcha();
+        long result = userService.userRegister(email, userPassword, checkPassword, captcha);
         return ResultUtils.success(result);
     }
 
@@ -140,6 +155,32 @@ public class UserController {
         }
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 更新当前登录用户的个人资料（昵称、个性签名）
+     * 仅允许修改自己，且只改白名单字段，防止任意提权
+     */
+    @PostMapping("/update/my")
+    @AuthCheck
+    public BaseResponse<Boolean> updateMyInfo(@RequestBody UserUpdateRequest userUpdateRequest,
+                                              HttpServletRequest request) {
+        ThrowUtils.throwIf(userUpdateRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        User user = new User();
+        user.setId(loginUser.getId());
+        // 昵称：非空时才更新，并去除首尾空格
+        if (userUpdateRequest.getUserName() != null
+                && !userUpdateRequest.getUserName().trim().isEmpty()) {
+            user.setUserName(userUpdateRequest.getUserName().trim());
+        }
+        // 个性签名：允许清空（传空字符串）,仅当字段被提供时更新
+        if (userUpdateRequest.getUserProfile() != null) {
+            user.setUserProfile(userUpdateRequest.getUserProfile());
+        }
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);

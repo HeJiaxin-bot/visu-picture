@@ -70,7 +70,7 @@
                 <div class="team-panel user-panel">
                   <!-- 顶部：用户名 + 身份 -->
                   <div class="user-panel-head">
-                    <div class="item-title">{{ loginUserStore.loginUser.userName ?? '视界用户' }}</div>
+                    <div class="item-title">{{ loginUserStore.loginUser.userAccount ?? '视界用户' }}</div>
                     <div class="item-desc">
                       {{ loginUserStore.loginUser.userRole === 'admin' ? '管理员' : '普通用户' }}
                     </div>

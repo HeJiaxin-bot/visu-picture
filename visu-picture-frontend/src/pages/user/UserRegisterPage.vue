@@ -7,8 +7,37 @@
       <h2 class="title">创建账户</h2>
       <div class="desc">加入视界云图库</div>
       <a-form :model="formState" name="basic" autocomplete="off" @finish="handleSubmit">
-        <a-form-item name="userAccount" :rules="[{ required: true, message: '请输入账号' }]">
-          <a-input v-model:value="formState.userAccount" size="large" placeholder="请输入账号" />
+        <a-form-item
+          name="email"
+          :rules="[
+            { required: true, message: '请输入邮箱' },
+            { type: 'email', message: '邮箱格式不正确' },
+          ]"
+        >
+          <a-input v-model:value="formState.email" size="large" placeholder="请输入邮箱" />
+        </a-form-item>
+        <a-form-item
+          name="captcha"
+          :rules="[{ required: true, message: '请输入验证码' }]"
+        >
+          <a-input-group compact>
+            <a-input
+              v-model:value="formState.captcha"
+              size="large"
+              style="width: calc(100% - 130px)"
+              placeholder="邮箱验证码"
+              maxlength="6"
+            />
+            <a-button
+              size="large"
+              type="default"
+              :disabled="sending || countdown > 0"
+              style="width: 130px"
+              @click="handleSendCode"
+            >
+              {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
+            </a-button>
+          </a-input-group>
         </a-form-item>
         <a-form-item
           name="userPassword"
@@ -50,20 +79,67 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { reactive } from 'vue'
-import { userRegisterUsingPost } from '@/api/userController.ts'
-import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
+import { onUnmounted, reactive, ref } from 'vue'
+import {
+  sendEmailVerifyCodeUsingPost,
+  userRegisterUsingPost,
+} from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
 import router from '@/router' // 用于接受表单输入的值
 
 // 用于接受表单输入的值
 const formState = reactive<API.UserRegisterRequest>({
-  userAccount: '',
+  email: '',
+  captcha: '',
   userPassword: '',
   checkPassword: '',
 })
 
-const loginUserStore = useLoginUserStore()
+// 发送验证码 / 倒计时
+const sending = ref(false)
+const countdown = ref(0)
+let timer: ReturnType<typeof setInterval> | null = null
+
+// 邮箱格式校验（与后端一致）
+const EMAIL_REGEX = /^[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}$/
+
+const handleSendCode = async () => {
+  const email = formState.email?.trim()
+  if (!email) {
+    message.warning('请先输入邮箱')
+    return
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    message.warning('邮箱格式不正确')
+    return
+  }
+  sending.value = true
+  try {
+    const res = await sendEmailVerifyCodeUsingPost({ email })
+    if (res.data.code === 0) {
+      message.success('验证码已发送，请查收邮箱')
+      countdown.value = 60
+      if (timer) clearInterval(timer)
+      timer = setInterval(() => {
+        countdown.value--
+        if (countdown.value <= 0 && timer) {
+          clearInterval(timer)
+          timer = null
+        }
+      }, 1000)
+    } else {
+      message.error(res.data.message ?? '验证码发送失败')
+    }
+  } catch (e: any) {
+    message.error('验证码发送失败，' + (e?.message ?? '请稍后重试'))
+  } finally {
+    sending.value = false
+  }
+}
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 
 /**
  * 提交表单
@@ -75,7 +151,12 @@ const handleSubmit = async (values: any) => {
     message.error('两次输入的密码不一致')
     return
   }
-  const res = await userRegisterUsingPost(values)
+  const res = await userRegisterUsingPost({
+    email: values.email?.trim(),
+    captcha: values.captcha?.trim(),
+    userPassword: values.userPassword,
+    checkPassword: values.checkPassword,
+  })
   // 注册成功，跳转到登录页面
   if (res.data.code === 0 && res.data.data) {
     message.success('注册成功')

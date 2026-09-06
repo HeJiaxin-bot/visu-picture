@@ -151,6 +151,21 @@ export async function userLogoutUsingPost(options?: { [key: string]: any }) {
   })
 }
 
+/** sendEmailVerifyCode POST /api/user/email/code */
+export async function sendEmailVerifyCodeUsingPost(
+  body: { email?: string },
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/email/code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
 /** userRegister POST /api/user/register */
 export async function userRegisterUsingPost(
   body: API.UserRegisterRequest,
@@ -172,6 +187,21 @@ export async function updateUserUsingPost(
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponseBoolean_>('/api/user/update', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+/** updateMyInfo POST /api/user/update/my（当前用户修改自己的昵称、个性签名） */
+export async function updateMyInfoUsingPost(
+  body: API.UserUpdateRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/update/my', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

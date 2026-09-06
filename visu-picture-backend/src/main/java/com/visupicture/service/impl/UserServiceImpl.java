@@ -26,6 +26,7 @@ import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.UserRoleEnum;
 import com.visupicture.model.vo.LoginUserVO;
 import com.visupicture.model.vo.UserVO;
+import com.visupicture.service.EmailService;
 import com.visupicture.service.UserService;
 import com.visupicture.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -61,41 +62,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Resource
     private CosClientConfig cosClientConfig;
 
+    @Resource
+    private EmailService emailService;
+
     /**
-     * 用户注册
+     * 用户注册（邮箱 + 密码 + 验证码）
      *
-     * @param userAccount   用户账户
+     * @param email         邮箱
      * @param userPassword  用户密码
      * @param checkPassword 校验密码
-     * @return
+     * @param captcha       邮箱验证码
+     * @return 新用户 id
      */
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public long userRegister(String email, String userPassword, String checkPassword, String captcha) {
         // 1. 校验参数
-        if (StrUtil.hasBlank(userAccount, userPassword, checkPassword)) {
+        if (StrUtil.hasBlank(email, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
-        if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
-        }
+        // 邮箱格式
+        emailService.validateEmail(email);
         if (userPassword.length() < 8 || checkPassword.length() < 8) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
         }
         if (!userPassword.equals(checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
         }
-        // 2. 检查用户账号是否和数据库中已有的重复
+        // 2. 校验邮箱验证码（一次性，校验通过后自动失效）
+        emailService.verifyCode(email, captcha);
+        // 3. 检查邮箱是否已被注册（以邮箱作为账号）
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userAccount", userAccount);
+        queryWrapper.eq("email", email);
         long count = this.baseMapper.selectCount(queryWrapper);
         if (count > 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号重复");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "该邮箱已被注册");
         }
-        // 3. 密码一定要加密
+        // 4. 密码加密
         String encryptPassword = getEncryptPassword(userPassword);
-        // 4. 插入数据到数据库中
+        // 5. 插入数据到数据库中（userAccount 存邮箱，保留登录/鉴权逻辑不变）
         User user = new User();
-        user.setUserAccount(userAccount);
+        user.setUserAccount(email);
+        user.setEmail(email);
         user.setUserPassword(encryptPassword);
         user.setUserName("视界用户");
         user.setUserRole(UserRoleEnum.USER.getValue());

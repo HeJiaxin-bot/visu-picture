@@ -18,14 +18,15 @@ import java.util.List;
 public interface UserService extends IService<User> {
 
     /**
-     * 用户注册
+     * 用户注册（邮箱 + 密码 + 验证码）
      *
-     * @param userAccount   用户账户
-     * @param userPassword  用户密码
+     * @param email        邮箱
+     * @param userPassword 用户密码
      * @param checkPassword 校验密码
+     * @param captcha      邮箱验证码
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(String email, String userPassword, String checkPassword, String captcha);
 
     /**
      * 用户登录

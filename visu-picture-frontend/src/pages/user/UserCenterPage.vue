@@ -60,6 +60,23 @@
         </div>
       </a-card>
 
+      <!-- 编辑资料弹窗 -->
+      <a-modal v-model:open="editVisible" title="编辑个人资料" :confirm-loading="editSaving" @ok="handleEditSave">
+        <a-form :model="editForm" layout="vertical">
+          <a-form-item label="昵称">
+            <a-input v-model:value="editForm.userName" :maxlength="20" placeholder="请输入昵称" />
+          </a-form-item>
+          <a-form-item label="个性签名">
+            <a-textarea
+              v-model:value="editForm.userProfile"
+              :rows="3"
+              :maxlength="80"
+              placeholder="介绍一下自己"
+            />
+          </a-form-item>
+        </a-form>
+      </a-modal>
+
       <!-- 右侧：快捷入口 -->
       <a-card class="entry-card" title="快捷入口">
         <div class="entry-grid">
@@ -77,6 +94,12 @@
             <CrownOutlined class="entry-icon" style="color: #faad14" />
             <div class="entry-title">VIP 兑换</div>
             <div class="entry-desc">兑换码升级会员</div>
+          </div>
+          <!-- 编辑资料：弹出弹窗修改昵称与个性签名 -->
+          <div class="entry-item" @click="openEditModal">
+            <EditOutlined class="entry-icon" style="color: #13c2c2" />
+            <div class="entry-title">编辑资料</div>
+            <div class="entry-desc">修改昵称与个性签名</div>
           </div>
           <div class="entry-item" @click="router.push('/')">
             <PictureOutlined class="entry-icon" style="color: #eb2f96" />
@@ -140,13 +163,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
   AppstoreOutlined,
   CameraOutlined,
   CrownOutlined,
+  EditOutlined,
   FolderOutlined,
   LoadingOutlined,
   PictureOutlined,
@@ -156,12 +180,52 @@ import {
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 import PictureList from '@/components/PictureList.vue'
 import { listPictureVoByPageUsingPost } from '@/api/pictureController.ts'
-import { signInUsingPost, uploadAvatarUsingPost } from '@/api/userController.ts'
+import { signInUsingPost, updateMyInfoUsingPost, uploadAvatarUsingPost } from '@/api/userController.ts'
 import type { UploadProps } from 'ant-design-vue'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
 const loginUser = computed(() => loginUserStore.loginUser)
+
+// ----- 编辑个人资料弹窗 -----
+const editVisible = ref(false)
+const editSaving = ref(false)
+const editForm = reactive<API.UserUpdateRequest>({
+  userName: '',
+  userProfile: '',
+})
+const openEditModal = () => {
+  editForm.userName = loginUser.value.userName ?? ''
+  editForm.userProfile = loginUser.value.userProfile ?? ''
+  editVisible.value = true
+}
+const handleEditSave = async () => {
+  const name = editForm.userName?.trim() ?? ''
+  if (!name) {
+    message.warning('昵称不能为空')
+    return
+  }
+  editSaving.value = true
+  try {
+    const res = await updateMyInfoUsingPost({
+      id: loginUser.value.id,
+      userName: name,
+      userProfile: editForm.userProfile?.trim() ?? '',
+    })
+    if (res.data.code === 0) {
+      message.success('保存成功')
+      editVisible.value = false
+      // 拉取最新用户信息，同步侧边栏等处的展示
+      await loginUserStore.fetchLoginUser()
+    } else {
+      message.error(res.data.message ?? '保存失败')
+    }
+  } catch (e: any) {
+    message.error('保存失败，' + (e?.message ?? ''))
+  } finally {
+    editSaving.value = false
+  }
+}
 
 // ----- 我的公共图库作品（仅展示已过审图片，后端对公开查询自动过滤） -----
 const PAGE_SIZE = 20
