@@ -65,6 +65,14 @@
             placeholder="请再次输入密码"
           />
         </a-form-item>
+        <a-form-item name="inviteCode">
+          <a-input
+            v-model:value="formState.inviteCode"
+            size="large"
+            placeholder="邀请码（选填）"
+            allow-clear
+          />
+        </a-form-item>
         <a-form-item>
           <a-button type="primary" html-type="submit" size="large" style="width: 100%">
             注册
@@ -80,6 +88,7 @@
 </template>
 <script lang="ts" setup>
 import { onUnmounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   sendEmailVerifyCodeUsingPost,
   userRegisterUsingPost,
@@ -87,12 +96,15 @@ import {
 import { message } from 'ant-design-vue'
 import router from '@/router' // 用于接受表单输入的值
 
-// 用于接受表单输入的值
+const route = useRoute()
+
+// 用于接受表单输入的值（邀请链接携带 ?invite=xxx 时自动填入）
 const formState = reactive<API.UserRegisterRequest>({
   email: '',
   captcha: '',
   userPassword: '',
   checkPassword: '',
+  inviteCode: (route.query.invite as string) || '',
 })
 
 // 发送验证码 / 倒计时
@@ -156,6 +168,7 @@ const handleSubmit = async (values: any) => {
     captcha: values.captcha?.trim(),
     userPassword: values.userPassword,
     checkPassword: values.checkPassword,
+    inviteCode: formState.inviteCode?.trim() || undefined,
   })
   // 注册成功，跳转到登录页面
   if (res.data.code === 0 && res.data.data) {

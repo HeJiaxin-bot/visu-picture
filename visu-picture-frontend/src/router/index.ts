@@ -17,7 +17,7 @@ const SpaceDetailPage = () => import('@/pages/SpaceDetailPage.vue')
 const SearchPicturePage = () => import('@/pages/SearchPicturePage.vue')
 const SpaceAnalyzePage = () => import('@/pages/SpaceAnalyzePage.vue')
 const SpaceUserManagePage = () => import('@/pages/admin/SpaceUserManagePage.vue')
-const UserExchangeVipPage = () => import('@/pages/UserExchangeVipPage.vue')
+const InvitePage = () => import('@/pages/user/InvitePage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -106,9 +106,9 @@ const router = createRouter({
       component: SearchPicturePage,
     },
     {
-      path: '/user_exchange_vip',
-      name: '用户兑换会员',
-      component: UserExchangeVipPage,
+      path: '/user/invite',
+      name: '邀请计划',
+      component: InvitePage,
     },
   ],
 })

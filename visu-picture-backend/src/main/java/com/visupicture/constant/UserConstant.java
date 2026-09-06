@@ -47,4 +47,18 @@ public interface UserConstant {
     int OUT_PAINTING_POINTS = 20;
 
     // endregion
+
+    // region 邀请计划
+
+    /**
+     * 每成功邀请 1 人获得的会员月数
+     */
+    int INVITE_MEMBER_MONTHS = 12;
+
+    /**
+     * 累计成功邀请 N 人升级永久会员
+     */
+    int INVITE_PERMANENT_COUNT = 3;
+
+    // endregion
 }

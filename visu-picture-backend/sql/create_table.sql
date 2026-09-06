@@ -31,8 +31,12 @@ create table if not exists user
     vipNumber     bigint                                 null comment '会员编号',
     points        int          default 0                 not null comment '积分',
     lastSignInTime datetime                              null comment '最近签到时间',
+    inviteCode    varchar(32)                            null comment '我的专属邀请码',
+    inviterId     bigint                                 null comment '邀请人用户 id',
     UNIQUE KEY uk_userAccount (userAccount),
-    INDEX idx_userName (userName)
+    UNIQUE KEY uk_inviteCode (inviteCode),
+    INDEX idx_userName (userName),
+    INDEX idx_inviterId (inviterId)
 ) comment '用户' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
 -- 图片表（含空间、审核、缩略图、主色调字段）

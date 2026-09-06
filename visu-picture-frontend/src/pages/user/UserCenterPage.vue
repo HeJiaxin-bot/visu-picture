@@ -24,7 +24,7 @@
             <div class="profile-name">
               {{ loginUser.userName ?? '视界用户' }}
               <a-tag v-if="loginUser.userRole === 'admin'" color="gold">管理员</a-tag>
-              <a-tag v-if="isVip" color="purple">VIP 会员</a-tag>
+              <a-tag v-if="isVip" color="purple">会员</a-tag>
               <a-tag v-if="loginUser.userRole !== 'admin' && !isVip" color="blue">普通用户</a-tag>
             </div>
             <div class="profile-account">视界号：{{ loginUser.id ?? '-' }}</div>
@@ -90,10 +90,10 @@
             <div class="entry-title">创建团队</div>
             <div class="entry-desc">发起多人协作</div>
           </div>
-          <div class="entry-item" @click="router.push('/user_exchange_vip')">
+          <div class="entry-item" @click="router.push('/user/invite')">
             <CrownOutlined class="entry-icon" style="color: #faad14" />
-            <div class="entry-title">VIP 兑换</div>
-            <div class="entry-desc">兑换码升级会员</div>
+            <div class="entry-title">邀请好友</div>
+            <div class="entry-desc">邀请 3 人得永久会员</div>
           </div>
           <!-- 编辑资料：弹出弹窗修改昵称与个性签名 -->
           <div class="entry-item" @click="openEditModal">

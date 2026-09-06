@@ -80,6 +80,16 @@ public class User implements Serializable {
     private Date lastSignInTime;
 
     /**
+     * 我的专属邀请码
+     */
+    private String inviteCode;
+
+    /**
+     * 邀请人用户 id
+     */
+    private Long inviterId;
+
+    /**
      * 编辑时间
      */
     private Date editTime;

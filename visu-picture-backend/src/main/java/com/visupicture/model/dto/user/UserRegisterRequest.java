@@ -37,4 +37,9 @@ public class UserRegisterRequest implements Serializable {
      */
     private String checkPassword;
 
+    /**
+     * 邀请码（选填，好友分享链接携带）
+     */
+    private String inviteCode;
+
 }

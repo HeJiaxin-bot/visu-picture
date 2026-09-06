@@ -12,7 +12,9 @@ import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
 import com.visupicture.model.dto.user.*;
 import com.visupicture.model.entity.User;
+import com.visupicture.model.vo.InviteRankVO;
 import com.visupicture.model.vo.LoginUserVO;
+import com.visupicture.model.vo.UserInviteInfoVO;
 import com.visupicture.model.vo.UserVO;
 import com.visupicture.service.EmailService;
 import com.visupicture.service.UserService;
@@ -46,7 +48,7 @@ public class UserController {
     }
 
     /**
-     * 用户注册（邮箱 + 密码 + 验证码）
+     * 用户注册（邮箱 + 密码 + 验证码 + 邀请码选填）
      */
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
@@ -55,7 +57,8 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         String captcha = userRegisterRequest.getCaptcha();
-        long result = userService.userRegister(email, userPassword, checkPassword, captcha);
+        long result = userService.userRegister(email, userPassword, checkPassword, captcha,
+                userRegisterRequest.getInviteCode());
         return ResultUtils.success(result);
     }
 
@@ -238,6 +241,23 @@ public class UserController {
         // 调用 service 层的方法进行会员兑换
         boolean result = userService.exchangeVip(loginUser, vipCode);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 获取我的邀请计划信息（专属邀请码、邀请列表、解锁进度）
+     */
+    @GetMapping("/invite/info")
+    public BaseResponse<UserInviteInfoVO> getInviteInfo(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(userService.getUserInviteInfo(loginUser));
+    }
+
+    /**
+     * 邀请排行榜（前 10 名）
+     */
+    @GetMapping("/invite/rank")
+    public BaseResponse<List<InviteRankVO>> getInviteRank() {
+        return ResultUtils.success(userService.getInviteRank());
     }
 
 }

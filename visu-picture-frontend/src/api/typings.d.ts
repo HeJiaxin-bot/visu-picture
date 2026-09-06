@@ -706,6 +706,7 @@ declare namespace API {
     email?: string
     userAccount?: string
     userPassword?: string
+    inviteCode?: string
   }
 
   type UserUpdateRequest = {

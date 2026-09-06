@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 
 import cn.hutool.json.JSONArray;
@@ -24,7 +25,10 @@ import com.visupicture.model.dto.user.UserQueryRequest;
 import com.visupicture.model.dto.user.VipCode;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.UserRoleEnum;
+import com.visupicture.model.vo.InviteRankVO;
+import com.visupicture.model.vo.InviteRecordVO;
 import com.visupicture.model.vo.LoginUserVO;
+import com.visupicture.model.vo.UserInviteInfoVO;
 import com.visupicture.model.vo.UserVO;
 import com.visupicture.service.EmailService;
 import com.visupicture.service.UserService;
@@ -41,6 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -75,7 +80,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @return 新用户 id
      */
     @Override
-    public long userRegister(String email, String userPassword, String checkPassword, String captcha) {
+    public long userRegister(String email, String userPassword, String checkPassword, String captcha, String inviteCode) {
         // 1. 校验参数
         if (StrUtil.hasBlank(email, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -97,9 +102,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         if (count > 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "该邮箱已被注册");
         }
-        // 4. 密码加密
+        // 4. 校验邀请码（选填，填写了必须有效，避免用户拼错白注册）
+        User inviter = null;
+        if (StrUtil.isNotBlank(inviteCode)) {
+            inviter = this.getOne(new QueryWrapper<User>().eq("inviteCode", inviteCode.trim()));
+            if (inviter == null) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "邀请码无效，请核对后重试");
+            }
+        }
+        // 5. 密码加密
         String encryptPassword = getEncryptPassword(userPassword);
-        // 5. 插入数据到数据库中（userAccount 存邮箱，保留登录/鉴权逻辑不变）
+        // 6. 插入数据到数据库中（userAccount 存邮箱，保留登录/鉴权逻辑不变）
         User user = new User();
         user.setUserAccount(email);
         user.setEmail(email);
@@ -108,11 +121,73 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         user.setUserRole(UserRoleEnum.USER.getValue());
         // 新用户注册赠送积分
         user.setPoints(UserConstant.REGISTER_POINTS);
+        // 生成专属邀请码
+        user.setInviteCode(generateUniqueInviteCode());
         boolean saveResult = this.save(user);
         if (!saveResult) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
         }
+        // 7. 绑定邀请关系并结算邀请奖励
+        if (inviter != null) {
+            User bindUpdate = new User();
+            bindUpdate.setId(user.getId());
+            bindUpdate.setInviterId(inviter.getId());
+            this.updateById(bindUpdate);
+            settleInviteReward(inviter.getId());
+        }
         return user.getId();
+    }
+
+    /**
+     * 生成全局唯一的 8 位邀请码（大写字母 + 数字，去除易混淆字符）
+     */
+    private String generateUniqueInviteCode() {
+        final String BASE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        for (int i = 0; i < 10; i++) {
+            StringBuilder sb = new StringBuilder(8);
+            for (int j = 0; j < 8; j++) {
+                sb.append(BASE.charAt(RandomUtil.randomInt(BASE.length())));
+            }
+            String code = sb.toString();
+            long exists = this.baseMapper.selectCount(new QueryWrapper<User>().eq("inviteCode", code));
+            if (exists == 0) {
+                return code;
+            }
+        }
+        // 极端情况下用长码兜底
+        return RandomUtil.randomStringUpper(12);
+    }
+
+    /**
+     * 邀请奖励结算：每成功邀请 1 人为邀请人延长一次会员，累计满 N 人升级永久会员
+     *
+     * @param inviterId 邀请人 id
+     */
+    private void settleInviteReward(Long inviterId) {
+        long inviteCount = this.baseMapper.selectCount(new QueryWrapper<User>().eq("inviterId", inviterId));
+        if (inviteCount <= 0) {
+            return;
+        }
+        User inviter = this.getById(inviterId);
+        if (inviter == null) {
+            return;
+        }
+        User update = new User();
+        update.setId(inviterId);
+        update.setUserRole(VIP_ROLE);
+        // 累计满 N 人：升级永久会员（重复设置幂等，无副作用）
+        if (inviteCount >= UserConstant.INVITE_PERMANENT_COUNT) {
+            update.setVipExpireTime(PERMANENT_VIP_TIME);
+            this.updateById(update);
+            log.info("用户 {} 累计邀请 {} 人，已升级永久会员", inviterId, inviteCount);
+            return;
+        }
+        // 每邀 1 人延长会员：未过期则从当前到期时间续期，已过期/从未开通则从现在起算
+        Date base = (inviter.getVipExpireTime() != null && inviter.getVipExpireTime().after(new Date()))
+                ? inviter.getVipExpireTime() : new Date();
+        update.setVipExpireTime(DateUtil.offsetMonth(base, UserConstant.INVITE_MEMBER_MONTHS));
+        this.updateById(update);
+        log.info("用户 {} 成功邀请 1 人，会员延长 {} 个月，当前累计 {} 人", inviterId, UserConstant.INVITE_MEMBER_MONTHS, inviteCount);
     }
 
     @Override
@@ -275,6 +350,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     // VIP 角色常量（根据你的需求自定义）
     private static final String VIP_ROLE = "vip";
+
+    /**
+     * 永久会员的到期时间表示（远期日期）
+     */
+    private static final Date PERMANENT_VIP_TIME = DateUtil.parse("2099-12-31 23:59:59");
 
     /**
      * 兑换会员
@@ -463,6 +543,102 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     // endregion ------- 以下代码为用户头像上传 --------
+
+    // region ------- 以下代码为邀请计划 --------
+
+    /**
+     * 获取当前用户的邀请计划信息
+     *
+     * @param loginUser 登录用户
+     * @return 邀请码、邀请列表、解锁进度等
+     */
+    @Override
+    public UserInviteInfoVO getUserInviteInfo(User loginUser) {
+        if (loginUser == null || loginUser.getId() == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        User user = this.getById(loginUser.getId());
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        }
+        UserInviteInfoVO vo = new UserInviteInfoVO();
+        // 老用户邀请码为空时懒生成，保证所有人都有专属邀请码
+        if (StrUtil.isBlank(user.getInviteCode())) {
+            String code = generateUniqueInviteCode();
+            User update = new User();
+            update.setId(user.getId());
+            update.setInviteCode(code);
+            this.updateById(update);
+            user.setInviteCode(code);
+        }
+        vo.setInviteCode(user.getInviteCode());
+        // 我邀请的用户列表
+        List<User> invitees = this.list(new QueryWrapper<User>()
+                .eq("inviterId", user.getId())
+                .orderByDesc("createTime"));
+        List<InviteRecordVO> records = invitees.stream().map(invitee -> {
+            InviteRecordVO record = new InviteRecordVO();
+            record.setUserId(invitee.getId());
+            record.setUserName(invitee.getUserName());
+            record.setUserAvatar(invitee.getUserAvatar());
+            record.setCreateTime(invitee.getCreateTime());
+            return record;
+        }).collect(Collectors.toList());
+        vo.setInviteList(records);
+        vo.setSuccessCount(records.size());
+        vo.setUnlockTarget(UserConstant.INVITE_PERMANENT_COUNT);
+        vo.setRemainCount(Math.max(UserConstant.INVITE_PERMANENT_COUNT - records.size(), 0));
+        Date expireTime = user.getVipExpireTime();
+        vo.setVipExpireTime(expireTime);
+        boolean unlocked = expireTime != null && expireTime.after(new Date());
+        vo.setMemberUnlocked(unlocked);
+        vo.setPermanentMember(unlocked && expireTime.compareTo(PERMANENT_VIP_TIME) >= 0);
+        return vo;
+    }
+
+    /**
+     * 邀请排行榜：按成功邀请人数降序，取前 10 名
+     */
+    @Override
+    public List<InviteRankVO> getInviteRank() {
+        // 按 inviterId 分组统计邀请人数
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("inviterId", "COUNT(*) AS cnt")
+                .isNotNull("inviterId")
+                .groupBy("inviterId");
+        List<Map<String, Object>> rows = this.listMaps(queryWrapper);
+        if (CollUtil.isEmpty(rows)) {
+            return new ArrayList<>();
+        }
+        // 按人数排序取前 10
+        List<Map<String, Object>> top = rows.stream()
+                .sorted((a, b) -> Long.compare(
+                        Long.parseLong(String.valueOf(b.get("cnt"))),
+                        Long.parseLong(String.valueOf(a.get("cnt")))))
+                .limit(10)
+                .collect(Collectors.toList());
+        // 批量查询邀请人信息
+        List<Long> inviterIds = top.stream()
+                .map(row -> Long.parseLong(String.valueOf(row.get("inviterId"))))
+                .collect(Collectors.toList());
+        Map<Long, User> inviterMap = this.listByIds(inviterIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        return top.stream().map(row -> {
+            Long inviterId = Long.parseLong(String.valueOf(row.get("inviterId")));
+            long cnt = Long.parseLong(String.valueOf(row.get("cnt")));
+            InviteRankVO rankVO = new InviteRankVO();
+            rankVO.setUserId(inviterId);
+            rankVO.setCount(cnt);
+            User inviter = inviterMap.get(inviterId);
+            if (inviter != null) {
+                rankVO.setUserName(inviter.getUserName());
+                rankVO.setUserAvatar(inviter.getUserAvatar());
+            }
+            return rankVO;
+        }).collect(Collectors.toList());
+    }
+
+    // endregion ------- 以下代码为邀请计划 --------
 }
 
 
