@@ -48,6 +48,8 @@
       <span v-else-if="finished" class="no-more-text">没有更多了</span>
     </div>
     <ShareModal ref="shareModalRef" :link="shareLink" />
+    <!-- 图片详情弹窗 -->
+    <PictureDetailModal ref="detailModalRef" @deleted="handleDetailDeleted" />
   </div>
 </template>
 
@@ -62,6 +64,7 @@ import {
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import ShareModal from '@/components/ShareModal.vue'
+import PictureDetailModal from '@/components/PictureDetailModal.vue'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 interface Props {
@@ -224,11 +227,15 @@ watch(
 )
 
 const router = useRouter()
-// 跳转至图片详情页
+// 打开图片详情弹窗（不再跳转页面）
+const detailModalRef = ref()
 const doClickPicture = (picture: API.PictureVO) => {
-  router.push({
-    path: `/picture/${picture.id}`,
-  })
+  detailModalRef.value?.openModal(picture.id)
+}
+
+// 弹窗内删除成功后刷新列表
+const handleDetailDeleted = () => {
+  props.onReload?.()
 }
 
 // 搜索（跳转站内以图搜图结果页）
