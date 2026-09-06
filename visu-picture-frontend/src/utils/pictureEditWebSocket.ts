@@ -14,9 +14,10 @@ export default class PictureEditWebSocket {
    */
   connect() {
     const DEV_BASE_URL = "ws://localhost:8123";
-    // 线上地址
-    // const PROD_BASE_URL = "ws://81.69.229.63";
-    const url = `${DEV_BASE_URL}/api/ws/picture/edit?pictureId=${this.pictureId}`
+    // 线上走同源 ws 协议（http→ws / https→wss），由 Nginx 转发到后端
+    const PROD_BASE_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
+    const base = import.meta.env.DEV ? DEV_BASE_URL : PROD_BASE_URL;
+    const url = `${base}/api/ws/picture/edit?pictureId=${this.pictureId}`
     this.socket = new WebSocket(url)
 
     // 设置携带 cookie
