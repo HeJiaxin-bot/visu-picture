@@ -170,6 +170,7 @@ import {
   AppstoreOutlined,
   CameraOutlined,
   CrownOutlined,
+  DeleteUserOutlined,
   EditOutlined,
   FolderOutlined,
   LoadingOutlined,
@@ -180,7 +181,12 @@ import {
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 import PictureList from '@/components/PictureList.vue'
 import { listPictureVoByPageUsingPost } from '@/api/pictureController.ts'
-import { signInUsingPost, updateMyInfoUsingPost, uploadAvatarUsingPost } from '@/api/userController.ts'
+import {
+  deregisterAccountUsingPost,
+  signInUsingPost,
+  updateMyInfoUsingPost,
+  uploadAvatarUsingPost,
+} from '@/api/userController.ts'
 import type { UploadProps } from 'ant-design-vue'
 
 const router = useRouter()
@@ -198,6 +204,29 @@ const openEditModal = () => {
   editForm.userName = loginUser.value.userName ?? ''
   editForm.userProfile = loginUser.value.userProfile ?? ''
   editVisible.value = true
+}
+
+// ----- 注销账号 -----
+const deregisterVisible = ref(false)
+const deregistering = ref(false)
+
+const handleDeregister = async () => {
+  deregistering.value = true
+  try {
+    const res = await deregisterAccountUsingPost()
+    if (res.data.code === 0 && res.data.data) {
+      message.success('账号已注销，感谢您曾经的使用')
+      deregisterVisible.value = false
+      loginUserStore.setLoginUser({ userName: '未登录' })
+      router.push('/')
+    } else {
+      message.error(res.data.message ?? '注销失败')
+    }
+  } catch {
+    message.error('注销失败，请稍后重试')
+  } finally {
+    deregistering.value = false
+  }
 }
 const handleEditSave = async () => {
   const name = editForm.userName?.trim() ?? ''

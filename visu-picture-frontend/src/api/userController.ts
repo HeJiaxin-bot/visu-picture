@@ -151,6 +151,14 @@ export async function userLogoutUsingPost(options?: { [key: string]: any }) {
   })
 }
 
+/** deregisterAccount POST /api/user/deregister */
+export async function deregisterAccountUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/deregister', {
+    method: 'POST',
+    ...(options || {}),
+  })
+}
+
 /** sendEmailVerifyCode POST /api/user/email/code */
 export async function sendEmailVerifyCodeUsingPost(
   body: { email?: string },

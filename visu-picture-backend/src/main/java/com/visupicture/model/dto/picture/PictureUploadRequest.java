@@ -30,5 +30,10 @@ public class PictureUploadRequest implements Serializable {
      */
     private Long spaceId;
 
+    /**
+     * 是否 AI 生成（1-是，0-否）：AI 扩图上传时由前端传入
+     */
+    private Integer isAiGenerated;
+
     private static final long serialVersionUID = 1L;
 }

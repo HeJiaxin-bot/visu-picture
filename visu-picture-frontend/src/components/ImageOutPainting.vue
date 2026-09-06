@@ -237,6 +237,8 @@ const handleUpload = async () => {
     const params: API.PictureUploadRequest = {
       fileUrl: resultImageUrl.value,
       spaceId: props.spaceId,
+      // AI 扩图生成的内容，按规范打上 AI 生成标识
+      isAiGenerated: 1,
     }
     if (props.picture) {
       params.id = props.picture.id

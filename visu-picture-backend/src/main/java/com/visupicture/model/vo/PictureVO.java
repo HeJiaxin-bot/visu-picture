@@ -93,6 +93,11 @@ public class PictureVO implements Serializable {
     private String picColor;
 
     /**
+     * 是否 AI 生成（1-是，0-否）
+     */
+    private Integer isAiGenerated;
+
+    /**
      * 用户 id
      */
     private Long userId;

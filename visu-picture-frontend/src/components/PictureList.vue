@@ -21,6 +21,8 @@
             loading="lazy"
             decoding="async"
           />
+          <!-- AI 生成内容标识（常显，符合内容标识规范） -->
+          <div v-if="cell.picture.isAiGenerated === 1" class="ai-badge">AI 生成</div>
           <!-- 悬浮信息层 -->
           <div class="item-overlay">
             <div class="overlay-top">
@@ -334,6 +336,22 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   object-fit: cover;
   display: block;
   background: #f0f2f7;
+}
+
+/* AI 生成内容标识：右上角常显 */
+.ai-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(111, 66, 193, 0.75);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 /* 悬浮信息层：默认隐藏，hover 渐显 */

@@ -17,6 +17,7 @@ import com.visupicture.constant.UserConstant;
 import com.visupicture.config.CosClientConfig;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
+import com.visupicture.exception.ThrowUtils;
 import com.visupicture.manager.CosManager;
 import com.visupicture.manager.auth.StpKit;
 import com.visupicture.manager.upload.FilePictureUpload;
@@ -309,6 +310,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         // 移除登录态
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        return true;
+    }
+
+    /**
+     * 注销账号：逻辑删除账号数据并移除登录态，注销后无法再用该账号登录
+     */
+    @Override
+    public boolean deregisterAccount(User loginUser, HttpServletRequest request) {
+        ThrowUtils.throwIf(loginUser == null || loginUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
+        Long userId = loginUser.getId();
+        // 逻辑删除账号（@TableLogic 生效，isDelete 置 1）
+        boolean removed = this.removeById(userId);
+        ThrowUtils.throwIf(!removed, ErrorCode.OPERATION_ERROR, "账号注销失败，请稍后重试");
+        // 移除登录态
+        request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        log.info("用户 {} 已注销账号", userId);
         return true;
     }
 

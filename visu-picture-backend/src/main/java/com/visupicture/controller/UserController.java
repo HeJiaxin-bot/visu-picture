@@ -94,6 +94,17 @@ public class UserController {
     }
 
     /**
+     * 注销账号（删除账号数据并退出登录，不可恢复）
+     */
+    @PostMapping("/deregister")
+    public BaseResponse<Boolean> deregisterAccount(HttpServletRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = userService.deregisterAccount(loginUser, request);
+        return ResultUtils.success(result);
+    }
+
+    /**
      * 创建用户
      */
     @PostMapping("/add")

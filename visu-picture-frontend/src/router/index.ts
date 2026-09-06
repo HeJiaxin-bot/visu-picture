@@ -110,6 +110,11 @@ const router = createRouter({
       name: '邀请计划',
       component: InvitePage,
     },
+    {
+      path: '/agreement',
+      name: '用户协议与隐私政策',
+      component: AgreementPage,
+    },
   ],
 })
 

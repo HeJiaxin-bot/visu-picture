@@ -107,6 +107,9 @@ const formState = reactive<API.UserRegisterRequest>({
   inviteCode: (route.query.invite as string) || '',
 })
 
+// 协议勾选（注册前必须勾选）
+const agree = ref(false)
+
 // 发送验证码 / 倒计时
 const sending = ref(false)
 const countdown = ref(0)

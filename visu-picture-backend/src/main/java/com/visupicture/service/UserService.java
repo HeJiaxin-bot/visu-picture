@@ -90,6 +90,15 @@ public interface UserService extends IService<User> {
     boolean userLogout(HttpServletRequest request);
 
     /**
+     * 注销账号（删除账号数据并退出登录，不可恢复）
+     *
+     * @param loginUser 当前登录用户
+     * @param request   请求（用于移除登录态）
+     * @return 是否成功
+     */
+    boolean deregisterAccount(User loginUser, HttpServletRequest request);
+
+    /**
      * 获取查询条件
      * @param userQueryRequest
      * @return

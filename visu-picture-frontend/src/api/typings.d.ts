@@ -429,6 +429,7 @@ declare namespace API {
   type PictureUploadRequest = {
     fileUrl?: string
     id?: number
+    isAiGenerated?: number
     picName?: string
     spaceId?: number
   }
@@ -439,6 +440,7 @@ declare namespace API {
     editTime?: string
     id?: number
     introduction?: string
+    isAiGenerated?: number
     name?: string
     permissionList?: string[]
     picColor?: string

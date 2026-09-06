@@ -80,6 +80,11 @@ public class Picture implements Serializable {
     private String picColor;
 
     /**
+     * 是否 AI 生成（1-是，0-否）：AI 扩图等 AI 生成内容需标识
+     */
+    private Integer isAiGenerated;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

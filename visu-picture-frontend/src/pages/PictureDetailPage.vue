@@ -20,6 +20,9 @@
             <a-descriptions-item label="名称">
               {{ picture.name ?? '未命名' }}
             </a-descriptions-item>
+            <a-descriptions-item v-if="picture.isAiGenerated === 1" label="内容标识">
+              <a-tag color="purple">AI 生成</a-tag>
+            </a-descriptions-item>
             <a-descriptions-item label="简介">
               {{ picture.introduction ?? '-' }}
             </a-descriptions-item>
