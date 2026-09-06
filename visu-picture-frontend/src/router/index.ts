@@ -18,6 +18,7 @@ const SearchPicturePage = () => import('@/pages/SearchPicturePage.vue')
 const SpaceAnalyzePage = () => import('@/pages/SpaceAnalyzePage.vue')
 const SpaceUserManagePage = () => import('@/pages/admin/SpaceUserManagePage.vue')
 const InvitePage = () => import('@/pages/user/InvitePage.vue')
+const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

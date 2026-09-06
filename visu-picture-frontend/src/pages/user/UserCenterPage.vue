@@ -77,9 +77,31 @@
         </a-form>
       </a-modal>
 
+      <!-- 注销账号确认弹窗 -->
+      <a-modal
+        v-model:open="deregisterVisible"
+        title="注销账号"
+        :confirm-loading="deregistering"
+        ok-text="确认注销"
+        ok-type="danger"
+        @ok="handleDeregister"
+      >
+        <a-alert
+          type="warning"
+          show-icon
+          message="注销后账号将无法恢复"
+          description="注销即视为您同意删除本账号下的个人信息，注销后您将无法登录本平台，且该账号无法再次注册找回。请谨慎操作。"
+        />
+      </a-modal>
+
       <!-- 右侧：快捷入口 -->
       <a-card class="entry-card" title="快捷入口">
         <div class="entry-grid">
+          <div class="entry-item" @click="router.push('/')">
+            <PictureOutlined class="entry-icon" style="color: #eb2f96" />
+            <div class="entry-title">公共图库</div>
+            <div class="entry-desc">发现海量优质图片</div>
+          </div>
           <div class="entry-item" @click="router.push('/my_space')">
             <FolderOutlined class="entry-icon" style="color: #4f6bff" />
             <div class="entry-title">我的空间</div>
@@ -101,11 +123,13 @@
             <div class="entry-title">编辑资料</div>
             <div class="entry-desc">修改昵称与个性签名</div>
           </div>
-          <div class="entry-item" @click="router.push('/')">
-            <PictureOutlined class="entry-icon" style="color: #eb2f96" />
-            <div class="entry-title">公共图库</div>
-            <div class="entry-desc">发现海量优质图片</div>
+          <!-- 注销账号：危险操作，二次确认 -->
+          <div class="entry-item" @click="deregisterVisible = true">
+            <UserDeleteOutlined class="entry-icon" style="color: #ff4d4f" />
+            <div class="entry-title">注销账号</div>
+            <div class="entry-desc">删除账号且不可恢复</div>
           </div>
+          
         </div>
       </a-card>
 
@@ -170,12 +194,12 @@ import {
   AppstoreOutlined,
   CameraOutlined,
   CrownOutlined,
-  DeleteUserOutlined,
   EditOutlined,
   FolderOutlined,
   LoadingOutlined,
   PictureOutlined,
   TeamOutlined,
+  UserDeleteOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
