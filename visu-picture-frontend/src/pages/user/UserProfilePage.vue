@@ -160,9 +160,10 @@ const formatDate = (time?: string) => {
 
 <style scoped>
 #userProfilePage {
-  max-width: 1600px;
-  margin: 0 auto 16px;
-  padding: 24px 32px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 16px;
   box-sizing: border-box;
 }
 

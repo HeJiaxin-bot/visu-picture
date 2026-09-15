@@ -116,7 +116,6 @@ const router = createRouter({
       path: '/user/:id',
       name: '用户主页',
       component: UserProfilePage,
-      props: true,
     },
     {
       path: '/agreement',
