@@ -1,17 +1,20 @@
 <template>
   <div class="url-picture-upload">
-    <a-input-group compact>
+    <div class="url-row">
       <a-input
         v-model:value="fileUrl"
-        style="width: calc(100% - 120px)"
+        class="url-input"
         placeholder="请输入图片地址"
+        allow-clear
+        @pressEnter="handleUpload"
       />
-      <a-button type="primary" style="width: 120px" :loading="loading" @click="handleUpload">
+      <a-button type="primary" class="url-btn" :loading="loading" @click="handleUpload">
         提交
       </a-button>
-    </a-input-group>
+    </div>
     <div class="img-wrapper">
       <img v-if="picture?.url" :src="picture?.url" alt="avatar" />
+      <div v-else class="placeholder">输入图片地址后点击提交，抓取结果将在此预览</div>
     </div>
   </div>
 </template>
@@ -58,17 +61,54 @@ const handleUpload = async () => {
 }
 </script>
 <style scoped>
-.url-picture-upload {
-  margin-bottom: 16px;
+.url-picture-upload .url-row {
+  display: flex;
+  gap: 10px;
 }
 
-.url-picture-upload img {
-  max-width: 100%;
-  max-height: 480px;
+.url-picture-upload .url-input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.url-picture-upload .url-btn {
+  flex-shrink: 0;
+  width: 110px;
+  height: 42px;
+  border-radius: 10px;
 }
 
 .url-picture-upload .img-wrapper {
-  text-align: center;
   margin-top: 16px;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed #b9c6ff;
+  border-radius: 14px;
+  background: rgba(61, 90, 245, 0.03);
+}
+
+.url-picture-upload .img-wrapper img {
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 10px;
+}
+
+.url-picture-upload .placeholder {
+  color: #98a4c5;
+  font-size: 13px;
+}
+
+/* 深色模式适配 */
+html.dark .url-picture-upload .img-wrapper {
+  border-color: rgba(79, 107, 255, 0.4);
+  background: rgba(79, 107, 255, 0.08);
+}
+
+html.dark .url-picture-upload .placeholder {
+  color: rgba(232, 234, 242, 0.45);
 }
 </style>

@@ -124,11 +124,15 @@ import {
 } from '../../constants/picture.ts'
 import dayjs from 'dayjs'
 
+// 长雪花 ID 列不换行展示
+const nowrapCell = () => ({ style: { whiteSpace: 'nowrap' } })
+
 const columns = [
   {
     title: 'id',
     dataIndex: 'id',
-    width: 80,
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '图片',
@@ -158,12 +162,14 @@ const columns = [
   {
     title: '用户 id',
     dataIndex: 'userId',
-    width: 80,
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '空间 id',
     dataIndex: 'spaceId',
-    width: 80,
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '审核信息',

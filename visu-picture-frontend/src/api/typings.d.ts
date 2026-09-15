@@ -704,7 +704,7 @@ declare namespace API {
 
   type UserQueryRequest = {
     current?: number
-    id?: number
+    id?: number | string
     pageSize?: number
     sortField?: string
     sortOrder?: string

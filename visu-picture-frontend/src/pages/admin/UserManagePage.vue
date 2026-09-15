@@ -2,6 +2,9 @@
   <div id="userManagePage">
     <!-- 搜索表单 -->
     <a-form layout="inline" :model="searchParams" @finish="doSearch">
+      <a-form-item label="用户 id">
+        <a-input v-model:value="searchParams.id" placeholder="请输入用户 id" allow-clear />
+      </a-form-item>
       <a-form-item label="账号">
         <a-input v-model:value="searchParams.userAccount" placeholder="输入账号" allow-clear />
       </a-form-item>
@@ -48,10 +51,15 @@ import { deleteUserUsingPost, listUserVoByPageUsingPost } from '@/api/userContro
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 
+// 长雪花 ID 列不换行展示
+const nowrapCell = () => ({ style: { whiteSpace: 'nowrap' } })
+
 const columns = [
   {
     title: 'id',
     dataIndex: 'id',
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '账号',

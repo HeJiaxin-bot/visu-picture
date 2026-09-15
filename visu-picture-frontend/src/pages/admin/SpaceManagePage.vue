@@ -97,11 +97,15 @@ import {
 } from '../../constants/space.ts'
 import { formatSize } from '../../utils'
 
+// 长雪花 ID 列不换行展示
+const nowrapCell = () => ({ style: { whiteSpace: 'nowrap' } })
+
 const columns = [
   {
     title: 'id',
     dataIndex: 'id',
-    width: 80,
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '空间名称',
@@ -122,7 +126,8 @@ const columns = [
   {
     title: '用户 id',
     dataIndex: 'userId',
-    width: 80,
+    width: 180,
+    customCell: nowrapCell,
   },
   {
     title: '创建时间',

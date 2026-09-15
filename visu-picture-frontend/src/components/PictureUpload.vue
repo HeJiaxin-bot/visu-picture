@@ -6,11 +6,15 @@
       :custom-request="handleUpload"
       :before-upload="beforeUpload"
     >
-      <img v-if="picture?.url" :src="picture?.url" alt="avatar" />
-      <div v-else>
-        <loading-outlined v-if="loading"></loading-outlined>
-        <plus-outlined v-else></plus-outlined>
-        <div class="ant-upload-text">点击或拖拽上传图片</div>
+      <div v-if="picture?.url" class="preview-box">
+        <img :src="picture?.url" alt="avatar" />
+        <div class="preview-tip">点击图片可重新上传替换</div>
+      </div>
+      <div v-else class="empty-box">
+        <loading-outlined v-if="loading" class="upload-icon" spin />
+        <plus-outlined v-else class="upload-icon" />
+        <div class="upload-text">点击或拖拽上传图片</div>
+        <div class="upload-hint">支持 JPG / PNG 格式，不超过 2MB</div>
       </div>
     </a-upload>
   </div>
@@ -77,23 +81,85 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 <style scoped>
 .picture-upload :deep(.ant-upload) {
   width: 100% !important;
-  height: 100% !important;
-  min-width: 152px;
-  min-height: 152px;
+  height: auto !important;
+  min-height: 240px;
+  border-radius: 14px !important;
+  transition: all 0.25s;
 }
 
-.picture-upload img {
+/* 未上传：虚线引导区 */
+.picture-upload :deep(.ant-upload:not(:has(img))) {
+  border: 1.5px dashed #b9c6ff !important;
+  background: rgba(61, 90, 245, 0.03) !important;
+}
+
+.picture-upload :deep(.ant-upload:not(:has(img)):hover) {
+  border-color: #4f6bff !important;
+  background: rgba(61, 90, 245, 0.07) !important;
+}
+
+/* 已上传：白底实线展示 */
+.picture-upload :deep(.ant-upload:has(img)) {
+  border: 1px solid #e3e8f5 !important;
+  background: #fafbff !important;
+}
+
+.empty-box {
+  padding: 56px 0;
+  text-align: center;
+}
+
+.upload-icon {
+  font-size: 42px;
+  color: #4f6bff;
+}
+
+.upload-text {
+  margin-top: 12px;
+  color: #232c56;
+  font-size: 15px;
+}
+
+.upload-hint {
+  margin-top: 4px;
+  color: #98a4c5;
+  font-size: 12px;
+}
+
+.preview-box {
+  width: 100%;
+  text-align: center;
+}
+
+.preview-box img {
   max-width: 100%;
-  max-height: 480px;
+  max-height: 420px;
+  border-radius: 10px;
 }
 
-.ant-upload-select-picture-card i {
-  font-size: 32px;
-  color: #999;
+.preview-tip {
+  margin-top: 10px;
+  color: #98a4c5;
+  font-size: 12px;
 }
 
-.ant-upload-select-picture-card .ant-upload-text {
-  margin-top: 8px;
-  color: #666;
+/* 深色模式适配 */
+html.dark .picture-upload :deep(.ant-upload:not(:has(img))) {
+  border-color: rgba(79, 107, 255, 0.4) !important;
+  background: rgba(79, 107, 255, 0.08) !important;
+}
+
+html.dark .picture-upload :deep(.ant-upload:has(img)) {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+html.dark .upload-text {
+  color: #e8eaf2;
+}
+
+html.dark .upload-hint,
+html.dark .preview-tip {
+  color: rgba(232, 234, 242, 0.45);
 }
 </style>

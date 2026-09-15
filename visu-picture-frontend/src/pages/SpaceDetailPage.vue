@@ -7,8 +7,7 @@
         <a-button
           v-if="canUploadPicture"
           type="primary"
-          :href="`/add_picture?spaceId=${id}`"
-          target="_blank"
+          @click="router.push(`/add_picture?spaceId=${id}`)"
         >
           + 创建图片
         </a-button>
