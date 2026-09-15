@@ -1,59 +1,103 @@
 <template>
   <div id="addPictureBatchPage">
-    <h2 style="margin-bottom: 16px">批量创建</h2>
-    <!-- 图片信息表单 -->
-    <a-form name="formData" layout="vertical" :model="formData" @finish="handleSubmit">
-      <a-form-item name="searchText" label="关键词">
-        <a-input v-model:value="formData.searchText" placeholder="请输入关键词" allow-clear />
-      </a-form-item>
-      <a-form-item name="count" label="抓取数量">
-        <a-input-number
-          v-model:value="formData.count"
-          placeholder="请输入数量"
-          style="min-width: 180px"
-          :min="1"
-          :max="30"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item name="namePrefix" label="名称前缀">
-        <a-input
-          v-model:value="formData.namePrefix"
-          placeholder="请输入名称前缀，会自动补充序号"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit" style="width: 100%" :loading="loading">
-          执行任务
-        </a-button>
-      </a-form-item>
-      <!-- 任务进度 -->
-      <a-form-item v-if="loading && progress">
-        <div class="progress-wrapper">
-          <div class="progress-text">
-            正在抓取并上传图片：已完成 {{ progress.done }} / {{ progress.total }} 张
-          </div>
-          <a-progress
-            :percent="Math.round((progress.done / progress.total) * 100)"
-            :status="progress.done >= progress.total ? 'success' : 'active'"
-          />
+    <div class="page-card">
+      <!-- 页头 -->
+      <div class="page-header">
+        <div class="header-icon">
+          <CloudDownloadOutlined />
         </div>
-      </a-form-item>
-    </a-form>
+        <div class="header-text">
+          <h2>批量抓取图片</h2>
+          <p>输入关键词，自动抓取网络图片并上传至图库，抓取的图片均会进入审核流程</p>
+        </div>
+      </div>
+      <!-- 图片信息表单 -->
+      <a-form name="formData" layout="vertical" :model="formData" @finish="handleSubmit">
+        <a-form-item name="searchText" label="搜索关键词">
+          <a-input
+            v-model:value="formData.searchText"
+            size="large"
+            placeholder="例如：风景、城市夜景、二次元壁纸"
+            allow-clear
+          >
+            <template #prefix><SearchOutlined class="input-icon" /></template>
+          </a-input>
+          <div class="preset-tags">
+            <a-tag
+              v-for="word in presetKeywords"
+              :key="word"
+              class="preset-tag"
+              :checked="formData.searchText === word"
+              @click="formData.searchText = word"
+            >
+              {{ word }}
+            </a-tag>
+          </div>
+        </a-form-item>
+        <a-form-item name="count" label="抓取数量">
+          <a-radio-group v-model:value="formData.count" class="count-group" button-style="solid">
+            <a-radio-button v-for="n in [5, 10, 20, 30]" :key="n" :value="n">{{ n }} 张</a-radio-button>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item name="namePrefix" label="名称前缀">
+          <a-input
+            v-model:value="formData.namePrefix"
+            size="large"
+            placeholder="不填则默认使用关键词，自动补充序号"
+            allow-clear
+          >
+            <template #prefix><TagOutlined class="input-icon" /></template>
+          </a-input>
+        </a-form-item>
+        <a-form-item>
+          <a-button
+            type="primary"
+            html-type="submit"
+            size="large"
+            class="submit-btn"
+            :loading="loading"
+            block
+          >
+            {{ loading ? '任务执行中…' : '开始抓取' }}
+          </a-button>
+        </a-form-item>
+        <!-- 任务进度 -->
+        <a-form-item v-if="loading && progress">
+          <div class="progress-wrapper">
+            <div class="progress-text">
+              <LoadingOutlined spin />
+              <span>正在抓取并上传图片：已完成 {{ progress.done }} / {{ progress.total }} 张</span>
+              <b>{{ Math.round((progress.done / progress.total) * 100) }}%</b>
+            </div>
+            <a-progress
+              :percent="Math.round((progress.done / progress.total) * 100)"
+              :status="progress.done >= progress.total ? 'success' : 'active'"
+              :show-info="false"
+            />
+          </div>
+        </a-form-item>
+      </a-form>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onUnmounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
+  CloudDownloadOutlined,
+  LoadingOutlined,
+  SearchOutlined,
+  TagOutlined,
+} from '@ant-design/icons-vue'
+import {
   getBatchUploadProgressUsingGet,
-  getPictureVoByIdUsingGet,
-  listPictureTagCategoryUsingGet,
   uploadPictureByBatchUsingPost,
 } from '@/api/pictureController.ts'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
+
+// 快捷关键词，点击直接填入
+const presetKeywords = ['风景', '城市夜景', '美食', '动物', '科技', '动漫壁纸']
 
 const formData = reactive<API.PictureUploadByBatchRequest>({
   count: 10,
@@ -136,18 +180,136 @@ const handleSubmit = async (values: any) => {
 #addPictureBatchPage {
   max-width: 720px;
   margin: 0 auto;
+  padding: 24px 0;
+}
+
+.page-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 6px 24px rgba(31, 45, 92, 0.06);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.header-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #fff;
+  background: linear-gradient(135deg, #3d5af1 0%, #6a82f7 100%);
+  flex-shrink: 0;
+}
+
+.header-text h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #232c56;
+}
+
+.header-text p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(35, 44, 86, 0.55);
+}
+
+.input-icon {
+  color: rgba(35, 44, 86, 0.35);
+}
+
+.preset-tags {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preset-tag {
+  cursor: pointer;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid #dfe5f5;
+  background: #f6f8ff;
+  color: #4f6bff;
+  transition: all 0.2s;
+}
+
+.preset-tag:hover {
+  border-color: #4f6bff;
+  transform: translateY(-1px);
+}
+
+.count-group {
+  display: flex;
+  gap: 0;
+}
+
+.submit-btn {
+  height: 44px;
+  border-radius: 10px;
+  font-size: 15px;
 }
 
 .progress-wrapper {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border: 1px solid #e7ebf6;
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(61, 90, 245, 0.04);
 }
 
 .progress-text {
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
   color: rgba(35, 44, 86, 0.7);
   font-size: 14px;
+}
+
+.progress-text b {
+  margin-left: auto;
+  color: #4f6bff;
+}
+
+/* 深色模式适配 */
+html.dark .page-card {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .header-text h2 {
+  color: #e8eaf2;
+}
+
+html.dark .header-text p {
+  color: rgba(232, 234, 242, 0.55);
+}
+
+html.dark .input-icon {
+  color: rgba(232, 234, 242, 0.35);
+}
+
+html.dark .preset-tag {
+  background: rgba(79, 107, 255, 0.14);
+  border-color: rgba(79, 107, 255, 0.35);
+  color: #8fa4ff;
+}
+
+html.dark .progress-wrapper {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(79, 107, 255, 0.1);
+}
+
+html.dark .progress-text {
+  color: rgba(232, 234, 242, 0.7);
 }
 </style>
