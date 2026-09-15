@@ -13,14 +13,12 @@
     <div class="layout">
       <!-- 左栏：上传 / 预览 / 编辑 -->
       <div class="card upload-card">
-        <a-tabs v-model:activeKey="uploadType" class="upload-tabs">
-          <a-tab-pane key="file" tab="文件上传">
-            <PictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
-          </a-tab-pane>
-          <a-tab-pane key="url" tab="URL 上传" force-render>
-            <UrlPictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
-          </a-tab-pane>
-        </a-tabs>
+        <PictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
+        <!-- 未上传时提供 URL 导入入口 -->
+        <template v-if="!picture?.url">
+          <div class="upload-divider"><span>或通过图片链接导入</span></div>
+          <UrlPictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
+        </template>
         <!-- 图片编辑 -->
         <div v-if="picture" class="edit-bar">
           <a-button :icon="h(EditOutlined)" @click="doEditPicture">编辑图片</a-button>
@@ -46,7 +44,20 @@
 
       <!-- 右栏：图片信息 -->
       <div class="card info-card">
-        <div class="info-title">图片信息</div>
+        <div class="info-title-row">
+          <div class="info-title">图片信息</div>
+          <a-button
+            v-if="picture"
+            size="small"
+            type="primary"
+            ghost
+            :icon="h(ThunderboltOutlined)"
+            :loading="aiEditLoading"
+            @click="doAiEdit"
+          >
+            AI 配文
+          </a-button>
+        </div>
         <a-form
           v-if="picture"
           name="pictureForm"
@@ -103,6 +114,7 @@ import PictureUpload from '@/components/PictureUpload.vue'
 import { computed, h, onMounted, reactive, ref, watchEffect } from 'vue'
 import { message, Modal, Empty } from 'ant-design-vue'
 import {
+  aiEditPictureUsingPost,
   editPictureUsingPost,
   getPictureVoByIdUsingGet,
   listPictureTagCategoryUsingGet,
@@ -110,7 +122,7 @@ import {
 import { useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 import ImageCropper from '@/components/ImageCropper.vue'
-import { EditOutlined, FullscreenOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
@@ -120,7 +132,6 @@ const route = useRoute()
 
 const picture = ref<API.PictureVO>()
 const pictureForm = reactive<API.PictureEditRequest>({})
-const uploadType = ref<'file' | 'url'>('file')
 // 空间 id
 const spaceId = computed(() => {
   return route.query?.spaceId
@@ -258,6 +269,45 @@ const onImageOutPaintingSuccess = (newPicture: API.PictureVO) => {
   picture.value = newPicture
 }
 
+// ----- AI 配文 -----
+const aiEditLoading = ref(false)
+
+/**
+ * AI 智能配文：自动生成简介、分类、标签并回填表单
+ */
+const doAiEdit = async () => {
+  const pictureId = picture.value?.id
+  if (!pictureId) {
+    message.warning('请先上传图片')
+    return
+  }
+  aiEditLoading.value = true
+  try {
+    // AI 调用耗时较长，延长超时时间
+    const res = await aiEditPictureUsingPost({ pictureId }, { timeout: 60000 })
+    if (res.data.code === 0 && res.data.data) {
+      const { name, introduction, category, tags } = res.data.data
+      if (name) {
+        pictureForm.name = name
+      }
+      if (introduction) {
+        pictureForm.introduction = introduction
+      }
+      if (category) {
+        pictureForm.category = category
+      }
+      if (tags?.length) {
+        pictureForm.tags = tags
+      }
+      message.success('AI 配文完成，请确认后保存')
+    } else {
+      message.error('AI 配文失败，' + res.data.message)
+    }
+  } finally {
+    aiEditLoading.value = false
+  }
+}
+
 // 获取空间信息
 const space = ref<API.SpaceVO>()
 
@@ -318,7 +368,25 @@ watchEffect(() => {
 .upload-card {
   flex: 1;
   min-width: 0;
-  padding: 8px 20px 20px;
+  padding: 24px;
+}
+
+.upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0 16px;
+  color: #98a4c5;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.upload-divider::before,
+.upload-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e3e8f5;
 }
 
 .info-card {
@@ -327,11 +395,17 @@ watchEffect(() => {
   padding: 20px;
 }
 
+.info-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .info-title {
   font-weight: 600;
   font-size: 16px;
   color: #232c56;
-  margin-bottom: 16px;
 }
 
 .edit-bar {

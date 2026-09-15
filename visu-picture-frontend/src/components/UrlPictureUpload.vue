@@ -4,18 +4,15 @@
       <a-input
         v-model:value="fileUrl"
         class="url-input"
-        placeholder="请输入图片地址"
+        placeholder="请粘贴或输入图片 URL 地址..."
         allow-clear
         @pressEnter="handleUpload"
       />
       <a-button type="primary" class="url-btn" :loading="loading" @click="handleUpload">
-        提交
+        抓取
       </a-button>
     </div>
-    <div class="img-wrapper">
-      <img v-if="picture?.url" :src="picture?.url" alt="avatar" />
-      <div v-else class="placeholder">输入图片地址后点击提交，抓取结果将在此预览</div>
-    </div>
+    <div class="url-hint">支持 http/https 协议的公开图片地址</div>
   </div>
 </template>
 <script lang="ts" setup>
@@ -75,40 +72,15 @@ const handleUpload = async () => {
 
 .url-picture-upload .url-btn {
   flex-shrink: 0;
-  width: 110px;
+  width: 96px;
   height: 42px;
   border-radius: 10px;
 }
 
-.url-picture-upload .img-wrapper {
-  margin-top: 16px;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px dashed #b9c6ff;
-  border-radius: 14px;
-  background: rgba(61, 90, 245, 0.03);
-}
-
-.url-picture-upload .img-wrapper img {
-  max-width: 100%;
-  max-height: 420px;
-  border-radius: 10px;
-}
-
-.url-picture-upload .placeholder {
+.url-picture-upload .url-hint {
+  margin-top: 8px;
   color: #98a4c5;
-  font-size: 13px;
-}
-
-/* 深色模式适配 */
-html.dark .url-picture-upload .img-wrapper {
-  border-color: rgba(79, 107, 255, 0.4);
-  background: rgba(79, 107, 255, 0.08);
-}
-
-html.dark .url-picture-upload .placeholder {
-  color: rgba(232, 234, 242, 0.45);
+  font-size: 12px;
+  text-align: center;
 }
 </style>

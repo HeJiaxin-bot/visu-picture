@@ -2,6 +2,21 @@
 /* eslint-disable */
 import request from '@/request'
 
+/** aiEditPicture POST /api/picture/ai_edit */
+export async function aiEditPictureUsingPost(
+  body: API.PictureAiEditRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponsePictureAiEditResult_>('/api/picture/ai_edit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
 /** likePicture POST /api/picture/like */
 export async function likePictureUsingPost(
   body: API.PictureLikeRequest,

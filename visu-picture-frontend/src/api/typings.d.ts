@@ -125,6 +125,12 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponsePictureAiEditResult_ = {
+    code?: number
+    data?: PictureAiEditResult
+    message?: string
+  }
+
   type BaseResponsePicture_ = {
     code?: number
     data?: Picture
@@ -362,6 +368,17 @@ declare namespace API {
     updateTime?: string
     url?: string
     userId?: number
+  }
+
+  type PictureAiEditRequest = {
+    pictureId?: number
+  }
+
+  type PictureAiEditResult = {
+    category?: string
+    introduction?: string
+    name?: string
+    tags?: string[]
   }
 
   type PictureEditByBatchRequest = {

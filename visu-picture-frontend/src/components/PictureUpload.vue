@@ -12,16 +12,20 @@
       </div>
       <div v-else class="empty-box">
         <loading-outlined v-if="loading" class="upload-icon" spin />
-        <plus-outlined v-else class="upload-icon" />
+        <cloud-upload-outlined v-else class="upload-icon" />
         <div class="upload-text">点击或拖拽上传图片</div>
-        <div class="upload-hint">支持 JPG / PNG 格式，不超过 2MB</div>
+        <div class="format-tags">
+          <span class="format-tag">JPG</span>
+          <span class="format-tag">PNG</span>
+          <span class="format-tag">WEBP</span>
+        </div>
       </div>
     </a-upload>
   </div>
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { LoadingOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { CloudUploadOutlined, LoadingOutlined } from '@ant-design/icons-vue'
 import type { UploadProps } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
 import { uploadPictureUsingPost } from '@/api/pictureController.ts'
@@ -65,17 +69,17 @@ const loading = ref<boolean>(false)
  * @param file
  */
 const beforeUpload = (file: UploadProps['fileList'][number]) => {
-  // 校验图片格式
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  if (!isJpgOrPng) {
-    message.error('不支持上传该格式的图片，推荐 jpg 或 png')
+  // 校验图片格式（与后端允许的后缀保持一致：jpeg / png / jpg / webp）
+  const isSupported = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  if (!isSupported) {
+    message.error('不支持上传该格式的图片，推荐 jpg / png / webp')
   }
   // 校验图片大小
   const isLt2M = file.size / 1024 / 1024 < 2
   if (!isLt2M) {
     message.error('不能上传超过 2M 的图片')
   }
-  return isJpgOrPng && isLt2M
+  return isSupported && isLt2M
 }
 </script>
 <style scoped>
@@ -105,25 +109,35 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 }
 
 .empty-box {
-  padding: 56px 0;
+  padding: 64px 0;
   text-align: center;
 }
 
 .upload-icon {
-  font-size: 42px;
+  font-size: 56px;
   color: #4f6bff;
 }
 
 .upload-text {
-  margin-top: 12px;
+  margin-top: 16px;
   color: #232c56;
   font-size: 15px;
 }
 
-.upload-hint {
-  margin-top: 4px;
-  color: #98a4c5;
+.format-tags {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.format-tag {
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: rgba(61, 90, 245, 0.08);
+  color: #5a6a94;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .preview-box {
@@ -158,7 +172,11 @@ html.dark .upload-text {
   color: #e8eaf2;
 }
 
-html.dark .upload-hint,
+html.dark .format-tag {
+  background: rgba(79, 107, 255, 0.15);
+  color: rgba(232, 234, 242, 0.6);
+}
+
 html.dark .preview-tip {
   color: rgba(232, 234, 242, 0.45);
 }
