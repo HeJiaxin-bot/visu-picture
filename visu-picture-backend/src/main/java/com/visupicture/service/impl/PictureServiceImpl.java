@@ -351,8 +351,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 queryWrapper.like("tags", "\"" + tag + "\"");
             }
         }
-        // 排序
-        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
+        // 排序（附加以 id 为次级排序：点赞数等排序值相同时保证分页结果稳定，避免重复/遗漏）
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), "ascend".equals(sortOrder), sortField);
+        queryWrapper.orderByDesc("id");
         return queryWrapper;
     }
 
