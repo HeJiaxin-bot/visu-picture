@@ -15,24 +15,11 @@
         />
       </div>
     </div>
-    <!-- 分类和标签筛选 -->
+    <!-- 分类筛选 -->
     <a-tabs v-model:active-key="selectedCategory" class="category-tabs" @change="doSearch">
       <a-tab-pane key="all" tab="全部" />
       <a-tab-pane v-for="category in categoryList" :tab="category" :key="category" />
     </a-tabs>
-    <div class="tag-bar">
-      <span class="tag-label">标签：</span>
-      <a-space :size="[8, 8]" wrap>
-        <a-checkable-tag
-          v-for="(tag, index) in tagList"
-          :key="tag"
-          v-model:checked="selectedTagList[index]"
-          @change="doSearch"
-        >
-          {{ tag }}
-        </a-checkable-tag>
-      </a-space>
-    </div>
     <!-- 图片列表（滚动加载） -->
     <PictureList
       :dataList="dataList"
@@ -57,11 +44,11 @@ const dataList = ref<API.PictureVO[]>([])
 const total = ref(0)
 const loading = ref(true)
 
-// 搜索条件
+// 搜索条件（首页按点赞数从高到低展示）
 const searchParams = reactive<API.PictureQueryRequest>({
   current: 1,
   pageSize: 12,
-  sortField: 'createTime',
+  sortField: 'likeCount',
   sortOrder: 'descend',
 })
 
@@ -74,17 +61,10 @@ const fetchData = async () => {
   // 转换搜索参数
   const params = {
     ...searchParams,
-    tags: [] as string[],
   }
   if (selectedCategory.value !== 'all') {
     params.category = selectedCategory.value
   }
-  // [true, false, false] => ['java']
-  selectedTagList.value.forEach((useTag, index) => {
-    if (useTag) {
-      params.tags.push(tagList.value[index])
-    }
-  })
   try {
     const res = await listPictureVoByPageUsingPost(params)
     if (res.data.code === 0 && res.data.data) {
@@ -133,23 +113,20 @@ const doSearch = () => {
   fetchData()
 }
 
-// 标签和分类列表
+// 分类列表
 const categoryList = ref<string[]>([])
 const selectedCategory = ref<string>('all')
-const tagList = ref<string[]>([])
-const selectedTagList = ref<boolean[]>([])
 
 /**
- * 获取标签和分类选项
+ * 获取分类选项
  * @param values
  */
 const getTagCategoryOptions = async () => {
   const res = await listPictureTagCategoryUsingGet()
   if (res.data.code === 0 && res.data.data) {
-    tagList.value = res.data.data.tagList ?? []
     categoryList.value = res.data.data.categoryList ?? []
   } else {
-    message.error('获取标签分类列表失败，' + res.data.message)
+    message.error('获取分类列表失败，' + res.data.message)
   }
 }
 
@@ -215,36 +192,6 @@ onMounted(() => {
 
 #homePage .category-tabs :deep(.ant-tabs-nav-list) {
   margin: 0 auto;
-}
-
-#homePage .tag-bar {
-  text-align: center;
   margin-bottom: 20px;
-}
-
-#homePage .tag-label {
-  color: rgba(35, 44, 86, 0.65);
-  margin-right: 8px;
-}
-
-/* 标签药丸样式 */
-#homePage .tag-bar :deep(.ant-tag-checkable) {
-  background: #fff;
-  border: 1px solid #e3e7f3;
-  border-radius: 999px;
-  padding: 4px 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-#homePage .tag-bar :deep(.ant-tag-checkable:hover) {
-  color: #3d5af5;
-  border-color: rgba(61, 90, 245, 0.45);
-}
-
-#homePage .tag-bar :deep(.ant-tag-checkable-checked) {
-  background: #3d5af5;
-  color: #fff;
-  border-color: #3d5af5;
 }
 </style>
