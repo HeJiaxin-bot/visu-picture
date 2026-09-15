@@ -173,7 +173,6 @@
           :canEdit="true"
           :canDelete="true"
           :onReload="reloadPictures"
-          @load-more="loadMorePictures"
         />
         <a-spin v-else-if="picturesLoading" class="pic-loading" />
         <a-empty v-else description="还没有在公共图库上传过图片">
@@ -181,6 +180,16 @@
             去上传第一张图片
           </a-button>
         </a-empty>
+        <!-- 手动查看更多（不自动全部展示） -->
+        <div v-if="pictureList.length > 0 && !picturesFinished" class="pic-more">
+          <a-button size="large" :loading="picturesLoading" @click="loadMorePictures">
+            查看更多
+            <span class="pic-more-hint">已展示 {{ pictureList.length }} / {{ pictureTotal }} 张</span>
+          </a-button>
+        </div>
+        <div v-else-if="pictureList.length > PAGE_SIZE" class="pic-more">
+          <span class="pic-all-loaded">已展示全部 {{ pictureTotal }} 张作品</span>
+        </div>
       </a-card>
     </div>
   </div>
@@ -281,7 +290,8 @@ const handleEditSave = async () => {
 }
 
 // ----- 我的公共图库作品（仅展示已过审图片，后端对公开查询自动过滤） -----
-const PAGE_SIZE = 20
+// 每页少量展示，其余通过"查看更多"按钮手动加载，避免一次全部渲染
+const PAGE_SIZE = 8
 const pictureList = ref<API.PictureVO[]>([])
 const picturesLoading = ref(false)
 const picturesFinished = ref(false)
@@ -462,6 +472,29 @@ const formatDate = (time?: string) => {
 /* 我的公共图库作品独占一行 */
 .my-pictures-card {
   grid-column: 1 / -1;
+}
+
+/* 查看更多区域 */
+.pic-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+}
+
+.pic-more-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.pic-all-loaded {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+html.dark .pic-more-hint,
+html.dark .pic-all-loaded {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .pic-extra {
