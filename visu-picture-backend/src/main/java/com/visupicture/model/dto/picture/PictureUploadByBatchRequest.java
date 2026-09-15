@@ -25,5 +25,10 @@ public class PictureUploadByBatchRequest implements Serializable {
      */
     private String namePrefix;
 
+    /**
+     * 是否开启 AI 配文（自动生成名称、简介、分类、标签），默认开启
+     */
+    private Boolean aiEdit;
+
     private static final long serialVersionUID = 1L;
 }

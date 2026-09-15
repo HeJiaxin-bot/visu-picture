@@ -444,6 +444,7 @@ declare namespace API {
   }
 
   type PictureUploadByBatchRequest = {
+    aiEdit?: boolean
     count?: number
     namePrefix?: string
     searchText?: string

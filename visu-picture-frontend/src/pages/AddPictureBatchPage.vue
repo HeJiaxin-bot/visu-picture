@@ -43,11 +43,23 @@
           <a-input
             v-model:value="formData.namePrefix"
             size="large"
-            placeholder="不填则默认使用关键词，自动补充序号"
+            placeholder="不填则默认使用关键词，自动补充序号（开启 AI 配文后由 AI 自动命名）"
             allow-clear
           >
             <template #prefix><TagOutlined class="input-icon" /></template>
           </a-input>
+        </a-form-item>
+        <a-form-item name="aiEdit">
+          <div class="ai-edit-row" @click="formData.aiEdit = !formData.aiEdit">
+            <div class="ai-edit-info">
+              <div class="ai-edit-label">
+                <ThunderboltOutlined class="ai-edit-icon" />
+                AI 智能配文
+              </div>
+              <div class="ai-edit-desc">为每张图片自动生成名称、简介、分类和标签，耗时略有增加</div>
+            </div>
+            <a-switch v-model:checked="formData.aiEdit" @click.stop />
+          </div>
         </a-form-item>
         <a-form-item>
           <a-button
@@ -89,6 +101,7 @@ import {
   LoadingOutlined,
   SearchOutlined,
   TagOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons-vue'
 import {
   getBatchUploadProgressUsingGet,
@@ -101,6 +114,7 @@ const presetKeywords = ['风景', '城市夜景', '美食', '动物', '科技', 
 
 const formData = reactive<API.PictureUploadByBatchRequest>({
   count: 10,
+  aiEdit: true,
 })
 // 提交任务状态
 const loading = ref(false)
@@ -156,9 +170,8 @@ const handleSubmit = async (values: any) => {
   startProgressPolling()
   let res
   try {
-    res = await uploadPictureByBatchUsingPost({
-      ...formData,
-    })
+    // 开启 AI 配文时每张图片需额外调用一次大模型，延长超时时间
+    res = await uploadPictureByBatchUsingPost({ ...formData }, { timeout: 600000 })
   } finally {
     stopProgressPolling()
     loading.value = false
@@ -253,6 +266,43 @@ const handleSubmit = async (values: any) => {
   gap: 0;
 }
 
+.ai-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid #e7ebf6;
+  border-radius: 12px;
+  background: rgba(61, 90, 245, 0.04);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-edit-row:hover {
+  border-color: rgba(61, 90, 245, 0.45);
+}
+
+.ai-edit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #232c56;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ai-edit-icon {
+  color: #4f6bff;
+}
+
+.ai-edit-desc {
+  margin-top: 2px;
+  color: rgba(35, 44, 86, 0.55);
+  font-size: 12px;
+}
+
 .submit-btn {
   height: 44px;
   border-radius: 10px;
@@ -311,5 +361,18 @@ html.dark .progress-wrapper {
 
 html.dark .progress-text {
   color: rgba(232, 234, 242, 0.7);
+}
+
+html.dark .ai-edit-row {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(79, 107, 255, 0.1);
+}
+
+html.dark .ai-edit-label {
+  color: #e8eaf2;
+}
+
+html.dark .ai-edit-desc {
+  color: rgba(232, 234, 242, 0.55);
 }
 </style>

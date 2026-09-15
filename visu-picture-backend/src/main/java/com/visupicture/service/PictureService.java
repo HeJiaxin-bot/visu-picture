@@ -149,6 +149,14 @@ public interface PictureService extends IService<Picture> {
     CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 
     /**
+     * AI 配文核心逻辑：调用多模态模型生成名称、简介、分类、标签
+     *
+     * @param picture 图片（需含 url 或 thumbnailUrl）
+     * @return AI 生成的配文结果
+     */
+    PictureAiEditResult generateAiEditResult(Picture picture);
+
+    /**
      * 图片点赞 / 取消点赞
      *
      * @param pictureId 图片 id

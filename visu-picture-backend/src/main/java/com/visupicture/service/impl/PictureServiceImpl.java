@@ -14,6 +14,7 @@ import com.visupicture.api.aliyunai.AliYunAiApi;
 import com.visupicture.api.aliyunai.model.CreateImageEditTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.visupicture.constant.PictureTagCategoryConstant;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
@@ -59,6 +60,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -471,6 +474,25 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
                 log.info("图片上传成功，id = {}", pictureVO.getId());
                 uploadCount++;
+                // AI 配文：自动生成名称、简介、分类、标签并直接落库（失败不影响整体抓取）
+                if (ObjUtil.defaultIfNull(pictureUploadByBatchRequest.getAiEdit(), true)) {
+                    try {
+                        Picture aiPicture = new Picture();
+                        aiPicture.setId(pictureVO.getId());
+                        aiPicture.setUrl(pictureVO.getUrl());
+                        aiPicture.setThumbnailUrl(pictureVO.getThumbnailUrl());
+                        PictureAiEditResult aiResult = this.generateAiEditResult(aiPicture);
+                        this.lambdaUpdate()
+                                .eq(Picture::getId, pictureVO.getId())
+                                .set(StrUtil.isNotBlank(aiResult.getName()), Picture::getName, aiResult.getName())
+                                .set(StrUtil.isNotBlank(aiResult.getIntroduction()), Picture::getIntroduction, aiResult.getIntroduction())
+                                .set(StrUtil.isNotBlank(aiResult.getCategory()), Picture::getCategory, aiResult.getCategory())
+                                .set(CollUtil.isNotEmpty(aiResult.getTags()), Picture::getTags, JSONUtil.toJsonStr(aiResult.getTags()))
+                                .update();
+                    } catch (Exception e) {
+                        log.warn("AI 配文失败，保留默认信息，pictureId = {}", pictureVO.getId(), e);
+                    }
+                }
                 // 更新任务进度
                 stringRedisTemplate.opsForValue().set(progressKey, uploadCount + "/" + count, 10, TimeUnit.MINUTES);
             } catch (Exception e) {
@@ -484,6 +506,64 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         log.info("批量抓取完成，关键词 = {}，成功 = {}，失败 = {}", searchText, uploadCount, failCount);
         return uploadCount;
+    }
+
+    /**
+     * AI 配文核心逻辑：调用多模态模型生成名称、简介、分类、标签（候选集收敛后返回）
+     */
+    @Override
+    public PictureAiEditResult generateAiEditResult(Picture picture) {
+        // 优先使用缩略图，减少图片 token 消耗
+        String imageUrl = StrUtil.isNotBlank(picture.getThumbnailUrl()) ? picture.getThumbnailUrl() : picture.getUrl();
+        ThrowUtils.throwIf(StrUtil.isBlank(imageUrl), ErrorCode.OPERATION_ERROR, "图片地址为空，无法 AI 配文");
+        // 调用多模态模型进行图片理解，约束输出 JSON 并收敛候选范围
+        String prompt = String.format(
+                "你是一个图片配文助手。请分析这张图片，生成：\n"
+                        + "1. name：一个吸引人的图片标题，不超过 12 个字，突出画面亮点\n"
+                        + "2. introduction：一句不超过 30 字的中文简介，描述画面内容和用途\n"
+                        + "3. category：从候选分类中选择一个最匹配的，只能选一个\n"
+                        + "4. tags：从候选标签中选择 2 到 4 个最匹配的\n\n"
+                        + "候选分类：%s\n"
+                        + "候选标签：%s\n\n"
+                        + "只输出如下 JSON，不要输出任何其他文字：\n"
+                        + "{\"name\":\"...\",\"introduction\":\"...\",\"category\":\"...\",\"tags\":[\"...\"]}",
+                String.join("、", PictureTagCategoryConstant.CATEGORY_LIST),
+                String.join("、", PictureTagCategoryConstant.TAG_LIST));
+        String content = aliYunAiApi.chatWithImage(imageUrl, prompt);
+        PictureAiEditResult result = parseAiEditResult(content);
+        // 候选集收敛：超出候选范围的分类、标签直接丢弃，防止脏数据
+        if (result.getCategory() != null && !PictureTagCategoryConstant.CATEGORY_LIST.contains(result.getCategory())) {
+            result.setCategory(null);
+        }
+        if (result.getTags() != null) {
+            result.setTags(result.getTags().stream()
+                    .filter(StrUtil::isNotBlank)
+                    .filter(PictureTagCategoryConstant.TAG_LIST::contains)
+                    .distinct()
+                    .collect(Collectors.toList()));
+        }
+        return result;
+    }
+
+    /**
+     * 解析 AI 配文输出为结构化结果（容错：剥离 markdown 代码块、截取 JSON 部分）
+     */
+    private PictureAiEditResult parseAiEditResult(String content) {
+        String json = content;
+        Matcher matcher = Pattern.compile("```(?:json)?\\s*([\\s\\S]*?)```").matcher(json);
+        if (matcher.find()) {
+            json = matcher.group(1);
+        }
+        int start = json.indexOf('{');
+        int end = json.lastIndexOf('}');
+        ThrowUtils.throwIf(start < 0 || end <= start, ErrorCode.OPERATION_ERROR, "AI 配文结果解析失败");
+        json = json.substring(start, end + 1);
+        try {
+            return JSONUtil.toBean(json, PictureAiEditResult.class);
+        } catch (Exception e) {
+            log.error("AI 配文结果解析失败：{}", content, e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 配文结果解析失败");
+        }
     }
 
     @Async
