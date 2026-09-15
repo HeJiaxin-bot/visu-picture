@@ -19,6 +19,7 @@ const SpaceAnalyzePage = () => import('@/pages/SpaceAnalyzePage.vue')
 const SpaceUserManagePage = () => import('@/pages/admin/SpaceUserManagePage.vue')
 const InvitePage = () => import('@/pages/user/InvitePage.vue')
 const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
+const UserProfilePage = () => import('@/pages/user/UserProfilePage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -110,6 +111,12 @@ const router = createRouter({
       path: '/user/invite',
       name: '邀请计划',
       component: InvitePage,
+    },
+    {
+      path: '/user/:id',
+      name: '用户主页',
+      component: UserProfilePage,
+      props: true,
     },
     {
       path: '/agreement',

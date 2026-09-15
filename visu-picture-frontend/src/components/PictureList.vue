@@ -12,33 +12,56 @@
           v-for="cell in row.items"
           :key="cell.picture.id"
           class="justified-item"
-          :style="{ width: itemWidth(cell, row.height) + 'px', height: row.height + 'px' }"
+          :style="{ width: itemWidth(cell, row.height) + 'px' }"
           @click="doClickPicture(cell.picture)"
         >
-          <img
-            :alt="cell.picture.name"
-            :src="cell.picture.thumbnailUrl ?? cell.picture.url"
-            loading="lazy"
-            decoding="async"
-          />
-          <!-- AI 生成内容标识（常显，符合内容标识规范） -->
-          <div v-if="cell.picture.isAiGenerated === 1" class="ai-badge">AI 生成</div>
-          <!-- 悬浮信息层 -->
-          <div class="item-overlay">
-            <div class="overlay-top">
-              <div class="pic-name">{{ cell.picture.name }}</div>
-              <div class="pic-tags">
-                <a-tag color="green">{{ cell.picture.category ?? '默认' }}</a-tag>
-                <a-tag v-for="tag in cell.picture.tags?.slice(0, 2)" :key="tag">
-                  {{ tag }}
-                </a-tag>
+          <div class="img-wrapper" :style="{ height: row.height + 'px' }">
+            <img
+              :alt="cell.picture.name"
+              :src="cell.picture.thumbnailUrl ?? cell.picture.url"
+              loading="lazy"
+              decoding="async"
+            />
+            <!-- AI 生成内容标识（常显，符合内容标识规范） -->
+            <div v-if="cell.picture.isAiGenerated === 1" class="ai-badge">AI 生成</div>
+            <!-- 悬浮信息层 -->
+            <div class="item-overlay">
+              <div class="overlay-top">
+                <div class="pic-tags">
+                  <a-tag color="green">{{ cell.picture.category ?? '默认' }}</a-tag>
+                  <a-tag v-for="tag in cell.picture.tags?.slice(0, 2)" :key="tag">
+                    {{ tag }}
+                  </a-tag>
+                </div>
+              </div>
+              <div v-if="showOp" class="overlay-actions" @click.stop>
+                <ShareAltOutlined @click="(e) => doShare(cell.picture, e)" />
+                <SearchOutlined @click="(e) => doSearch(cell.picture, e)" />
+                <EditOutlined v-if="canEdit" @click="(e) => doEdit(cell.picture, e)" />
+                <DeleteOutlined v-if="canDelete" @click="(e) => doDelete(cell.picture, e)" />
               </div>
             </div>
-            <div v-if="showOp" class="overlay-actions" @click.stop>
-              <ShareAltOutlined @click="(e) => doShare(cell.picture, e)" />
-              <SearchOutlined @click="(e) => doSearch(cell.picture, e)" />
-              <EditOutlined v-if="canEdit" @click="(e) => doEdit(cell.picture, e)" />
-              <DeleteOutlined v-if="canDelete" @click="(e) => doDelete(cell.picture, e)" />
+          </div>
+          <!-- 图片下方信息条：名称 + 作者 + 点赞 -->
+          <div class="card-footer">
+            <div class="pic-name" :title="cell.picture.name">{{ cell.picture.name }}</div>
+            <div class="card-meta">
+              <div class="pic-author" title="查看作者主页" @click.stop="goUserPage(cell.picture)">
+                <a-avatar :size="18" :src="cell.picture.user?.userAvatar">
+                  <template #icon><UserOutlined /></template>
+                </a-avatar>
+                <span class="author-name">{{ cell.picture.user?.userName ?? '未知用户' }}</span>
+              </div>
+              <div
+                class="pic-like"
+                :class="{ liked: likeStore.isLiked(cell.picture.id) }"
+                title="点赞"
+                @click.stop="doLike(cell.picture)"
+              >
+                <HeartFilled v-if="likeStore.isLiked(cell.picture.id)" />
+                <HeartOutlined v-else />
+                {{ formatCount(cell.picture.likeCount ?? 0) }}
+              </div>
             </div>
           </div>
         </div>
@@ -60,13 +83,17 @@ import { useRouter } from 'vue-router'
 import {
   DeleteOutlined,
   EditOutlined,
+  HeartFilled,
+  HeartOutlined,
   SearchOutlined,
   ShareAltOutlined,
+  UserOutlined,
 } from '@ant-design/icons-vue'
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import ShareModal from '@/components/ShareModal.vue'
 import PictureDetailModal from '@/components/PictureDetailModal.vue'
+import { useLikeStore } from '@/stores/useLikeStore.ts'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 interface Props {
@@ -229,6 +256,30 @@ watch(
 )
 
 const router = useRouter()
+// 点赞状态管理
+const likeStore = useLikeStore()
+
+// 点赞 / 取消点赞
+const doLike = (picture: API.PictureVO) => {
+  likeStore.toggle(picture)
+}
+
+// 查看作者主页
+const goUserPage = (picture: API.PictureVO) => {
+  const userId = picture.user?.id ?? picture.userId
+  if (userId != null) {
+    router.push(`/user/${userId}`)
+  }
+}
+
+// 点赞数格式化：超过 1 万显示为 x.x w
+const formatCount = (count: number) => {
+  if (count >= 10000) {
+    return (count / 10000).toFixed(1).replace(/\.0$/, '') + 'w'
+  }
+  return String(count)
+}
+
 // 打开图片详情弹窗（不再跳转页面），传入同组 id 列表以支持左右键切换
 const detailModalRef = ref()
 const doClickPicture = (picture: API.PictureVO) => {
@@ -316,9 +367,12 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 .justified-item {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
+  background: #fff;
   box-shadow: 0 2px 10px rgba(37, 55, 120, 0.06);
   transition:
     transform 0.25s ease,
@@ -330,12 +384,86 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   box-shadow: 0 12px 28px rgba(37, 55, 120, 0.16);
 }
 
+.img-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .justified-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
   background: #f0f2f7;
+}
+
+/* 卡片底部信息条：名称 + 作者 + 点赞 */
+.card-footer {
+  padding: 8px 10px 10px;
+}
+
+.pic-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #232c56;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pic-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: rgba(35, 44, 86, 0.65);
+  transition: color 0.2s;
+}
+
+.pic-author:hover {
+  color: #3d5af5;
+}
+
+.pic-author .author-name {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 96px;
+}
+
+.pic-author :deep(.ant-avatar) {
+  flex-shrink: 0;
+}
+
+.pic-like {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(35, 44, 86, 0.6);
+  transition:
+    color 0.2s,
+    transform 0.15s;
+}
+
+.pic-like:hover {
+  color: #ff4d6a;
+  transform: scale(1.1);
+}
+
+.pic-like.liked {
+  color: #ff4d6a;
+  font-weight: 600;
 }
 
 /* AI 生成内容标识：右上角常显 */
@@ -375,16 +503,6 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 
 .justified-item:hover .item-overlay {
   opacity: 1;
-}
-
-.overlay-top .pic-name {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 4px;
 }
 
 .overlay-top .pic-tags :deep(.ant-tag) {
@@ -430,5 +548,23 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 .no-more-text {
   color: rgba(35, 44, 86, 0.45);
   font-size: 13px;
+}
+
+/* 深色模式 */
+html.dark .justified-item {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .pic-name {
+  color: #e8eaf6;
+}
+
+html.dark .pic-author,
+html.dark .pic-like {
+  color: rgba(200, 208, 240, 0.6);
+}
+
+html.dark .pic-author:hover {
+  color: #8fa4ff;
 }
 </style>

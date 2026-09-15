@@ -6,6 +6,7 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -750,6 +751,26 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             log.error("名称解析错误", e);
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "名称解析错误");
         }
+    }
+
+    /**
+     * 图片点赞 / 取消点赞：使用 SQL 原子自增自减，取消时保证下限为 0
+     */
+    @Override
+    public int likePicture(long pictureId, boolean isLike) {
+        Picture picture = this.getById(pictureId);
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
+        UpdateWrapper<Picture> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", pictureId);
+        if (isLike) {
+            updateWrapper.setSql("likeCount = likeCount + 1");
+        } else {
+            updateWrapper.setSql("likeCount = GREATEST(likeCount - 1, 0)");
+        }
+        boolean updated = this.update(updateWrapper);
+        ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "操作失败");
+        int current = picture.getLikeCount() == null ? 0 : picture.getLikeCount();
+        return isLike ? current + 1 : Math.max(current - 1, 0);
     }
 }
 

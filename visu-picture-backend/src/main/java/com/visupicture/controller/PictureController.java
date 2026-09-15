@@ -114,6 +114,21 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
 
+    /**
+     * 图片点赞 / 取消点赞（需登录）
+     */
+    @PostMapping("/like")
+    public BaseResponse<Integer> likePicture(@RequestBody PictureLikeRequest pictureLikeRequest
+            , HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureLikeRequest == null || pictureLikeRequest.getPictureId() == null
+                || pictureLikeRequest.getPictureId() <= 0, ErrorCode.PARAMS_ERROR);
+        // 未登录时 getLoginUser 会抛出业务异常，前端据此提示登录
+        userService.getLoginUser(request);
+        boolean isLike = Boolean.TRUE.equals(pictureLikeRequest.getIsLike());
+        int likeCount = pictureService.likePicture(pictureLikeRequest.getPictureId(), isLike);
+        return ResultUtils.success(likeCount);
+    }
+
     @PostMapping("/delete")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest

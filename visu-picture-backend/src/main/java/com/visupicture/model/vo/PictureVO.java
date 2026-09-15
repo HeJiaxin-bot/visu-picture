@@ -98,6 +98,11 @@ public class PictureVO implements Serializable {
     private Integer isAiGenerated;
 
     /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
      * 用户 id
      */
     private Long userId;

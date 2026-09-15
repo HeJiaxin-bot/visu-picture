@@ -85,6 +85,11 @@ public class Picture implements Serializable {
     private Integer isAiGenerated;
 
     /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

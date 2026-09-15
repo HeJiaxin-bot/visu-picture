@@ -66,6 +66,7 @@ create table if not exists picture
     reviewTime   datetime                           null comment '审核时间',
     picColor     varchar(16)                        null comment '图片主色调',
     isAiGenerated tinyint default 0                not null comment '是否 AI 生成（1-是，0-否）',
+    likeCount    int default 0                     not null comment '点赞数',
     INDEX idx_name (name),                 -- 提升基于图片名称的查询性能
     INDEX idx_introduction (introduction), -- 用于模糊搜索图片简介
     INDEX idx_category (category),         -- 提升基于分类的查询性能

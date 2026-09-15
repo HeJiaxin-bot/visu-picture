@@ -89,6 +89,12 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponseInteger_ = {
+    code?: number
+    data?: number
+    message?: string
+  }
+
   type BaseResponsePagePicture_ = {
     code?: number
     data?: PagePicture_
@@ -434,6 +440,11 @@ declare namespace API {
     spaceId?: number
   }
 
+  type PictureLikeRequest = {
+    isLike?: boolean
+    pictureId?: number
+  }
+
   type PictureVO = {
     category?: string
     createTime?: string
@@ -441,6 +452,7 @@ declare namespace API {
     id?: number
     introduction?: string
     isAiGenerated?: number
+    likeCount?: number
     name?: string
     permissionList?: string[]
     picColor?: string

@@ -147,4 +147,13 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser
      */
     CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
+
+    /**
+     * 图片点赞 / 取消点赞
+     *
+     * @param pictureId 图片 id
+     * @param isLike    true-点赞；false-取消
+     * @return 点赞后的点赞数
+     */
+    int likePicture(long pictureId, boolean isLike);
 }

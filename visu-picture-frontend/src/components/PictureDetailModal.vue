@@ -1,26 +1,66 @@
 <template>
   <a-modal
     v-model:open="visible"
-    :width="1040"
+    :width="'min(1600px, 98vw)'"
     :footer="null"
+    :closable="false"
     centered
     destroy-on-close
     wrap-class-name="picture-detail-modal"
   >
-    <template #title>
-      <div class="modal-title">
-        <PictureOutlined />
-        <span class="title-text">{{ picture.name ?? '图片详情' }}</span>
-        <a-tag v-if="canSwitch" class="switch-tip">← → 切换</a-tag>
-      </div>
-    </template>
     <a-spin :spinning="loading">
+      <!-- 顶部栏：作者信息 + 操作按钮 -->
+      <div class="top-bar">
+        <div class="top-author" title="查看作者主页" @click="goUserPage">
+          <a-avatar :size="44" :src="picture.user?.userAvatar">
+            <template #icon><UserOutlined /></template>
+          </a-avatar>
+          <div class="author-info">
+            <div class="author-name">{{ picture.user?.userName ?? '未知用户' }}</div>
+            <div v-if="formatDate(picture.createTime)" class="author-tip">
+              发布于 {{ formatDate(picture.createTime) }}
+            </div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <!-- 点赞（替代参考样式中的浏览数） -->
+          <button
+            class="pill-btn like-btn"
+            :class="{ liked: likeStore.isLiked(picture.id) }"
+            @click="doLike"
+          >
+            <HeartFilled v-if="likeStore.isLiked(picture.id)" />
+            <HeartOutlined v-else />
+            <b>{{ picture.likeCount ?? 0 }}</b>
+          </button>
+          <button class="pill-btn" @click="doSearch">
+            <SearchOutlined /> 搜图
+          </button>
+          <button class="pill-btn" @click="download">
+            <DownloadOutlined /> 下载
+          </button>
+          <button class="pill-btn" @click="doShare">
+            <ShareAltOutlined /> 分享
+          </button>
+          <button v-if="canEdit" class="pill-btn" @click="doEdit">
+            <EditOutlined /> 编辑
+          </button>
+          <button v-if="canDelete" class="pill-btn danger" @click="doDelete">
+            <DeleteOutlined />
+          </button>
+          <button class="pill-btn icon-only" @click="visible = false">
+            <CloseOutlined />
+          </button>
+        </div>
+      </div>
+
+      <!-- 主体：左大图 + 右信息栏 -->
       <div class="detail-body">
-        <!-- 左：图片预览（点击全屏；右键弹出操作菜单） -->
+        <!-- 左：图片预览（右键弹出操作菜单） -->
         <a-dropdown
           :trigger="['contextmenu']"
           :visible="menuVisible"
-          @visibleChange="(v) => (menuVisible = v)"
+          @visibleChange="(v: boolean) => (menuVisible = v)"
         >
           <div class="preview-area" @contextmenu.prevent>
             <a-image v-if="picture.url" :src="picture.url" class="preview-img" />
@@ -32,9 +72,6 @@
               </a-menu-item>
               <a-menu-item key="download">
                 <DownloadOutlined /> 下载图片
-              </a-menu-item>
-              <a-menu-item key="search">
-                <SearchOutlined /> 以图搜图
               </a-menu-item>
               <a-menu-item key="share">
                 <ShareAltOutlined /> 分享
@@ -49,24 +86,15 @@
             </a-menu>
           </template>
         </a-dropdown>
-        <!-- 右：图片信息 -->
+
+        <!-- 右：图片信息栏 -->
         <div class="info-area">
-          <!-- 作者 -->
-          <div class="author-row">
-            <a-avatar :size="36" :src="picture.user?.userAvatar">
-              <template #icon><UserOutlined /></template>
-            </a-avatar>
-            <div class="author-info">
-              <div class="author-name">{{ picture.user?.userName ?? '未知用户' }}</div>
-              <div v-if="formatDate(picture.createTime)" class="author-tip">
-                上传于 {{ formatDate(picture.createTime) }}
-              </div>
-            </div>
-          </div>
+          <h2 class="pic-title">{{ picture.name ?? '图片详情' }}</h2>
+          <a-tag v-if="picture.isAiGenerated === 1" color="purple" class="ai-tag">AI 生成</a-tag>
           <!-- 简介 -->
-          <div v-if="picture.introduction" class="intro-block">
+          <p v-if="picture.introduction" class="intro-block">
             {{ picture.introduction }}
-          </div>
+          </p>
           <!-- 分类与标签 -->
           <div v-if="picture.tags?.length || picture.category" class="tags-row">
             <a-tag color="blue">{{ picture.category ?? '默认' }}</a-tag>
@@ -104,25 +132,7 @@
               </span>
             </div>
           </div>
-          <!-- 操作按钮 -->
-          <div class="action-area">
-            <a-button type="primary" @click="download">
-              <template #icon><DownloadOutlined /></template>
-              免费下载
-            </a-button>
-            <a-button type="primary" ghost @click="doShare">
-              <template #icon><ShareAltOutlined /></template>
-              分享
-            </a-button>
-            <a-button v-if="canEdit" @click="doEdit">
-              <template #icon><EditOutlined /></template>
-              编辑
-            </a-button>
-            <a-button v-if="canDelete" danger @click="doDelete">
-              <template #icon><DeleteOutlined /></template>
-              删除
-            </a-button>
-          </div>
+          <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
         </div>
       </div>
     </a-spin>
@@ -135,12 +145,14 @@ import { computed, createVNode, onMounted, onUnmounted, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import {
+  CloseOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
-  PictureOutlined,
+  HeartFilled,
+  HeartOutlined,
   SearchOutlined,
   ShareAltOutlined,
   UserOutlined,
@@ -149,10 +161,13 @@ import { deletePictureUsingPost } from '@/api/pictureController.ts'
 import { formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
 import { usePictureDetail } from '@/composables/usePictureDetail.ts'
+import { useLikeStore } from '@/stores/useLikeStore.ts'
 
 const emit = defineEmits<{
   (e: 'deleted'): void
 }>()
+
+const likeStore = useLikeStore()
 
 const {
   picture,
@@ -215,6 +230,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 defineExpose({ openModal })
 
+// ----- 点赞 / 取消点赞 -----
+const doLike = () => {
+  likeStore.toggle(picture.value)
+}
+
+// ----- 查看作者主页 -----
+const router = useRouter()
+const goUserPage = () => {
+  const userId = picture.value.user?.id ?? picture.value.userId
+  if (userId != null) {
+    visible.value = false
+    router.push(`/user/${userId}`)
+  }
+}
+
 // ----- 右键菜单 -----
 const menuVisible = ref(false)
 const onMenuClick = ({ key }: { key: string }) => {
@@ -225,9 +255,6 @@ const onMenuClick = ({ key }: { key: string }) => {
       break
     case 'download':
       download()
-      break
-    case 'search':
-      doSearch()
       break
     case 'share':
       doShare()
@@ -302,8 +329,6 @@ const doShare = () => {
   }
 }
 
-const router = useRouter()
-
 // 时间格式化：兼容 ISO（带 T）与空格分隔两种格式
 const formatDate = (time?: string) => {
   if (!time) return ''
@@ -318,89 +343,153 @@ const formatDate = (time?: string) => {
 </script>
 
 <style scoped>
-.modal-title {
+/* 顶部栏 */
+.top-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 12px;
+  border-bottom: 1px solid rgba(35, 44, 86, 0.08);
 }
 
-.modal-title :deep(.anticon) {
-  color: #3d5af5;
-}
-
-.switch-tip {
-  margin-left: auto;
-  font-size: 12px;
-  color: rgba(61, 90, 245, 0.7);
-  background: rgba(61, 90, 245, 0.06);
-  border: 1px solid rgba(61, 90, 245, 0.16);
-}
-
-.detail-body {
-  display: flex;
-  gap: 20px;
-}
-
-/* 左侧预览区：棋盘格底衬，突出透明图 */
-.preview-area {
-  flex: 1;
-  min-width: 0;
-  min-height: 420px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  border-radius: 12px;
-  background-color: #f3f5fa;
-  background-image:
-    linear-gradient(45deg, rgba(35, 44, 86, 0.05) 25%, transparent 25%, transparent 75%, rgba(35, 44, 86, 0.05) 75%),
-    linear-gradient(45deg, rgba(35, 44, 86, 0.05) 25%, transparent 25%, transparent 75%, rgba(35, 44, 86, 0.05) 75%);
-  background-size: 20px 20px;
-  background-position:
-    0 0,
-    10px 10px;
-}
-
-.preview-area :deep(.ant-image) {
-  max-width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.preview-area :deep(img) {
-  max-width: 100%;
-  max-height: 62vh;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(24, 39, 92, 0.16);
-}
-
-/* 右侧信息区 */
-.info-area {
-  width: 300px;
-  flex-shrink: 0;
-  max-height: 66vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.author-row {
+.top-author {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 4px 8px;
+  transition: background 0.2s;
+}
+
+.top-author:hover {
+  background: rgba(61, 90, 245, 0.06);
 }
 
 .author-name {
   font-weight: 600;
+  font-size: 15px;
   color: #171a2b;
 }
 
 .author-tip {
   font-size: 12px;
   color: rgba(35, 44, 86, 0.45);
+}
+
+/* 顶部操作按钮组：胶囊样式 */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(35, 44, 86, 0.14);
+  background: transparent;
+  color: #232c56;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    transform 0.15s;
+}
+
+.pill-btn:hover {
+  background: rgba(61, 90, 245, 0.06);
+  border-color: rgba(61, 90, 245, 0.4);
+  transform: translateY(-1px);
+}
+
+.pill-btn:active {
+  transform: scale(0.96);
+}
+
+.pill-btn.icon-only {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.pill-btn.danger:hover {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.06);
+}
+
+.like-btn.liked {
+  color: #ff4d6a;
+  border-color: rgba(255, 77, 106, 0.5);
+  background: rgba(255, 77, 106, 0.08);
+}
+
+/* 主体布局：左大图 + 右信息栏 */
+.detail-body {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+/* 左侧预览区：纯白背景，固定高度，小图也放大撑满区域 */
+.preview-area {
+  flex: 1;
+  min-width: 0;
+  height: calc(88vh - 130px);
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 12px;
+  background-color: #fff;
+}
+
+.preview-area :deep(.ant-image) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-area :deep(img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* 右侧信息区 */
+.info-area {
+  width: 320px;
+  flex-shrink: 0;
+  max-height: 82vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pic-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #171a2b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.ai-tag {
+  align-self: flex-start;
 }
 
 .intro-block {
@@ -410,6 +499,7 @@ const formatDate = (time?: string) => {
   background: rgba(61, 90, 245, 0.05);
   border-radius: 10px;
   padding: 10px 12px;
+  margin: 0;
 }
 
 .tags-row :deep(.ant-tag) {
@@ -456,16 +546,22 @@ const formatDate = (time?: string) => {
   border: 1px solid rgba(35, 44, 86, 0.15);
 }
 
-.action-area {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 4px;
-  border-top: 1px dashed rgba(35, 44, 86, 0.12);
+.switch-tip {
+  align-self: flex-start;
+  font-size: 12px;
+  color: rgba(61, 90, 245, 0.7);
+  background: rgba(61, 90, 245, 0.06);
+  border: 1px solid rgba(61, 90, 245, 0.16);
+}
+
+/* 弹窗整体 padding 微调 */
+.picture-detail-modal :deep(.ant-modal-content) {
+  padding: 16px 20px 20px;
 }
 
 /* 深色模式 */
 html.dark .author-name,
+html.dark .pic-title,
 html.dark .meta-value {
   color: #e8eaf6;
 }
@@ -486,12 +582,24 @@ html.dark .meta-item {
 
 html.dark .preview-area {
   background-color: #171d30;
-  background-image:
-    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
-    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
 }
 
-html.dark .action-area {
-  border-top-color: rgba(255, 255, 255, 0.1);
+html.dark .top-bar {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .pill-btn {
+  color: #e8eaf6;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+html.dark .pill-btn:hover {
+  background: rgba(120, 140, 220, 0.12);
+  border-color: rgba(120, 140, 220, 0.5);
+}
+
+html.dark .pill-btn.danger:hover {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
 }
 </style>

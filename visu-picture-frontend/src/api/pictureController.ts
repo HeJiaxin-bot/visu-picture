@@ -2,6 +2,21 @@
 /* eslint-disable */
 import request from '@/request'
 
+/** likePicture POST /api/picture/like */
+export async function likePictureUsingPost(
+  body: API.PictureLikeRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseInteger_>('/api/picture/like', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
 /** deletePicture POST /api/picture/delete */
 export async function deletePictureUsingPost(
   body: API.DeleteRequest,
