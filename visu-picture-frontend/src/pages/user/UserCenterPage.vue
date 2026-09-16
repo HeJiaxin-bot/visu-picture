@@ -27,7 +27,19 @@
               <a-tag v-if="isVip" color="purple">会员</a-tag>
               <a-tag v-if="loginUser.userRole !== 'admin' && !isVip" color="blue">普通用户</a-tag>
             </div>
-            <div class="profile-account">视界号：{{ loginUser.id ?? '-' }}</div>
+            <div class="profile-account">
+              视界号：{{ loginUser.id ?? '-' }}
+              <!-- 快捷复制自己的视界号 -->
+              <button
+                class="copy-vid-btn"
+                type="button"
+                aria-label="复制视界号"
+                title="点击复制"
+                @click="copyVid(loginUser.id)"
+              >
+                <CopyOutlined />
+              </button>
+            </div>
           </div>
         </div>
         <a-divider />
@@ -60,18 +72,47 @@
         </div>
       </a-card>
 
-      <!-- 编辑资料弹窗 -->
-      <a-modal v-model:open="editVisible" title="编辑个人资料" :confirm-loading="editSaving" @ok="handleEditSave">
-        <a-form :model="editForm" layout="vertical">
+      <!-- 编辑资料弹窗：顶部可更换头像 + 表单 -->
+      <a-modal
+        v-model:open="editVisible"
+        title="编辑个人资料"
+        :width="440"
+        :confirm-loading="editSaving"
+        class="edit-profile-modal"
+        @ok="handleEditSave"
+      >
+        <!-- 头像区：点击直接上传更换 -->
+        <a-upload
+          class="edit-avatar-upload"
+          :show-upload-list="false"
+          :custom-request="handleAvatarUpload"
+          :before-upload="beforeAvatarUpload"
+          :disabled="avatarUploading"
+        >
+          <div class="edit-avatar-wrapper" :class="{ uploading: avatarUploading }">
+            <a-avatar :src="loginUser.userAvatar" :size="96" class="edit-avatar">
+              <template #icon><UserOutlined /></template>
+            </a-avatar>
+            <div class="edit-avatar-mask">
+              <LoadingOutlined v-if="avatarUploading" spin />
+              <CameraOutlined v-else />
+              <span>{{ avatarUploading ? '上传中' : '更换头像' }}</span>
+            </div>
+          </div>
+        </a-upload>
+        <p class="edit-avatar-tip">支持 jpg / png / webp，不超过 2MB</p>
+
+        <a-form :model="editForm" layout="vertical" class="edit-profile-form">
           <a-form-item label="昵称">
-            <a-input v-model:value="editForm.userName" :maxlength="20" placeholder="请输入昵称" />
+            <a-input v-model:value="editForm.userName" :maxlength="20" show-count placeholder="请输入昵称" />
           </a-form-item>
           <a-form-item label="个性签名">
             <a-textarea
               v-model:value="editForm.userProfile"
               :rows="3"
               :maxlength="80"
-              placeholder="介绍一下自己"
+              show-count
+              placeholder="介绍一下自己吧"
             />
           </a-form-item>
         </a-form>
@@ -202,6 +243,7 @@ import { message } from 'ant-design-vue'
 import {
   AppstoreOutlined,
   CameraOutlined,
+  CopyOutlined,
   CrownOutlined,
   EditOutlined,
   FolderOutlined,
@@ -237,6 +279,17 @@ const openEditModal = () => {
   editForm.userName = loginUser.value.userName ?? ''
   editForm.userProfile = loginUser.value.userProfile ?? ''
   editVisible.value = true
+}
+
+// ----- 视界号快捷复制 -----
+const copyVid = async (id?: string | number) => {
+  if (id == null) return
+  try {
+    await navigator.clipboard.writeText(String(id))
+    message.success('视界号已复制')
+  } catch {
+    message.error('复制失败，请长按手动复制')
+  }
 }
 
 // ----- 注销账号 -----
@@ -582,6 +635,38 @@ html.dark .pic-all-loaded {
   color: rgba(35, 44, 86, 0.55);
   font-size: 13px;
   margin-top: 6px;
+  display: flex;
+  align-items: center;
+}
+
+/* 视界号快捷复制按钮 */
+.copy-vid-btn {
+  border: none;
+  background: transparent;
+  color: rgba(35, 44, 86, 0.45);
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.copy-vid-btn:hover {
+  color: #3d5af5;
+  background: rgba(61, 90, 245, 0.08);
+}
+
+html.dark .copy-vid-btn {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+html.dark .copy-vid-btn:hover {
+  color: #7b9bff;
+  background: rgba(79, 107, 255, 0.2);
 }
 
 .profile-desc {
@@ -655,5 +740,66 @@ html.dark .pic-all-loaded {
   color: rgba(35, 44, 86, 0.55);
   font-size: 12px;
   margin-top: 2px;
+}
+</style>
+
+<!-- 编辑资料弹窗样式：Modal 渲染在 body 下，scoped 不生效，需全局块 -->
+<style>
+.edit-profile-modal .edit-avatar-upload {
+  display: block;
+  text-align: center;
+}
+
+.edit-profile-modal .edit-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.edit-profile-modal .edit-avatar {
+  background: #eef2ff;
+}
+
+.edit-profile-modal .edit-avatar-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(23, 26, 43, 0.55);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.edit-profile-modal .edit-avatar-wrapper:hover .edit-avatar-mask,
+.edit-profile-modal .edit-avatar-wrapper.uploading .edit-avatar-mask {
+  opacity: 1;
+}
+
+.edit-profile-modal .edit-avatar-tip {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(35, 44, 86, 0.4);
+  margin: 8px 0 4px;
+}
+
+.edit-profile-modal .edit-profile-form {
+  margin-top: 8px;
+}
+
+html.dark .edit-profile-modal .edit-avatar {
+  background: rgba(79, 107, 255, 0.2);
+}
+
+html.dark .edit-profile-modal .edit-avatar-tip {
+  color: rgba(232, 234, 242, 0.4);
 }
 </style>

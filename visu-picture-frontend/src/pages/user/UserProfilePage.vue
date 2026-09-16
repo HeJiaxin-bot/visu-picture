@@ -12,6 +12,20 @@
               {{ profile.userName ?? '未知用户' }}
               <a-tag v-if="isSelf" color="blue">这是我</a-tag>
             </div>
+            <!-- 视界号（用户 id）：快捷复制 -->
+            <div class="profile-vid">
+              <span class="vid-label">视界号</span>
+              <span class="vid-value">{{ profile.id ?? '-' }}</span>
+              <button
+                class="vid-copy-btn"
+                type="button"
+                aria-label="复制视界号"
+                title="点击复制"
+                @click="copyVid"
+              >
+                <CopyOutlined />
+              </button>
+            </div>
             <div class="profile-desc">{{ profile.userProfile || '这个人很懒，什么都没有留下～' }}</div>
             <div class="profile-extra">加入时间：{{ formatDate(profile.createTime) }}</div>
           </div>
@@ -50,7 +64,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { UserOutlined } from '@ant-design/icons-vue'
+import { CopyOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import PictureList from '@/components/PictureList.vue'
 import { getUserVoByIdUsingGet } from '@/api/userController.ts'
@@ -69,6 +83,17 @@ const isSelf = computed(
     loginUserStore.loginUser?.id != null &&
     String(loginUserStore.loginUser.id) === String(route.params.id),
 )
+
+// 视界号快捷复制
+const copyVid = async () => {
+  if (profile.id == null) return
+  try {
+    await navigator.clipboard.writeText(String(profile.id))
+    message.success('视界号已复制')
+  } catch {
+    message.error('复制失败，请手动复制')
+  }
+}
 
 const fetchUserProfile = async () => {
   const id = route.params.id
@@ -195,6 +220,48 @@ const formatDate = (time?: string) => {
   gap: 10px;
 }
 
+/* 视界号行：胶囊样式 + 复制按钮 */
+.profile-vid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 2px 10px 2px 12px;
+  border-radius: 999px;
+  background: rgba(61, 90, 245, 0.07);
+  width: fit-content;
+  font-size: 13px;
+}
+
+.vid-label {
+  color: rgba(35, 44, 86, 0.5);
+}
+
+.vid-value {
+  color: #3d5af5;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.vid-copy-btn {
+  border: none;
+  background: transparent;
+  color: rgba(35, 44, 86, 0.4);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.vid-copy-btn:hover {
+  color: #3d5af5;
+  background: rgba(61, 90, 245, 0.12);
+}
+
 .profile-desc {
   margin-top: 8px;
   color: rgba(35, 44, 86, 0.65);
@@ -252,6 +319,27 @@ html.dark .profile-name {
 
 html.dark .profile-desc {
   color: rgba(200, 208, 240, 0.65);
+}
+
+html.dark .profile-vid {
+  background: rgba(79, 107, 255, 0.18);
+}
+
+html.dark .vid-label {
+  color: rgba(200, 208, 240, 0.5);
+}
+
+html.dark .vid-value {
+  color: #7b9bff;
+}
+
+html.dark .vid-copy-btn {
+  color: rgba(200, 208, 240, 0.4);
+}
+
+html.dark .vid-copy-btn:hover {
+  color: #7b9bff;
+  background: rgba(79, 107, 255, 0.25);
 }
 
 html.dark .profile-extra,

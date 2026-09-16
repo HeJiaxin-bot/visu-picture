@@ -8,8 +8,10 @@
           <div class="title">视界云图库</div>
         </div>
       </router-link>
-      <!-- 右侧：我的团队 + 发布 + 用户信息 -->
-      <div class="nav-wrap">
+      <!-- 右侧：首页 + 我的团队 + 系统管理 + 发布 + 用户信息 -->
+      <nav class="nav-wrap" aria-label="主导航">
+        <!-- 一级入口：首页（内容发现主入口） -->
+        <router-link to="/" class="nav-link" aria-label="回到首页">首页</router-link>
         <!-- 我的团队：深色下拉面板（含团队列表与创建入口） -->
         <a-dropdown
           v-if="loginUserStore.loginUser.id"
@@ -36,6 +38,35 @@
               <div class="team-panel-item" @click="goCreateTeam">
                 <div class="item-title">＋ 创建团队</div>
                 <div class="item-desc">发起多人协作</div>
+              </div>
+            </div>
+          </template>
+        </a-dropdown>
+
+        <!-- 系统管理下拉：仅平台管理员可见（低频管理功能收纳） -->
+        <a-dropdown
+          v-if="isAdmin"
+          trigger="['hover', 'click']"
+          @open-change="(v: boolean) => (adminDropdownOpen = v)"
+        >
+          <div class="team-trigger">
+            <SettingOutlined class="team-icon" />
+            <span>系统管理</span>
+            <DownOutlined class="team-trigger-arrow" :class="{ open: adminDropdownOpen }" />
+          </div>
+          <template #overlay>
+            <div class="team-panel">
+              <div class="team-panel-item" @click="router.push('/admin/userManage')">
+                <div class="item-title">用户管理</div>
+                <div class="item-desc">账号与角色维护</div>
+              </div>
+              <div class="team-panel-item" @click="router.push('/admin/pictureManage')">
+                <div class="item-title">图片管理</div>
+                <div class="item-desc">图片审核与清理</div>
+              </div>
+              <div class="team-panel-item" @click="router.push('/admin/spaceManage')">
+                <div class="item-title">空间管理</div>
+                <div class="item-desc">全部空间治理</div>
               </div>
             </div>
           </template>
@@ -85,6 +116,10 @@
                     <FolderOutlined class="item-icon" />
                     <span>我的空间</span>
                   </div>
+                  <div class="team-panel-item user-panel-item" @click="router.push('/user/invite')">
+                    <GiftOutlined class="item-icon" />
+                    <span>邀请好友</span>
+                  </div>
                   <div class="team-panel-divider"></div>
                   <div class="team-panel-item user-panel-item" @click="doLogout">
                     <LogoutOutlined class="item-icon" />
@@ -101,12 +136,106 @@
             </a-space>
           </div>
         </div>
-      </div>
+      </nav>
+      <!-- 移动端汉堡按钮：中屏隐藏下拉项后出现 -->
+      <button
+        class="mobile-menu-btn"
+        aria-label="打开菜单"
+        aria-expanded="false"
+        @click="drawerOpen = true"
+      >
+        <MenuOutlined />
+      </button>
     </div>
+
+    <!-- 移动端抽屉导航：与桌面下拉同源的功能分组 -->
+    <a-drawer
+      v-model:open="drawerOpen"
+      placement="right"
+      :width="300"
+      title="视界云图库"
+      class="mobile-drawer"
+    >
+      <div class="drawer-group">
+        <div class="drawer-group-title">浏览</div>
+        <div class="drawer-item" @click="go('/')">
+          <HomeOutlined class="drawer-icon" />
+          <span>首页</span>
+        </div>
+      </div>
+      <template v-if="loginUserStore.loginUser.id">
+        <div class="drawer-group">
+          <div class="drawer-group-title">创作</div>
+          <div class="drawer-item" @click="go('/add_picture')">
+            <PlusOutlined class="drawer-icon" />
+            <span>发布图片</span>
+          </div>
+          <div class="drawer-item" @click="go('/my_space')">
+            <FolderOutlined class="drawer-icon" />
+            <span>我的空间</span>
+          </div>
+          <div
+            v-for="spaceUser in teamSpaceList"
+            :key="spaceUser.spaceId"
+            class="drawer-item drawer-item--sub"
+            @click="goTeamSpace(spaceUser.spaceId)"
+          >
+            <TeamOutlined class="drawer-icon" />
+            <span>{{ spaceUser.space?.spaceName ?? '未命名团队' }}</span>
+          </div>
+          <div class="drawer-item drawer-item--sub" @click="goCreateTeam">
+            <PlusOutlined class="drawer-icon" />
+            <span>创建团队</span>
+          </div>
+        </div>
+        <div class="drawer-group">
+          <div class="drawer-group-title">账户</div>
+          <div class="drawer-item" @click="go('/user/center')">
+            <IdcardOutlined class="drawer-icon" />
+            <span>用户中心</span>
+          </div>
+          <div class="drawer-item" @click="go('/user/invite')">
+            <GiftOutlined class="drawer-icon" />
+            <span>邀请好友</span>
+          </div>
+          <div class="drawer-item" @click="doLogout">
+            <LogoutOutlined class="drawer-icon" />
+            <span>退出登录</span>
+          </div>
+        </div>
+        <div v-if="isAdmin" class="drawer-group">
+          <div class="drawer-group-title">系统管理</div>
+          <div class="drawer-item" @click="go('/admin/userManage')">
+            <UserOutlined class="drawer-icon" />
+            <span>用户管理</span>
+          </div>
+          <div class="drawer-item" @click="go('/admin/pictureManage')">
+            <PictureOutlined class="drawer-icon" />
+            <span>图片管理</span>
+          </div>
+          <div class="drawer-item" @click="go('/admin/spaceManage')">
+            <AppstoreOutlined class="drawer-icon" />
+            <span>空间管理</span>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="drawer-group">
+          <div class="drawer-item" @click="go('/user/login')">
+            <LoginOutlined class="drawer-icon" />
+            <span>登录</span>
+          </div>
+          <div class="drawer-item" @click="go('/user/register')">
+            <UserAddOutlined class="drawer-icon" />
+            <span>注册</span>
+          </div>
+        </div>
+      </template>
+    </a-drawer>
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, watchEffect } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import {
   LogoutOutlined,
   TeamOutlined,
@@ -114,6 +243,15 @@ import {
   IdcardOutlined,
   FolderOutlined,
   PlusOutlined,
+  SettingOutlined,
+  MenuOutlined,
+  HomeOutlined,
+  GiftOutlined,
+  UserOutlined,
+  PictureOutlined,
+  AppstoreOutlined,
+  LoginOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -172,11 +310,25 @@ watchEffect(() => {
 
 const router = useRouter()
 
+// 系统管理下拉展开状态（控制箭头旋转）
+const adminDropdownOpen = ref(false)
+// 是否平台管理员（可见系统管理入口）
+const isAdmin = computed(() => loginUserStore.loginUser.userRole === 'admin')
+
+// ----- 移动端抽屉导航 -----
+const drawerOpen = ref(false)
+// 抽屉内跳转：先关抽屉再路由
+const go = (path: string) => {
+  drawerOpen.value = false
+  router.push(path)
+}
+
 // 团队下拉面板展开状态（控制箭头旋转）
 const teamDropdownOpen = ref(false)
 
-// 用户注销
+// 用户注销（抽屉内触发时一并关闭抽屉）
 const doLogout = async () => {
+  drawerOpen.value = false
   const res = await userLogoutUsingPost()
   if (res.data.code === 0) {
     loginUserStore.setLoginUser({
@@ -209,6 +361,72 @@ const doLogout = async () => {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+/* 一级导航链接：与下拉触发器风格一致 */
+#globalHeader .nav-link {
+  padding: 0 16px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  color: #26283a;
+  font-size: 15px;
+  white-space: nowrap;
+  border-radius: 8px;
+  transition: color 0.2s ease;
+}
+
+#globalHeader .nav-link:hover,
+#globalHeader .nav-link.router-link-exact-active {
+  color: #1890ff;
+}
+
+/* 移动端汉堡按钮：桌面隐藏 */
+#globalHeader .mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  color: #26283a;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+#globalHeader .mobile-menu-btn:hover {
+  background: rgba(61, 90, 245, 0.08);
+  color: #3d5af5;
+}
+
+/* 中屏：隐藏下拉类入口与积分徽章，仅保留首页/发布/用户 + 汉堡 */
+@media (max-width: 992px) {
+  #globalHeader .team-trigger,
+  #globalHeader .points-badge {
+    display: none;
+  }
+
+  #globalHeader .mobile-menu-btn {
+    display: flex;
+  }
+}
+
+/* 小屏：发布按钮只留图标，首页链接隐藏 */
+@media (max-width: 640px) {
+  #globalHeader .nav-link {
+    display: none;
+  }
+
+  #globalHeader .publish-btn {
+    padding: 0 12px;
+  }
+
+  #globalHeader .publish-btn span {
+    display: none;
+  }
 }
 
 /* 剩余积分徽章：药丸样式跟随主题（浅色：白底蓝光；深色：黑底紫光） */
@@ -478,5 +696,68 @@ html.dark #globalHeader .points-badge:hover {
 
 .user-panel .team-panel-item:hover .item-icon {
   color: #4f6bff;
+}
+
+/* 移动端抽屉菜单（Drawer 渲染在 body 下，需全局样式） */
+.mobile-drawer .drawer-group {
+  margin-bottom: 18px;
+}
+
+.mobile-drawer .drawer-group-title {
+  font-size: 12px;
+  color: rgba(35, 44, 86, 0.45);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.mobile-drawer .drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #26283a;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mobile-drawer .drawer-item:hover {
+  background: #eef2ff;
+}
+
+.mobile-drawer .drawer-item--sub {
+  padding-left: 28px;
+  font-size: 13px;
+  color: rgba(35, 44, 86, 0.75);
+}
+
+.mobile-drawer .drawer-icon {
+  font-size: 15px;
+  color: rgba(35, 44, 86, 0.55);
+}
+
+.mobile-drawer .drawer-item:hover .drawer-icon {
+  color: #3d5af5;
+}
+
+html.dark .mobile-drawer .drawer-group-title {
+  color: rgba(232, 234, 242, 0.45);
+}
+
+html.dark .mobile-drawer .drawer-item {
+  color: #e8eaf2;
+}
+
+html.dark .mobile-drawer .drawer-item:hover {
+  background: rgba(79, 107, 255, 0.2);
+}
+
+html.dark .mobile-drawer .drawer-item--sub {
+  color: rgba(232, 234, 242, 0.75);
+}
+
+html.dark .mobile-drawer .drawer-icon {
+  color: rgba(232, 234, 242, 0.55);
 }
 </style>
