@@ -164,6 +164,12 @@
             <div class="entry-title">编辑资料</div>
             <div class="entry-desc">修改昵称与个性签名</div>
           </div>
+          <!-- 设置：跳转独立设置页（常用功能收纳） -->
+          <div class="entry-item" @click="router.push('/user/settings')">
+            <SettingOutlined class="entry-icon" style="color: #597ef7" />
+            <div class="entry-title">设置</div>
+            <div class="entry-desc">常用功能与账号安全</div>
+          </div>
           <!-- 注销账号：危险操作，二次确认 -->
           <div class="entry-item" @click="deregisterVisible = true">
             <UserDeleteOutlined class="entry-icon" style="color: #ff4d4f" />
@@ -191,6 +197,12 @@
             <AppstoreOutlined class="entry-icon" style="color: #722ed1" />
             <div class="entry-title">空间管理</div>
             <div class="entry-desc">查看与管理所有空间</div>
+          </div>
+          <!-- 批量创建图片：按关键词批量抓取并入库 -->
+          <div class="entry-item" @click="router.push('/add_picture/batch')">
+            <CloudDownloadOutlined class="entry-icon" style="color: #fa8c16" />
+            <div class="entry-title">批量创建图片</div>
+            <div class="entry-desc">按关键词批量抓取并入库</div>
           </div>
         </div>
       </a-card>
@@ -243,12 +255,14 @@ import { message } from 'ant-design-vue'
 import {
   AppstoreOutlined,
   CameraOutlined,
+  CloudDownloadOutlined,
   CopyOutlined,
   CrownOutlined,
   EditOutlined,
   FolderOutlined,
   LoadingOutlined,
   PictureOutlined,
+  SettingOutlined,
   TeamOutlined,
   UserDeleteOutlined,
   UserOutlined,

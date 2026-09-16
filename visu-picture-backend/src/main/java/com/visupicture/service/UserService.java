@@ -1,6 +1,7 @@
 package com.visupicture.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.visupicture.model.dto.user.UserChangePasswordRequest;
 import com.visupicture.model.dto.user.UserQueryRequest;
 import com.visupicture.model.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -48,6 +49,14 @@ public interface UserService extends IService<User> {
      * @return
      */
     String getEncryptPassword(String userPassword);
+
+    /**
+     * 修改当前登录用户的密码
+     *
+     * @param userChangePasswordRequest 原密码、新密码、确认新密码
+     * @param loginUser                 当前登录用户
+     */
+    void changePassword(UserChangePasswordRequest userChangePasswordRequest, User loginUser);
 
     /**
      * 获取当前登录用户

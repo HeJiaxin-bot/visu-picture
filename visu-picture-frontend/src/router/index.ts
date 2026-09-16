@@ -5,6 +5,7 @@ const HomePage = () => import('@/pages/HomePage.vue')
 const UserLoginPage = () => import('@/pages/user/UserLoginPage.vue')
 const UserRegisterPage = () => import('@/pages/user/UserRegisterPage.vue')
 const UserCenterPage = () => import('@/pages/user/UserCenterPage.vue')
+const SettingsPage = () => import('@/pages/user/SettingsPage.vue')
 const UserManagePage = () => import('@/pages/admin/UserManagePage.vue')
 const AddPicturePage = () => import('@/pages/AddPicturePage.vue')
 const PictureManagePage = () => import('@/pages/admin/PictureManagePage.vue')
@@ -43,6 +44,11 @@ const router = createRouter({
       path: '/user/center',
       name: '用户中心',
       component: UserCenterPage,
+    },
+    {
+      path: '/user/settings',
+      name: '设置',
+      component: SettingsPage,
     },
     {
       path: '/admin/userManage',

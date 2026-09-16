@@ -451,6 +451,12 @@ declare namespace API {
     searchText?: string
   }
 
+  type UserChangePasswordRequest = {
+    checkPassword?: string
+    newPassword?: string
+    userPassword?: string
+  }
+
   type PictureUploadRequest = {
     fileUrl?: string
     id?: number

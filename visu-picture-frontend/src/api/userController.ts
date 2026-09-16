@@ -218,3 +218,18 @@ export async function updateMyInfoUsingPost(
     ...(options || {}),
   })
 }
+
+/** changePassword POST /api/user/change_password（当前用户修改密码，需校验原密码） */
+export async function changePasswordUsingPost(
+  body: API.UserChangePasswordRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/change_password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}

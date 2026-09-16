@@ -94,6 +94,18 @@ public class UserController {
     }
 
     /**
+     * 修改密码（需登录，校验原密码）
+     */
+    @PostMapping("/change_password")
+    public BaseResponse<Boolean> changePassword(@RequestBody UserChangePasswordRequest userChangePasswordRequest,
+                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(userChangePasswordRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        userService.changePassword(userChangePasswordRequest, loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
      * 注销账号（删除账号数据并退出登录，不可恢复）
      */
     @PostMapping("/deregister")

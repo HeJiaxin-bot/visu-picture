@@ -22,6 +22,7 @@ import com.visupicture.manager.CosManager;
 import com.visupicture.manager.auth.StpKit;
 import com.visupicture.manager.upload.FilePictureUpload;
 import com.visupicture.model.dto.file.UploadPictureResult;
+import com.visupicture.model.dto.user.UserChangePasswordRequest;
 import com.visupicture.model.dto.user.UserQueryRequest;
 import com.visupicture.model.dto.user.VipCode;
 import com.visupicture.model.entity.User;
@@ -234,6 +235,45 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 加盐，混淆密码
         final String SALT = "hejx";
         return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+    }
+
+    /**
+     * 修改当前登录用户的密码（校验原密码与新密码规则）
+     *
+     * @param userChangePasswordRequest 原密码、新密码、确认新密码
+     * @param loginUser                 当前登录用户
+     */
+    @Override
+    public void changePassword(UserChangePasswordRequest userChangePasswordRequest, User loginUser) {
+        ThrowUtils.throwIf(userChangePasswordRequest == null, ErrorCode.PARAMS_ERROR);
+        String oldPassword = userChangePasswordRequest.getUserPassword();
+        String newPassword = userChangePasswordRequest.getNewPassword();
+        String checkPassword = userChangePasswordRequest.getCheckPassword();
+        // 1. 非空校验
+        if (StrUtil.hasBlank(oldPassword, newPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请填写完整密码信息");
+        }
+        // 2. 新密码规则校验（与注册规则一致：至少 8 位、两次输入一致）
+        if (newPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码不能少于 8 位");
+        }
+        if (!newPassword.equals(checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");
+        }
+        // 3. 校验原密码：从数据库取最新密码记录比对
+        User dbUser = this.getById(loginUser.getId());
+        ThrowUtils.throwIf(dbUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        String encryptOldPassword = getEncryptPassword(oldPassword);
+        if (!encryptOldPassword.equals(dbUser.getUserPassword())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "原密码不正确");
+        }
+        // 4. 更新密码
+        String encryptNewPassword = getEncryptPassword(newPassword);
+        boolean result = this.lambdaUpdate()
+                .eq(User::getId, loginUser.getId())
+                .set(User::getUserPassword, encryptNewPassword)
+                .update();
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "密码修改失败");
     }
 
     @Override
