@@ -123,9 +123,16 @@ const emit = defineEmits<{
 // ----- Justified 瀑布流布局 -----
 const listRef = ref<HTMLDivElement>()
 const containerWidth = ref(0)
-const GUTTER = 8 // 行内/行间距
-const TARGET_ROW_HEIGHT = 240 // 目标行高
+const GUTTER = 12 // 行内/行间距
 let resizeObserver: ResizeObserver | null = null
+
+// 目标行高随容器宽度自适应：宽屏用更大的行高（每行图更少更大），窄屏降低行高
+const targetRowHeight = computed(() => {
+  const width = containerWidth.value
+  if (width < 640) return 200 // 手机
+  if (width < 1024) return 260 // 平板
+  return 360 // 桌面大屏
+})
 
 // 宽高比兜底：数据缺失时按 3:2 处理
 const getRatio = (picture: API.PictureVO) => {
@@ -158,7 +165,7 @@ const rows = computed<JustifiedRow[]>(() => {
     ratioSum += ratio
     const gaps = GUTTER * (currentRow.length - 1)
     // 以目标行高渲染时的整行宽度
-    const rowWidthAtTarget = ratioSum * (TARGET_ROW_HEIGHT - GUTTER) + gaps
+    const rowWidthAtTarget = ratioSum * (targetRowHeight.value - GUTTER) + gaps
     if (rowWidthAtTarget >= width) {
       result.push({
         items: currentRow,
@@ -170,7 +177,7 @@ const rows = computed<JustifiedRow[]>(() => {
   }
   // 最后一行不足：按目标行高展示，不拉伸铺满
   if (currentRow.length > 0) {
-    result.push({ items: currentRow, height: TARGET_ROW_HEIGHT })
+    result.push({ items: currentRow, height: targetRowHeight.value })
   }
   return result
 })
@@ -356,8 +363,8 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 
 .justified-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .justified-row:last-child {
