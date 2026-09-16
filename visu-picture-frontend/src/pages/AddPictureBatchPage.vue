@@ -34,6 +34,17 @@
             </a-tag>
           </div>
         </a-form-item>
+        <a-form-item name="searchSource" label="抓取源">
+          <a-radio-group v-model:value="formData.searchSource" class="count-group" button-style="solid">
+            <a-radio-button value="bing">必应搜索</a-radio-button>
+            <a-radio-button value="pexels">Pexels 高清</a-radio-button>
+          </a-radio-group>
+          <div class="source-tip">
+            {{ formData.searchSource === 'pexels'
+              ? 'Pexels：专业图库，1920px 高清摄影素材，画质最佳，但内容以摄影类为主'
+              : '必应：覆盖面广，任意关键词都有结果，画质约 1200px' }}
+          </div>
+        </a-form-item>
         <a-form-item name="count" label="抓取数量">
           <a-radio-group v-model:value="formData.count" class="count-group" button-style="solid">
             <a-radio-button v-for="n in [5, 10, 20, 30]" :key="n" :value="n">{{ n }} 张</a-radio-button>
@@ -115,6 +126,7 @@ const presetKeywords = ['风景', '城市夜景', '美食', '动物', '科技', 
 const formData = reactive<API.PictureUploadByBatchRequest>({
   count: 10,
   aiEdit: true,
+  searchSource: 'bing',
 })
 // 提交任务状态
 const loading = ref(false)
@@ -244,6 +256,17 @@ const handleSubmit = async (values: any) => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* 抓取源说明文字 */
+.source-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(35, 44, 86, 0.45);
+}
+
+html.dark .source-tip {
+  color: rgba(232, 234, 242, 0.45);
 }
 
 .preset-tag {

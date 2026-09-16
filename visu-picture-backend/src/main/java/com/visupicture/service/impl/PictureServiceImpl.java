@@ -14,6 +14,7 @@ import com.visupicture.api.aliyunai.AliYunAiApi;
 import com.visupicture.api.aliyunai.model.CreateImageEditTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.visupicture.api.pexels.PexelsApi;
 import com.visupicture.constant.PictureTagCategoryConstant;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
@@ -95,6 +96,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private AliYunAiApi aliYunAiApi;
+
+    @Resource
+    private PexelsApi pexelsApi;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -418,53 +422,21 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (StrUtil.isBlank(namePrefix)) {
             namePrefix = searchText;
         }
-        // 抓取内容（关键词必须 URL 编码：否则中文会按 JVM 默认字符集（Windows 下为 GBK）发出，
-        // 必应将其解析为乱码词，返回的图片与关键词不匹配）
-        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&first=1&count=35&mmasync=1",
-                URLEncoder.encode(searchText, StandardCharsets.UTF_8));
-        Document document;
-        try {
-            document = Jsoup.connect(fetchUrl)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                    .timeout(10000)
-                    .get();
-        } catch (IOException e) {
-            log.error("获取页面失败", e);
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取页面失败");
-        }
-        // 解析内容
-        Element div = document.getElementsByClass("dgControl").first();
-        if (ObjUtil.isEmpty(div)) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
-        }
-        Elements imgElementList = div.select("img.mimg");
-        if (CollUtil.isEmpty(imgElementList)) {
-            // 兜底：必应改版导致结构变化时，直接从全文查找
-            imgElementList = document.select("img.mimg");
-        }
-        ThrowUtils.throwIf(CollUtil.isEmpty(imgElementList), ErrorCode.OPERATION_ERROR, "未解析到图片结果");
         // 初始化任务进度（值格式：已完成/总数），前端轮询展示
         String progressKey = BATCH_UPLOAD_PROGRESS_KEY + loginUser.getId();
         stringRedisTemplate.opsForValue().set(progressKey, "0/" + count, 10, TimeUnit.MINUTES);
-        // 遍历元素，依次处理上传图片
+        // 按抓取源收集图片直链列表：pexels = Pexels 高清图库 API；bing（默认）= 必应图片搜索
+        String searchSource = StrUtil.blankToDefault(pictureUploadByBatchRequest.getSearchSource(), "bing");
+        List<String> fileUrlList = "pexels".equals(searchSource)
+                ? pexelsApi.searchImages(searchText, count)
+                : this.fetchBingImageUrls(searchText);
+        ThrowUtils.throwIf(CollUtil.isEmpty(fileUrlList), ErrorCode.OPERATION_ERROR, "未抓取到图片结果");
+        // 遍历图片直链，依次处理上传
         int uploadCount = 0;
         int failCount = 0;
-        for (Element imgElement : imgElementList) {
-            // 优先取 src；懒加载占位（base64/空值）时回退 data-src
-            String fileUrl = imgElement.attr("src");
-            if (StrUtil.isBlank(fileUrl) || fileUrl.startsWith("data:")) {
-                fileUrl = imgElement.attr("data-src");
-            }
-            if (StrUtil.isBlank(fileUrl)) {
-                log.info("当前链接为空，已跳过");
-                continue;
-            }
-            // 必应缩略图参数改写：把 w/h 替换为 w=800，拿到中等尺寸 JPEG 原图级画质。
-            // 注意：不能砍掉 ? 参数（会返回无参原图，常超 2MB 上传校验导致几乎全部失败），
-            // 也不能直接用 src（默认 w=245 的 webp 缩略图画质过差）
-            if (fileUrl.contains(".bing.net/") && fileUrl.contains("?")) {
-                fileUrl = fileUrl.replaceAll("\\?.*$", "?w=800&c=7");
+        for (String fileUrl : fileUrlList) {
+            if (uploadCount >= count) {
+                break;
             }
             // 上传图片
             PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
@@ -500,12 +472,63 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 log.error("图片上传失败，url = {}", fileUrl, e);
                 continue;
             }
-            if (uploadCount >= count) {
-                break;
-            }
         }
-        log.info("批量抓取完成，关键词 = {}，成功 = {}，失败 = {}", searchText, uploadCount, failCount);
+        log.info("批量抓取完成，关键词 = {}，抓取源 = {}，成功 = {}，失败 = {}", searchText, searchSource, uploadCount, failCount);
         return uploadCount;
+    }
+
+    /**
+     * 抓取必应图片搜索结果，返回高清图直链列表（缩略图参数改写为 w=1200）
+     *
+     * @param searchText 搜索关键词
+     */
+    private List<String> fetchBingImageUrls(String searchText) {
+        // 关键词必须 URL 编码：否则中文会按 JVM 默认字符集（Windows 下为 GBK）发出，
+        // 必应将其解析为乱码词，返回的图片与关键词不匹配
+        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&first=1&count=35&mmasync=1",
+                URLEncoder.encode(searchText, StandardCharsets.UTF_8));
+        Document document;
+        try {
+            document = Jsoup.connect(fetchUrl)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .timeout(10000)
+                    .get();
+        } catch (IOException e) {
+            log.error("获取页面失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取页面失败");
+        }
+        // 解析内容
+        Element div = document.getElementsByClass("dgControl").first();
+        if (ObjUtil.isEmpty(div)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
+        }
+        Elements imgElementList = div.select("img.mimg");
+        if (CollUtil.isEmpty(imgElementList)) {
+            // 兜底：必应改版导致结构变化时，直接从全文查找
+            imgElementList = document.select("img.mimg");
+        }
+        ThrowUtils.throwIf(CollUtil.isEmpty(imgElementList), ErrorCode.OPERATION_ERROR, "未解析到图片结果");
+        List<String> urlList = new ArrayList<>();
+        for (Element imgElement : imgElementList) {
+            // 优先取 src；懒加载占位（base64/空值）时回退 data-src
+            String fileUrl = imgElement.attr("src");
+            if (StrUtil.isBlank(fileUrl) || fileUrl.startsWith("data:")) {
+                fileUrl = imgElement.attr("data-src");
+            }
+            if (StrUtil.isBlank(fileUrl)) {
+                continue;
+            }
+            // 必应缩略图参数改写：把 w/h 替换为 w=1200，拿到高清画质。
+            // 注意：不能砍掉 ? 参数（会返回无参原图，可能超上传大小校验导致抓取失败），
+            // 也不能直接用 src（默认 w=245 的 webp 缩略图画质过差）
+            boolean isBingImageCdn = fileUrl.contains(".bing.net/") || fileUrl.contains(".bing.com/");
+            if (isBingImageCdn && fileUrl.contains("?")) {
+                fileUrl = fileUrl.replaceAll("\\?.*$", "?w=1200&c=7");
+            }
+            urlList.add(fileUrl);
+        }
+        return urlList;
     }
 
     /**

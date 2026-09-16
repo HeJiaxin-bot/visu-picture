@@ -30,5 +30,10 @@ public class PictureUploadByBatchRequest implements Serializable {
      */
     private Boolean aiEdit;
 
+    /**
+     * 抓取源：bing（默认，必应图片搜索）/ pexels（Pexels 高清图库）
+     */
+    private String searchSource;
+
     private static final long serialVersionUID = 1L;
 }

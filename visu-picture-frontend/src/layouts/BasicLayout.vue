@@ -7,9 +7,9 @@
       <a-layout-content class="content">
         <router-view />
       </a-layout-content>
-      <!-- 底部仅保留备案号占位，备案通过后替换为真实备案号 -->
+      <!-- 底部备案号：链接指向工信部备案系统 -->
       <footer class="footer">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">京ICP备xxxx号</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">赣ICP备2026022464号-1</a>
       </footer>
     </a-layout>
     <!-- 右下角悬浮按钮组：主题切换 + 返回顶部 -->

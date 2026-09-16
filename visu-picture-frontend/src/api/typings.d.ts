@@ -447,6 +447,7 @@ declare namespace API {
     aiEdit?: boolean
     count?: number
     namePrefix?: string
+    searchSource?: string
     searchText?: string
   }
 

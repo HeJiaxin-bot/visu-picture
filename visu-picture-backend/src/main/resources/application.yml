@@ -29,10 +29,11 @@ spring:
     store-type: redis
     # session 30 天后过期
     timeout: 2592000
-  # 开放更大的文件上传体积
+  # 开放更大的文件上传体积（略高于业务上限 10MB，预留 multipart 编码开销）
   servlet:
     multipart:
-      max-file-size: 10MB
+      max-file-size: 12MB
+      max-request-size: 12MB
   # 空间图片分表
   shardingsphere:
     datasource:
