@@ -99,6 +99,11 @@
                 <span class="badge-dot" />
                 {{ SPACE_TYPE_MAP[space.spaceType] }}
               </span>
+              <!-- 空间级别 -->
+              <span v-if="space.spaceLevel != null" class="hero-badge" :class="levelClass(space.spaceLevel)">
+                <CrownOutlined class="badge-icon" />
+                {{ SPACE_LEVEL_MAP[space.spaceLevel] }}
+              </span>
             </div>
             <div class="hero-meta">
               共 {{ space.totalCount ?? 0 }} 张图片 · 已用 {{ formatSize(space.totalSize) }}
@@ -235,6 +240,7 @@ import {
   BarChartOutlined,
   CameraOutlined,
   CloseOutlined,
+  CrownOutlined,
   EditOutlined,
   FilterOutlined,
   LoadingOutlined,
@@ -244,7 +250,13 @@ import {
   SearchOutlined,
   TeamOutlined,
 } from '@ant-design/icons-vue'
-import { SPACE_PERMISSION_ENUM, SPACE_TYPE_ENUM, SPACE_TYPE_MAP } from '../constants/space.ts'
+import {
+  SPACE_LEVEL_ENUM,
+  SPACE_LEVEL_MAP,
+  SPACE_PERMISSION_ENUM,
+  SPACE_TYPE_ENUM,
+  SPACE_TYPE_MAP,
+} from '../constants/space.ts'
 import { quitSpaceUserUsingPost } from '@/api/spaceUserController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
@@ -262,6 +274,13 @@ const space = ref<API.SpaceVO>({})
 const heroStyle = computed(() =>
   space.value.coverPicture ? { backgroundImage: `url(${space.value.coverPicture})` } : undefined,
 )
+
+// 空间级别徽标配色（横幅上使用，需在深色封面上保持可读）
+const levelClass = (level?: number) => {
+  if (level === SPACE_LEVEL_ENUM.FLAGSHIP) return 'level-flagship'
+  if (level === SPACE_LEVEL_ENUM.PROFESSIONAL) return 'level-pro'
+  return 'level-common'
+}
 
 // ----- 更换空间封面（点击横幅触发，仅创建者/管理员可用） -----
 const canChangeCover = computed(() => {
@@ -946,6 +965,30 @@ watch(
   color: #ffd8a8;
   background: rgba(250, 140, 22, 0.3);
   border-color: rgba(255, 216, 168, 0.4);
+}
+
+/* 级别徽标：横幅上的玻璃质感，按级别区分色调 */
+.badge-icon {
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+.hero-badge.level-common {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.hero-badge.level-pro {
+  color: #b5f5ec;
+  background: rgba(19, 194, 194, 0.34);
+  border-color: rgba(181, 245, 236, 0.45);
+}
+
+.hero-badge.level-flagship {
+  color: #ffe58f;
+  background: rgba(250, 173, 20, 0.34);
+  border-color: rgba(255, 229, 143, 0.5);
 }
 
 .badge-dot {
