@@ -35,8 +35,8 @@
           />
         </div>
 
-        <!-- 未上传时提供 URL 导入入口 -->
-        <template v-if="!picture?.url">
+        <!-- 未上传时提供 URL 导入入口（用 v-show 保持组件挂载，否则组件被卸载后会丢失待抓取的 URL） -->
+        <div v-show="!picture?.url" class="url-import">
           <div class="upload-divider"><span>或通过图片链接导入</span></div>
           <UrlPictureUpload
             ref="urlPictureUploadRef"
@@ -45,7 +45,7 @@
             :spaceId="spaceId"
             :onSuccess="onSuccess"
           />
-        </template>
+        </div>
 
         <!-- 图片编辑 -->
         <div v-if="picture" class="edit-bar">
@@ -316,18 +316,17 @@ const onSuccess = (newPicture: API.PictureVO) => {
  * 确保图片已上传：延迟上传模式下，点提交或使用 AI 功能前才真正上传
  */
 const ensureUploaded = async (): Promise<boolean> => {
-  const hasPending =
-    pictureUploadRef.value?.hasPendingFile?.() || urlPictureUploadRef.value?.hasPendingUrl?.()
-  if (!hasPending) {
-    if (!picture.value?.id) {
-      message.warning('请先选择图片')
-      return false
-    }
-    return true
+  // 本地文件优先，其次是通过链接导入的图片
+  if (pictureUploadRef.value?.hasPendingFile?.()) {
+    const uploaded = await pictureUploadRef.value.upload()
+    return !!uploaded?.id
   }
-  const newPicture =
-    (await pictureUploadRef.value?.upload()) ?? (await urlPictureUploadRef.value?.upload())
-  if (!newPicture?.id) {
+  if (urlPictureUploadRef.value?.hasPendingUrl?.()) {
+    const uploaded = await urlPictureUploadRef.value.upload()
+    return !!uploaded?.id
+  }
+  if (!picture.value?.id) {
+    message.warning('请先选择图片，或粘贴图片链接后点击抓取')
     return false
   }
   return true
