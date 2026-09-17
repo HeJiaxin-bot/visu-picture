@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 const THEME_KEY = 'visu-theme'
 const SEASON_KEY = 'visu-season-theme'
 const SEASON_MIGRATED_KEY = 'visu-season-migrated-v2'
+const THEME_MIGRATED_KEY = 'visu-theme-migrated-light'
 
 /** 季节主题：春樱 / 夏蓝 / 秋橙 / 冬青 */
 export type SeasonTheme = 'spring' | 'summer' | 'autumn' | 'winter'
@@ -26,8 +27,14 @@ const seasonByMonth = (): SeasonTheme => {
  *    深色模式保持悦目暗黑不变，仅 antd 主色随季节
  */
 export const useThemeStore = defineStore('theme', () => {
-  // 默认暗色（悦目风格）；仅当用户明确选择过浅色时才用浅色
-  const isDark = ref<boolean>(localStorage.getItem(THEME_KEY) !== 'light')
+  // 一次性迁移：旧版本默认暗色，现改为默认浅色；清除旧记录后由用户自行切换的选择仍然保留
+  if (!localStorage.getItem(THEME_MIGRATED_KEY)) {
+    localStorage.removeItem(THEME_KEY)
+    localStorage.setItem(THEME_MIGRATED_KEY, '1')
+  }
+
+  // 默认浅色；仅当用户明确选择过深色时才用深色
+  const isDark = ref<boolean>(localStorage.getItem(THEME_KEY) === 'dark')
 
   // 一次性迁移：旧版本默认 auto（跟随月份），现统一迁移为夏季默认；用户此后主动选择的值仍会保留
   if (!localStorage.getItem(SEASON_MIGRATED_KEY)) {
