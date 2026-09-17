@@ -90,18 +90,30 @@ public class SpaceController {
     }
 
     /**
-     * 更新空间（仅管理员可用）
+     * 更新空间（空间创建者或管理员可用）
      *
      * @param spaceUpdateRequest
      * @param request
      * @return
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuthCheck(mustRole = UserConstant.DEFAULT_ROLE)
     public BaseResponse<Boolean> updateSpace(@RequestBody SpaceUpdateRequest spaceUpdateRequest,
                                              HttpServletRequest request) {
         if (spaceUpdateRequest == null || spaceUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 判断是否存在
+        long id = spaceUpdateRequest.getId();
+        Space oldSpace = spaceService.getById(id);
+        ThrowUtils.throwIf(oldSpace == null, ErrorCode.NOT_FOUND_ERROR);
+        // 仅空间创建者或管理员可修改
+        User loginUser = userService.getLoginUser(request);
+        spaceService.checkSpaceAuth(loginUser, oldSpace);
+        // 级别发生变更时校验权限（普通版全员、专业版仅会员、旗舰版仅管理员）
+        if (spaceUpdateRequest.getSpaceLevel() != null
+                && !spaceUpdateRequest.getSpaceLevel().equals(oldSpace.getSpaceLevel())) {
+            spaceService.checkSpaceLevelPermission(spaceUpdateRequest.getSpaceLevel(), loginUser);
         }
         // 将实体类和 DTO 进行转换
         Space space = new Space();
@@ -110,10 +122,6 @@ public class SpaceController {
         spaceService.fillSpaceBySpaceLevel(space);
         // 数据校验
         spaceService.validSpace(space, false);
-        // 判断是否存在
-        long id = spaceUpdateRequest.getId();
-        Space oldSpace = spaceService.getById(id);
-        ThrowUtils.throwIf(oldSpace == null, ErrorCode.NOT_FOUND_ERROR);
         // 操作数据库
         boolean result = spaceService.updateById(space);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

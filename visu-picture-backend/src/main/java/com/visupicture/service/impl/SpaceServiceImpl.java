@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.visupicture.config.CosClientConfig;
+import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
@@ -99,12 +100,10 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         this.fillSpaceBySpaceLevel(space);
         // 2. 校验参数
         this.validSpace(space, true);
-        // 3. 校验权限，非管理员只能创建普通级别的空间
+        // 3. 校验权限：普通版全员可建、专业版仅会员、旗舰版暂不开放自助开通
         Long userId = loginUser.getId();
         space.setUserId(userId);
-        if (SpaceLevelEnum.COMMON.getValue() != space.getSpaceLevel() && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限创建指定级别的空间");
-        }
+        this.checkSpaceLevelPermission(space.getSpaceLevel(), loginUser);
         // 4. 控制同一用户只能创建一个私有空间、以及一个团队空间
         String lock = String.valueOf(userId).intern();
         synchronized (lock) {
@@ -262,6 +261,47 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         if (!space.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+    }
+
+    /**
+     * 校验用户是否有权使用指定空间级别
+     * 普通版：所有用户可自助开通；专业版：仅会员；旗舰版：暂不开放自助开通（仅管理员）
+     */
+    @Override
+    public void checkSpaceLevelPermission(Integer spaceLevel, User loginUser) {
+        if (spaceLevel == null) {
+            return;
+        }
+        // 管理员不受级别限制
+        if (userService.isAdmin(loginUser)) {
+            return;
+        }
+        // 普通版：全员可自助开通
+        if (SpaceLevelEnum.COMMON.getValue() == spaceLevel) {
+            return;
+        }
+        // 专业版：会员可自助开通
+        if (SpaceLevelEnum.PROFESSIONAL.getValue() == spaceLevel && this.isVipUser(loginUser)) {
+            return;
+        }
+        // 旗舰版：暂不开放自助开通
+        throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限使用该空间级别，开通会员可创建专业版空间");
+    }
+
+    /**
+     * 是否为有效会员：以会员到期时间判断，无到期时间时回退到会员角色
+     */
+    private boolean isVipUser(User loginUser) {
+        if (loginUser == null) {
+            return false;
+        }
+        User dbUser = userService.getById(loginUser.getId());
+        User user = dbUser != null ? dbUser : loginUser;
+        Date expireTime = user.getVipExpireTime();
+        if (expireTime == null) {
+            return UserConstant.VIP_ROLE.equals(user.getUserRole());
+        }
+        return expireTime.after(new Date());
     }
 
     /**

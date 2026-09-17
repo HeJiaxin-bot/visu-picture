@@ -119,6 +119,14 @@
               创建图片
             </a-button>
             <a-button
+              v-if="canManageSpace"
+              class="hero-btn"
+              :icon="h(EditOutlined)"
+              @click="router.push(`/add_space?id=${id}`)"
+            >
+              编辑空间
+            </a-button>
+            <a-button
               v-if="canManageSpaceUser && space.spaceType === SPACE_TYPE_ENUM.TEAM"
               class="hero-btn"
               :icon="h(TeamOutlined)"
@@ -282,12 +290,15 @@ const levelClass = (level?: number) => {
   return 'level-common'
 }
 
-// ----- 更换空间封面（点击横幅触发，仅创建者/管理员可用） -----
-const canChangeCover = computed(() => {
+// ----- 空间管理权限（创建者或管理员）：可编辑空间信息、更换封面 -----
+const canManageSpace = computed(() => {
   const loginUser = loginUserStore.loginUser
   if (!loginUser?.id) return false
-  return space.value.userId === loginUser.id || loginUser.userRole === 'admin'
+  return String(space.value.userId) === String(loginUser.id) || loginUser.userRole === 'admin'
 })
+
+// 更换封面权限：同空间管理者
+const canChangeCover = canManageSpace
 
 const coverInputRef = ref<HTMLInputElement>()
 const heroCoverUploading = ref(false)

@@ -82,7 +82,7 @@
                 <div class="level-quota">{{ formatSize(level.maxSize) }} / {{ level.maxCount }} 张</div>
                 <div class="level-state">
                   <template v-if="isLevelLocked(level)">
-                    <LockOutlined /> 需联系管理员
+                    <LockOutlined /> {{ levelLockText(level) }}
                   </template>
                   <template v-else>可开通</template>
                 </div>
@@ -91,11 +91,11 @@
           </a-form-item>
 
           <a-alert
-            v-if="!isEdit"
+            v-if="!isEdit && !isVip && !isAdmin"
             class="tip-alert"
             type="info"
             show-icon
-            message="目前仅支持自助开通普通版，如需升级专业版 / 旗舰版，请联系管理员。"
+            message="普通版可直接创建；专业版为会员专享，开通会员后即可自助创建；旗舰版暂未开放，如需开通请联系管理员。"
           />
 
           <a-form-item class="submit-item">
@@ -124,7 +124,7 @@
               <span class="quota-item">{{ level.maxCount }} 张</span>
             </div>
             <a-tag v-if="!isLevelLocked(level)" color="success">可开通</a-tag>
-            <a-tag v-else>需升级</a-tag>
+            <a-tag v-else>{{ levelLockText(level) }}</a-tag>
           </div>
         </div>
         <template #extra>
@@ -158,6 +158,7 @@ import {
 import { useRoute, useRouter } from 'vue-router'
 import { SPACE_LEVEL_ENUM, SPACE_TYPE_ENUM, SPACE_TYPE_MAP } from '@/constants/space.ts'
 import { formatSize } from '../utils'
+import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 // 空间级别图标
 const LEVEL_ICONS: Record<number, any> = {
@@ -184,6 +185,18 @@ const spaceType = ref<number>(
 
 // 是否为编辑模式
 const isEdit = computed(() => !!route.query?.id)
+
+// 管理员不受级别限制
+const loginUserStore = useLoginUserStore()
+const isAdmin = computed(() => loginUserStore.loginUser.userRole === 'admin')
+
+// 是否为有效会员（与后端一致：以到期时间判断，无到期时间时回退到会员角色）
+const isVip = computed(() => {
+  const user = loginUserStore.loginUser
+  const expireTime = user.vipExpireTime
+  if (!expireTime) return user.userRole === 'vip'
+  return new Date(expireTime).getTime() > Date.now()
+})
 
 // 页头说明文案
 const headerDesc = computed(() => {
@@ -261,15 +274,34 @@ const fetchSpaceLevelList = async () => {
   }
 }
 
-// 级别是否被锁定（创建模式下仅普通版可自助开通；编辑模式不锁定）
+// 级别是否被锁定：普通版全员可开通；专业版仅会员；旗舰版暂不开放自助开通
 const isLevelLocked = (level: API.SpaceLevel) => {
-  return !isEdit.value && level.value !== SPACE_LEVEL_ENUM.COMMON
+  // 管理员不受限制
+  if (isAdmin.value) return false
+  // 普通版：所有人可自助开通
+  if (level.value === SPACE_LEVEL_ENUM.COMMON) return false
+  // 编辑时已选中的级别不锁，避免会员到期后连名称都改不了
+  if (isEdit.value && spaceForm.spaceLevel === level.value) return false
+  // 专业版：仅会员可开通
+  if (level.value === SPACE_LEVEL_ENUM.PROFESSIONAL) return !isVip.value
+  // 旗舰版：暂不开放
+  return true
+}
+
+// 锁定原因文案
+const levelLockText = (level: API.SpaceLevel) => {
+  if (level.value === SPACE_LEVEL_ENUM.PROFESSIONAL) return '会员专享'
+  return '暂未开放'
 }
 
 // 选择空间级别
 const chooseLevel = (level: API.SpaceLevel) => {
   if (isLevelLocked(level)) {
-    message.info('该版本暂不支持自助开通，如需升级请联系管理员')
+    if (level.value === SPACE_LEVEL_ENUM.PROFESSIONAL) {
+      message.info('专业版空间为会员专享，开通会员后即可创建')
+    } else {
+      message.info('旗舰版暂未开放自助开通，如需开通请联系管理员')
+    }
     return
   }
   spaceForm.spaceLevel = level.value

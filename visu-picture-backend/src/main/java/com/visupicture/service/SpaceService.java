@@ -77,6 +77,15 @@ public interface SpaceService extends IService<Space> {
     void checkSpaceAuth(User loginUser, Space space);
 
     /**
+     * 校验用户是否有权使用指定空间级别
+     * 普通版：所有用户；专业版：会员；旗舰版：暂不开放自助开通（仅管理员）
+     *
+     * @param spaceLevel 空间级别
+     * @param loginUser  登录用户
+     */
+    void checkSpaceLevelPermission(Integer spaceLevel, User loginUser);
+
+    /**
      * 上传空间封面（仅空间创建者或管理员可用）
      *
      * @param spaceId   空间 id
