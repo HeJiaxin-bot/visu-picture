@@ -104,6 +104,8 @@ interface Props {
   canDelete?: boolean
   /** 是否已加载全部数据 */
   finished?: boolean
+  /** 卡片尺寸：default 自适应大卡片；compact 紧凑小卡片（空间管理页等场景） */
+  size?: 'default' | 'compact'
   onReload?: () => void
 }
 
@@ -114,6 +116,7 @@ const props = withDefaults(defineProps<Props>(), {
   canEdit: false,
   canDelete: false,
   finished: false,
+  size: 'default',
 })
 
 const emit = defineEmits<{
@@ -126,12 +129,14 @@ const containerWidth = ref(0)
 const GUTTER = 12 // 行内/行间距
 let resizeObserver: ResizeObserver | null = null
 
-// 目标行高随容器宽度自适应：宽屏用更大的行高（每行图更少更大），窄屏降低行高
+// 目标行高随容器宽度自适应：宽屏用更大的行高（每行图更少更大），窄屏降低行高；
+// compact 模式整体缩小（约 7 折），用于空间管理页等需要小卡片的场景
 const targetRowHeight = computed(() => {
+  const scale = props.size === 'compact' ? 0.7 : 1
   const width = containerWidth.value
-  if (width < 640) return 200 // 手机
-  if (width < 1024) return 260 // 平板
-  return 360 // 桌面大屏
+  if (width < 640) return Math.round(200 * scale) // 手机
+  if (width < 1024) return Math.round(260 * scale) // 平板
+  return Math.round(360 * scale) // 桌面大屏
 })
 
 // 宽高比兜底：数据缺失时按 3:2 处理

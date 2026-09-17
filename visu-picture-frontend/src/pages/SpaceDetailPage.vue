@@ -181,8 +181,9 @@
         </div>
       </div>
 
-      <!-- 图片列表（滚动加载） -->
+      <!-- 图片列表（滚动加载，紧凑小卡片） -->
       <PictureList
+        size="compact"
         :dataList="dataList"
         :loading="loading"
         :finished="finished"
