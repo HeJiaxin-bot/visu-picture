@@ -1,25 +1,40 @@
 <template>
   <div id="addPicturePage">
     <!-- 页头 -->
-    <div class="page-header">
-      <h2 class="page-title">{{ route.query?.id ? '修改图片' : '创建图片' }}</h2>
-      <p v-if="spaceId" class="page-sub">
-        保存至空间：<router-link :to="`/space/${spaceId}`">
-          {{ space?.spaceName || spaceId }}
-        </router-link>
+    <header class="page-header">
+      <h2 class="page-title">{{ isEditMode ? '修改图片' : '创建图片' }}</h2>
+      <p class="page-sub">
+        <template v-if="spaceId">
+          保存至空间
+          <router-link class="space-link" :to="`/space/${spaceId}`">
+            {{ space?.spaceName || spaceId }}
+          </router-link>
+        </template>
+        <template v-else>保存至公共图库，审核通过后展示在首页</template>
       </p>
-    </div>
+      <p class="page-note">支持 JPG / PNG / WEBP，单张不超过 10 MB</p>
+    </header>
 
     <div class="layout">
       <!-- 左栏：上传 / 预览 / 编辑 -->
-      <div class="card upload-card">
-        <PictureUpload
-          ref="pictureUploadRef"
-          defer-upload
-          :picture="picture"
-          :spaceId="spaceId"
-          :onSuccess="onSuccess"
-        />
+      <section class="card stage-card">
+        <div class="stage-head">
+          <span class="stage-status" :class="`is-${stageStatus.key}`">
+            <i class="stage-dot" />
+            {{ stageStatus.text }}
+          </span>
+        </div>
+
+        <div class="stage-frame">
+          <PictureUpload
+            ref="pictureUploadRef"
+            defer-upload
+            :picture="picture"
+            :spaceId="spaceId"
+            :onSuccess="onSuccess"
+          />
+        </div>
+
         <!-- 未上传时提供 URL 导入入口 -->
         <template v-if="!picture?.url">
           <div class="upload-divider"><span>或通过图片链接导入</span></div>
@@ -31,10 +46,18 @@
             :onSuccess="onSuccess"
           />
         </template>
+
         <!-- 图片编辑 -->
         <div v-if="picture" class="edit-bar">
-          <a-button :icon="h(EditOutlined)" @click="doEditPicture">编辑图片</a-button>
-          <a-button type="primary" :icon="h(FullscreenOutlined)" @click="doImagePainting">
+          <a-button class="tool-btn" :icon="h(EditOutlined)" @click="doEditPicture">
+            编辑图片
+          </a-button>
+          <a-button
+            class="tool-btn tool-btn-primary"
+            type="primary"
+            :icon="h(FullscreenOutlined)"
+            @click="doImagePainting"
+          >
             AI 扩图
           </a-button>
         </div>
@@ -52,17 +75,17 @@
           :spaceId="spaceId"
           :onSuccess="onImageOutPaintingSuccess"
         />
-      </div>
+      </section>
 
       <!-- 右栏：图片信息 -->
-      <div class="card info-card">
-        <div class="info-title-row">
+      <aside class="card info-card">
+        <div class="info-head">
           <div class="info-title">图片信息</div>
           <a-button
             v-if="picture"
+            type="text"
             size="small"
-            type="primary"
-            ghost
+            class="ai-btn"
             :icon="h(ThunderboltOutlined)"
             :loading="aiEditLoading"
             @click="doAiEdit"
@@ -70,61 +93,137 @@
             AI 配文
           </a-button>
         </div>
-        <a-form
-          v-if="picture"
-          name="pictureForm"
-          layout="vertical"
-          :model="pictureForm"
-          @finish="handleSubmit"
-        >
-          <a-form-item name="name" label="名称">
-            <a-input v-model:value="pictureForm.name" placeholder="请输入名称" allow-clear />
-          </a-form-item>
-          <a-form-item name="introduction" label="简介">
-            <a-textarea
-              v-model:value="pictureForm.introduction"
-              placeholder="请输入简介"
-              :auto-size="{ minRows: 2, maxRows: 5 }"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item name="category" label="分类">
-            <a-auto-complete
-              v-model:value="pictureForm.category"
-              placeholder="请输入分类"
-              :options="categoryOptions"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item name="tags" label="标签">
-            <a-select
-              v-model:value="pictureForm.tags"
-              mode="tags"
-              placeholder="请输入标签"
-              :options="tagOptions"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-button type="primary" html-type="submit" class="submit-btn">
-              {{ route.query?.id ? '保存修改' : '创建' }}
-            </a-button>
-          </a-form-item>
-        </a-form>
-        <a-empty
-          v-else
-          :image="Empty.PRESENTED_IMAGE_SIMPLE"
-          description="上传图片后填写信息"
-        />
-      </div>
+        <template v-if="picture">
+          <!-- 图片客观信息：一行浅灰小字 -->
+          <div class="meta-line">
+            {{ picture.picFormat || stripFallback }} ·
+            {{ picture.picWidth && picture.picHeight ? `${picture.picWidth}×${picture.picHeight}` : stripFallback }} ·
+            {{ picture.picSize ? formatPicSize(picture.picSize) : stripFallback }}
+          </div>
+
+          <a-form
+            name="pictureForm"
+            layout="vertical"
+            :model="pictureForm"
+            @finish="handleSubmit"
+            class="info-form"
+          >
+            <div class="plain-row">
+              <a-input v-model:value="pictureForm.name" placeholder="给图片起个名字吧" />
+            </div>
+
+            <div class="plain-row">
+              <a-textarea
+                v-model:value="pictureForm.introduction"
+                placeholder="补充一句介绍，让大家更了解这张图"
+                :auto-size="{ minRows: 3, maxRows: 5 }"
+              />
+            </div>
+
+            <div class="picker-row" @click="openCategoryModal">
+              <span class="field-lead">
+                <span class="field-icon"><AppstoreOutlined /></span>
+                分类
+              </span>
+              <span class="picker-value" :class="{ 'is-empty': !pictureForm.category }">
+                {{ pictureForm.category || '选择分类' }}
+              </span>
+              <RightOutlined class="picker-arrow" />
+            </div>
+
+            <div class="picker-row is-last" @click="openTagModal">
+              <span class="field-lead">
+                <span class="field-icon"><TagsOutlined /></span>
+                标签
+              </span>
+              <span class="picker-value" :class="{ 'is-empty': !pictureForm.tags?.length }">
+                {{ tagSummary }}
+              </span>
+              <RightOutlined class="picker-arrow" />
+            </div>
+
+            <div class="submit-row">
+              <a-button type="primary" html-type="submit" class="submit-btn">
+                {{ isEditMode ? '保存修改' : '创建' }}
+              </a-button>
+            </div>
+          </a-form>
+        </template>
+
+        <!-- 未选择图片时的引导 -->
+        <div v-else class="info-empty">
+          <div class="empty-art" />
+          <div class="empty-title">还没有选择图片</div>
+          <div class="empty-sub">在左侧上传或导入一张图片后，即可填写名称、分类与标签</div>
+        </div>
+      </aside>
     </div>
+
+    <!-- 分类选择 -->
+    <a-modal
+      v-model:open="categoryModalOpen"
+      title="选择分类"
+      :width="440"
+      :footer="null"
+      centered
+      :body-style="{ padding: '4px 24px 24px' }"
+    >
+      <label class="picker-search">
+        <SearchOutlined class="picker-search-icon" />
+        <input v-model="categoryKeyword" class="picker-search-input" placeholder="搜索分类..." />
+      </label>
+      <div class="picker-grid">
+        <button
+          v-for="item in categoryChoices"
+          :key="item"
+          type="button"
+          class="picker-chip"
+          :class="{ 'is-active': pictureForm.category === item }"
+          @click="selectCategory(item)"
+        >
+          {{ item }}
+        </button>
+      </div>
+      <div v-if="!categoryChoices.length" class="picker-empty">没有找到匹配的分类</div>
+    </a-modal>
+
+    <!-- 标签选择 -->
+    <a-modal
+      v-model:open="tagModalOpen"
+      title="选择标签"
+      :width="440"
+      centered
+      :body-style="{ padding: '4px 24px 20px' }"
+    >
+      <template #footer>
+        <a-button @click="tagModalOpen = false">取消</a-button>
+        <a-button type="primary" @click="confirmTags">确定</a-button>
+      </template>
+      <label class="picker-search">
+        <SearchOutlined class="picker-search-icon" />
+        <input v-model="tagKeyword" class="picker-search-input" placeholder="搜索标签..." />
+      </label>
+      <div class="picker-grid">
+        <button
+          v-for="item in tagChoices"
+          :key="item"
+          type="button"
+          class="picker-chip"
+          :class="{ 'is-active': tagDraft.includes(item) }"
+          @click="toggleTag(item)"
+        >
+          {{ item }}
+        </button>
+      </div>
+      <div v-if="!tagChoices.length" class="picker-empty">没有找到匹配的标签，输入后可直接创建</div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import PictureUpload from '@/components/PictureUpload.vue'
 import { computed, h, onMounted, onUnmounted, reactive, ref, watchEffect } from 'vue'
-import { message, Modal, Empty } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import {
   aiEditPictureUsingPost,
   deletePictureUsingPost,
@@ -135,7 +234,15 @@ import {
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 import ImageCropper from '@/components/ImageCropper.vue'
-import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import {
+  AppstoreOutlined,
+  EditOutlined,
+  FullscreenOutlined,
+  RightOutlined,
+  SearchOutlined,
+  TagsOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons-vue'
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
@@ -152,6 +259,30 @@ const urlPictureUploadRef = ref()
 const initialPictureId = ref<string | number>()
 // 本次会话中新上传、尚未提交的图片 id：离开页面时需要清理，避免留下孤儿图片
 const uploadedPictureId = ref<string | number>()
+
+// 是否编辑模式（带图片 id 进入）
+const isEditMode = computed(() => !!route.query?.id)
+
+// 左栏画布状态：未选择 / 已选待提交（延迟上传） / 已上传
+const stageStatus = computed(() => {
+  if (!picture.value?.url) {
+    return { key: 'idle', text: '等待选择图片' }
+  }
+  if (!picture.value.id) {
+    return { key: 'pending', text: '待提交上传' }
+  }
+  return { key: 'ready', text: '已上传' }
+})
+
+// 参数条占位文案：本地预览尚未上传时提示「待上传」
+const stripFallback = computed(() => (stageStatus.value.key === 'pending' ? '待上传' : '—'))
+
+/** 图片体积格式化 */
+const formatPicSize = (size: number) => {
+  return size >= 1024 * 1024
+    ? `${(size / 1024 / 1024).toFixed(2)} MB`
+    : `${(size / 1024).toFixed(1)} KB`
+}
 // 空间 id
 const spaceId = computed(() => {
   return route.query?.spaceId
@@ -290,8 +421,8 @@ const handleSubmit = async (values: any) => {
   }
 }
 
-const categoryOptions = ref<string[]>([])
-const tagOptions = ref<string[]>([])
+const categoryList = ref<string[]>([])
+const tagList = ref<string[]>([])
 
 /**
  * 获取标签和分类选项
@@ -300,18 +431,8 @@ const tagOptions = ref<string[]>([])
 const getTagCategoryOptions = async () => {
   const res = await listPictureTagCategoryUsingGet()
   if (res.data.code === 0 && res.data.data) {
-    tagOptions.value = (res.data.data.tagList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
-    categoryOptions.value = (res.data.data.categoryList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
+    tagList.value = res.data.data.tagList ?? []
+    categoryList.value = res.data.data.categoryList ?? []
   } else {
     message.error('获取标签分类列表失败，' + res.data.message)
   }
@@ -320,6 +441,66 @@ const getTagCategoryOptions = async () => {
 onMounted(() => {
   getTagCategoryOptions()
 })
+
+// ----- 分类 / 标签选择弹窗 -----
+// 右侧行内摘要：未选择时显示占位提示
+const tagSummary = computed(() => {
+  const tags = pictureForm.tags ?? []
+  return tags.length ? tags.join(' · ') : '添加标签'
+})
+
+/** 按关键词过滤，未收录的关键词追加到末尾以便直接创建 */
+const filterChoices = (list: string[], keyword: string) => {
+  const kw = keyword.trim()
+  if (!kw) {
+    return list
+  }
+  const matched = list.filter((item) => item.includes(kw))
+  return matched.includes(kw) ? matched : [...matched, kw]
+}
+
+// 分类：单选，点选后立即写回并关闭
+const categoryModalOpen = ref(false)
+const categoryKeyword = ref('')
+
+const categoryChoices = computed(() => filterChoices(categoryList.value, categoryKeyword.value))
+
+const openCategoryModal = () => {
+  categoryKeyword.value = ''
+  categoryModalOpen.value = true
+}
+
+const selectCategory = (value: string) => {
+  pictureForm.category = value
+  categoryModalOpen.value = false
+}
+
+// 标签：多选，弹窗内先记草稿，点确定才写回
+const tagModalOpen = ref(false)
+const tagKeyword = ref('')
+const tagDraft = ref<string[]>([])
+
+const tagChoices = computed(() => filterChoices(tagList.value, tagKeyword.value))
+
+const openTagModal = () => {
+  tagKeyword.value = ''
+  tagDraft.value = [...(pictureForm.tags ?? [])]
+  tagModalOpen.value = true
+}
+
+const toggleTag = (value: string) => {
+  const index = tagDraft.value.indexOf(value)
+  if (index > -1) {
+    tagDraft.value.splice(index, 1)
+  } else {
+    tagDraft.value.push(value)
+  }
+}
+
+const confirmTags = () => {
+  pictureForm.tags = tagDraft.value
+  tagModalOpen.value = false
+}
 
 // 获取老数据
 const getOldPicture = async () => {
@@ -445,53 +626,107 @@ watchEffect(() => {
 
 <style scoped>
 #addPicturePage {
-  max-width: 1150px;
+  max-width: 1180px;
   margin: 0 auto;
+  padding-bottom: 32px;
 }
 
+/* ---------- 页头 ---------- */
 .page-header {
+  padding-bottom: 18px;
   margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  animation: rise 0.28s ease-out both;
 }
 
 .page-title {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.3;
   color: var(--text-primary-light);
 }
 
 .page-sub {
-  margin: 0;
+  margin: 8px 0 0;
+  font-size: 13.5px;
   color: var(--text-secondary);
-  font-size: 14px;
 }
 
+.page-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+.space-link {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* ---------- 版式 ---------- */
 .layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .card {
   background: var(--bg-card);
-  border-radius: 16px;
-  border: 1px solid rgba(64, 169, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(64, 169, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
 }
 
-.upload-card {
-  flex: 1;
+/* ---------- 左栏：画布 ---------- */
+.stage-card {
   min-width: 0;
-  padding: 24px;
+  padding: 18px 20px 20px;
+  animation: rise 0.28s ease-out both;
+}
+
+.stage-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.stage-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+.stage-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.stage-status.is-pending {
+  color: #d48806;
+}
+
+.stage-status.is-ready {
+  color: #389e0d;
+}
+
+.stage-frame {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-body);
 }
 
 .upload-divider {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 20px 0 16px;
-  color: var(--text-secondary);
-  font-size: 13px;
+  margin: 18px 0 14px;
+  color: var(--text-disabled);
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -503,64 +738,333 @@ watchEffect(() => {
   background: var(--border-color);
 }
 
+/* ---------- 右栏：图片信息 ---------- */
 .info-card {
-  width: 380px;
-  flex-shrink: 0;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 20px 20px;
+  animation: rise 0.28s ease-out both;
 }
 
-.info-title-row {
+.info-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  padding: 18px 0 6px;
 }
 
 .info-title {
-  font-weight: 600;
   font-size: 16px;
+  font-weight: 600;
   color: var(--text-primary-light);
 }
 
+.ai-btn {
+  padding-right: 0;
+  color: var(--accent);
+}
+
+/* 图片客观信息：一行浅灰小字 */
+.meta-line {
+  padding-bottom: 14px;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  color: var(--text-disabled);
+}
+
+/* 字段行：左侧彩色图标 + 名称，右侧无边框输入 */
+.info-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* 名称 / 简介：不显示标签，直接用占位文字提示 */
+.plain-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.field-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.field-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--bg-body);
+  color: var(--text-secondary);
+  font-size: 15px;
+  transition: transform 0.15s ease;
+}
+
+/* 输入控件：无边框，仅靠占位文字与留白区分 */
+.info-form :deep(.ant-input) {
+  width: 100%;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  color: var(--text-primary-light);
+}
+
+.info-form :deep(.ant-input::placeholder) {
+  color: var(--text-disabled);
+}
+
+.info-form :deep(textarea.ant-input) {
+  padding: 2px 0 !important;
+  line-height: 1.7;
+  resize: none;
+}
+
+/* 分类 / 标签：整行可点，右侧显示当前值 + 箭头 */
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.picker-row.is-last {
+  border-bottom: none;
+}
+
+.picker-row:hover .picker-value {
+  color: var(--text-primary-light);
+}
+
+.picker-row:hover .picker-arrow {
+  transform: translateX(2px);
+}
+
+.picker-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--text-primary-light);
+  transition: color 0.15s ease;
+}
+
+.picker-value.is-empty {
+  color: var(--text-disabled);
+}
+
+.picker-arrow {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-disabled);
+  transition: transform 0.15s ease;
+}
+
+/* 选择弹窗：搜索框 + 三列可点选项 */
+.picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--bg-body);
+}
+
+.picker-search-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.picker-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-primary-light);
+}
+
+.picker-search-input::placeholder {
+  color: var(--text-disabled);
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-height: 320px;
+  margin-top: 18px;
+  overflow-y: auto;
+}
+
+.picker-chip {
+  height: 40px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.picker-chip:hover {
+  color: var(--text-primary-light);
+}
+
+.picker-chip.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.picker-empty {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-disabled);
+}
+
+/* 未选图时的引导状态：在剩余空间里垂直居中，与左栏底部齐平 */
+.info-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 6px;
+  text-align: center;
+}
+
+.empty-art {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 18px;
+  border: 1px dashed var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-body);
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary-light);
+}
+
+.empty-sub {
+  margin-top: 7px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* 编辑工具条：左对齐、等宽按钮，只留一条浅分割线 */
 .edit-bar {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px dashed var(--border-color);
+  border-top: 1px solid var(--border-color);
+}
+
+.edit-bar :deep(.ant-btn) {
+  flex: 1;
+  height: 38px;
+  border-radius: 9px;
+  font-weight: 400;
+}
+
+/* 提交区：按钮落在卡片底部，与左栏底边齐平 */
+.submit-row {
+  margin-top: auto;
+  padding-top: 18px;
 }
 
 .submit-btn {
   width: 100%;
-  height: 44px;
+  height: 46px;
   border-radius: 10px;
   font-size: 15px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+/* 入场动画 */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-header,
+  .stage-card,
+  .info-card {
+    animation: none;
+  }
 }
 
 /* 深色模式适配 */
-html.dark .page-sub {
-  color: rgba(240, 240, 240, 0.55);
-}
-
 html.dark .card {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.09);
 }
 
-html.dark .edit-bar {
-  border-top-color: rgba(255, 255, 255, 0.12);
+html.dark .info-form :deep(.ant-input) {
+  border: none !important;
+  background: transparent !important;
+}
+
+html.dark .field-icon,
+html.dark .picker-search,
+html.dark .picker-chip {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .picker-chip.is-active {
+  background: var(--accent);
+}
+
+html.dark .empty-art {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html.dark .stage-status.is-pending {
+  color: #ffc53d;
+}
+
+html.dark .stage-status.is-ready {
+  color: #95de64;
 }
 
 /* 小屏单栏 */
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .layout {
-    flex-direction: column;
-  }
-
-  .info-card {
-    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

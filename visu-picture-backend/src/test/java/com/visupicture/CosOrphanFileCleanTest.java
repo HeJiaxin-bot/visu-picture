@@ -41,7 +41,7 @@ public class CosOrphanFileCleanTest {
 
     @Test
     public void cleanOrphanFiles() throws Exception {
-        boolean doDelete = Boolean.parseBoolean(System.getProperty("delete", "false"));
+        boolean doDelete = Boolean.parseBoolean(System.getProperty("delete", "true"));
         String host = cosClientConfig.getHost();
         if (host.endsWith("/")) {
             host = host.substring(0, host.length() - 1);
