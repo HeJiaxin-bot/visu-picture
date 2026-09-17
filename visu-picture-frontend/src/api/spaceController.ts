@@ -129,3 +129,26 @@ export async function updateSpaceUsingPost(
     ...(options || {}),
   })
 }
+
+/** uploadSpaceCover POST /api/space/cover（上传空间封面，仅创建者或管理员可用） */
+export async function uploadSpaceCoverUsingPost(
+  params: {
+    spaceId: number | string
+  },
+  file?: File,
+  options?: { [key: string]: any }
+) {
+  const formData = new FormData()
+  if (file) {
+    formData.append('file', file)
+  }
+  return request<API.BaseResponseString_>('/api/space/cover', {
+    method: 'POST',
+    params: {
+      ...params,
+    },
+    data: formData,
+    requestType: 'form',
+    ...(options || {}),
+  })
+}

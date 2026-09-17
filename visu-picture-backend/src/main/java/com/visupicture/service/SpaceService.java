@@ -10,6 +10,7 @@ import com.visupicture.model.entity.User;
 import com.visupicture.model.vo.SpaceVO;
 
 import javax.servlet.http.HttpServletRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @author 何佳鑫
@@ -74,4 +75,14 @@ public interface SpaceService extends IService<Space> {
      * @param space
      */
     void checkSpaceAuth(User loginUser, Space space);
+
+    /**
+     * 上传空间封面（仅空间创建者或管理员可用）
+     *
+     * @param spaceId   空间 id
+     * @param file      封面图片文件
+     * @param loginUser 登录用户
+     * @return 新封面 url
+     */
+    String uploadSpaceCover(long spaceId, MultipartFile file, User loginUser);
 }

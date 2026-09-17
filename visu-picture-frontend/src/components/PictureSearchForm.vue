@@ -1,14 +1,7 @@
 <template>
   <div class="picture-search-form">
-    <!-- 搜索表单 -->
+    <!-- 高级筛选表单（关键词搜索由外部快速搜索栏承担） -->
     <a-form name="searchForm" layout="inline" :model="searchParams" @finish="doSearch">
-      <a-form-item label="关键词" name="searchText">
-        <a-input
-          v-model:value="searchParams.searchText"
-          placeholder="从名称和简介搜索"
-          allow-clear
-        />
-      </a-form-item>
       <a-form-item name="category" label="分类">
         <a-auto-complete
           v-model:value="searchParams.category"

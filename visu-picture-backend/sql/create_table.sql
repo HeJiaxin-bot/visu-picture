@@ -76,22 +76,23 @@ create table if not exists picture
     INDEX idx_spaceId (spaceId)            -- 提升基于空间的查询性能
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
--- 空间表（含空间类型字段）
+-- 空间表（含空间类型、封面字段）
 create table if not exists space
 (
-    id         bigint auto_increment comment 'id' primary key,
-    spaceName  varchar(128)                       null comment '空间名称',
-    spaceLevel int      default 0                 null comment '空间级别：0-普通版 1-专业版 2-旗舰版',
-    maxSize    bigint   default 0                 null comment '空间图片的最大总大小',
-    maxCount   bigint   default 0                 null comment '空间图片的最大数量',
-    totalSize  bigint   default 0                 null comment '当前空间下图片的总大小',
-    totalCount bigint   default 0                 null comment '当前空间下的图片数量',
-    userId     bigint                             not null comment '创建用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    editTime   datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete   tinyint  default 0                 not null comment '是否删除',
-    spaceType  int      default 0                 not null comment '空间类型：0-私有 1-团队',
+    id           bigint auto_increment comment 'id' primary key,
+    spaceName    varchar(128)                       null comment '空间名称',
+    spaceLevel   int      default 0                 null comment '空间级别：0-普通版 1-专业版 2-旗舰版',
+    coverPicture varchar(512)                       null comment '空间封面图 url',
+    maxSize      bigint   default 0                 null comment '空间图片的最大总大小',
+    maxCount     bigint   default 0                 null comment '空间图片的最大数量',
+    totalSize    bigint   default 0                 null comment '当前空间下图片的总大小',
+    totalCount   bigint   default 0                 null comment '当前空间下的图片数量',
+    userId       bigint                             not null comment '创建用户 id',
+    createTime   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    editTime     datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
+    updateTime   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete     tinyint  default 0                 not null comment '是否删除',
+    spaceType    int      default 0                 not null comment '空间类型：0-私有 1-团队',
     -- 索引设计
     index idx_userId (userId),         -- 提升基于用户的查询效率
     index idx_spaceName (spaceName),   -- 提升基于空间名称的查询效率

@@ -229,4 +229,16 @@ public class SpaceController {
                 .collect(Collectors.toList());
         return ResultUtils.success(spaceLevelList);
     }
+
+    /**
+     * 上传空间封面（仅空间创建者或管理员可用）
+     */
+    @PostMapping("/cover")
+    public BaseResponse<String> uploadSpaceCover(@RequestPart("file") MultipartFile file,
+                                                 long spaceId, HttpServletRequest request) {
+        ThrowUtils.throwIf(file == null || file.isEmpty(), ErrorCode.PARAMS_ERROR, "封面文件不能为空");
+        ThrowUtils.throwIf(spaceId <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(spaceService.uploadSpaceCover(spaceId, file, loginUser));
+    }
 }

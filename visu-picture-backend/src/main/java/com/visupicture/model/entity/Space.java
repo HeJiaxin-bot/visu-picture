@@ -35,6 +35,11 @@ public class Space implements Serializable {
     private Integer spaceType;
 
     /**
+     * 空间封面图 url
+     */
+    private String coverPicture;
+
+    /**
      * 空间图片的最大总大小
      */
     private Long maxSize;

@@ -1,15 +1,20 @@
 package com.visupicture.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.visupicture.config.CosClientConfig;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
+import com.visupicture.manager.CosManager;
 import com.visupicture.manager.sharding.DynamicShardingManager;
+import com.visupicture.manager.upload.FilePictureUpload;
+import com.visupicture.model.dto.file.UploadPictureResult;
 import com.visupicture.model.dto.space.SpaceAddRequest;
 import com.visupicture.model.dto.space.SpaceQueryRequest;
 import com.visupicture.model.entity.Space;
@@ -24,10 +29,12 @@ import com.visupicture.service.SpaceService;
 import com.visupicture.mapper.SpaceMapper;
 import com.visupicture.service.SpaceUserService;
 import com.visupicture.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -39,6 +46,7 @@ import java.util.stream.Collectors;
  * @description 针对表【space(空间)】的数据库操作Service实现
  */
 @Service
+@Slf4j
 public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         implements SpaceService {
 
@@ -50,6 +58,15 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
 
     @Resource
     private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private FilePictureUpload filePictureUpload;
+
+    @Resource
+    private CosManager cosManager;
+
+    @Resource
+    private CosClientConfig cosClientConfig;
 
     // 为了方便部署，注释掉分表
 //    @Resource
@@ -244,6 +261,55 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         // 仅本人或管理员可编辑
         if (!space.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+    }
+
+    /**
+     * 上传空间封面（仅空间创建者或管理员可用）
+     * 复用文件上传模板上传到 COS，路径前缀 space_cover/<spaceId>；替换时同步清理旧封面文件
+     */
+    @Override
+    public String uploadSpaceCover(long spaceId, MultipartFile file, User loginUser) {
+        Space oldSpace = this.getById(spaceId);
+        ThrowUtils.throwIf(oldSpace == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+        // 仅本人或管理员可设置封面
+        this.checkSpaceAuth(loginUser, oldSpace);
+        String oldCoverUrl = oldSpace.getCoverPicture();
+        // 上传新封面，路径前缀 space_cover/<spaceId>
+        String uploadPathPrefix = String.format("space_cover/%s", spaceId);
+        UploadPictureResult uploadPictureResult = filePictureUpload.uploadPicture(file, uploadPathPrefix);
+        String newCoverUrl = uploadPictureResult.getUrl();
+        // 更新数据库中的封面地址
+        Space updateSpace = new Space();
+        updateSpace.setId(spaceId);
+        updateSpace.setCoverPicture(newCoverUrl);
+        boolean updated = this.updateById(updateSpace);
+        ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "封面更新失败");
+        // 清理旧封面的 COS 文件（原图、压缩图、缩略图），失败不影响主流程
+        this.deleteOldCover(oldCoverUrl);
+        return newCoverUrl;
+    }
+
+    /**
+     * 清理旧封面文件，避免 COS 孤儿文件
+     */
+    private void deleteOldCover(String oldCoverUrl) {
+        if (StrUtil.isBlank(oldCoverUrl)) {
+            return;
+        }
+        try {
+            String host = cosClientConfig.getHost();
+            if (!oldCoverUrl.startsWith(host)) {
+                return;
+            }
+            String key = StrUtil.removePrefix(oldCoverUrl, host + "/");
+            // 仅清理 space_cover 目录下的对象，且按主文件名前缀匹配（原图、webp、缩略图），防止误删
+            if (!key.startsWith("space_cover/") || StrUtil.isBlank(FileUtil.mainName(key))) {
+                return;
+            }
+            cosManager.deleteObjectsByPrefix(FileUtil.mainName(key));
+        } catch (Exception e) {
+            log.warn("旧空间封面清理失败, url = {}", oldCoverUrl, e);
         }
     }
 }

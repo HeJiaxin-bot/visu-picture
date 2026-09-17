@@ -506,6 +506,7 @@ declare namespace API {
 
   type Space = {
     createTime?: string
+    coverPicture?: string
     editTime?: string
     id?: number
     isDelete?: number
@@ -664,6 +665,7 @@ declare namespace API {
 
   type SpaceVO = {
     createTime?: string
+    coverPicture?: string
     editTime?: string
     id?: number
     maxCount?: number
