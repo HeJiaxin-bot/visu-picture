@@ -13,11 +13,11 @@
           创建空间
         </a-button>
         <a-button class="ghost-btn" href="/space_analyze?queryPublic=1" target="_blank">
-          <template #icon><BarChartOutlined /></template>
+          <template #icon><FundOutlined /></template>
           分析公共图库
         </a-button>
         <a-button class="ghost-btn" href="/space_analyze?queryAll=1" target="_blank">
-          <template #icon><BarChartOutlined /></template>
+          <template #icon><ClusterOutlined /></template>
           分析全部空间
         </a-button>
       </template>
@@ -50,7 +50,7 @@
             <a-input v-model:value="searchParams.userId" placeholder="请输入用户 id" allow-clear />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit">
+            <a-button type="primary" html-type="submit" :loading="loading">
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
@@ -65,7 +65,7 @@
         :data-source="dataList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1240 }"
+        :scroll="{ x: 1280 }"
         @change="doTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -129,7 +129,13 @@
           <!-- 用户 id -->
           <template v-else-if="column.key === 'userId'">
             <span class="mono-text">{{ record.userId ?? '—' }}</span>
-            <button class="mini-copy" type="button" title="复制 id" @click="copyId(record.userId)">
+            <button
+              class="mini-copy"
+              type="button"
+              title="复制用户 id"
+              aria-label="复制用户 id"
+              @click="copyId(record.userId)"
+            >
               <CopyOutlined />
             </button>
           </template>
@@ -151,7 +157,6 @@
           <template v-else-if="column.key === 'action'">
             <a-space :size="6" wrap>
               <a-button
-                size="small"
                 class="row-btn ghost-btn"
                 :href="`/space_analyze?spaceId=${record.id}`"
                 target="_blank"
@@ -160,7 +165,6 @@
                 分析
               </a-button>
               <a-button
-                size="small"
                 class="row-btn ghost-btn"
                 :href="`/add_space?id=${record.id}`"
                 target="_blank"
@@ -168,6 +172,8 @@
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
+              <!-- 危险操作：与常规操作以分隔线隔开 -->
+              <i class="btn-sep" aria-hidden="true" />
               <a-popconfirm
                 title="确定删除该空间？"
                 description="空间内的图片将一并失去归属，操作不可恢复"
@@ -176,8 +182,13 @@
                 ok-type="danger"
                 @confirm="doDelete(record.id)"
               >
-                <a-button size="small" type="text" danger class="row-btn">
+                <a-button
+                  danger
+                  class="row-btn btn-danger-text"
+                  :loading="deletingId === record.id"
+                >
                   <template #icon><DeleteOutlined /></template>
+                  删除
                 </a-button>
               </a-popconfirm>
             </a-space>
@@ -195,9 +206,11 @@ import dayjs from 'dayjs'
 import {
   AppstoreOutlined,
   BarChartOutlined,
+  ClusterOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
+  FundOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons-vue'
@@ -219,7 +232,7 @@ const columns = [
   { title: '用户 ID', key: 'userId', width: 200 },
   { title: '创建时间', key: 'createTime', width: 120 },
   { title: '编辑时间', key: 'editTime', width: 120 },
-  { title: '操作', key: 'action', width: 210, fixed: 'right' },
+  { title: '操作', key: 'action', width: 250, fixed: 'right' },
 ]
 
 // 定义数据
@@ -284,17 +297,23 @@ const doSearch = () => {
 }
 
 // 删除数据
+const deletingId = ref<string>('')
 const doDelete = async (id: string) => {
   if (!id) {
     return
   }
-  const res = await deleteSpaceUsingPost({ id })
-  if (res.data.code === 0) {
-    message.success('删除成功')
-    // 刷新数据
-    fetchData()
-  } else {
-    message.error('删除失败')
+  deletingId.value = id
+  try {
+    const res = await deleteSpaceUsingPost({ id })
+    if (res.data.code === 0) {
+      message.success('删除成功')
+      // 刷新数据
+      await fetchData()
+    } else {
+      message.error('删除失败')
+    }
+  } finally {
+    deletingId.value = ''
   }
 }
 
@@ -450,8 +469,9 @@ const levelClass = (level?: number) => {
   background: transparent;
   color: var(--text-disabled);
   cursor: pointer;
-  border-radius: 6px;
-  padding: 3px 5px;
+  border-radius: 7px;
+  /* 加大图标按钮的可点区域，避免过小的点击目标 */
+  padding: 5px 7px;
   line-height: 1;
   transition:
     color 0.2s ease,
@@ -472,9 +492,5 @@ const levelClass = (level?: number) => {
 .time-sub {
   font-size: 12px;
   color: var(--text-disabled);
-}
-
-.row-btn {
-  border-radius: 8px;
 }
 </style>

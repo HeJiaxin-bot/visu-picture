@@ -50,7 +50,7 @@
             />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit">
+            <a-button type="primary" html-type="submit" :loading="loading">
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
@@ -65,7 +65,7 @@
         :data-source="dataList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1380 }"
+        :scroll="{ x: 1680 }"
         @change="doTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -143,9 +143,8 @@
             <a-space :size="6" wrap>
               <a-button
                 v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS"
-                size="small"
-                type="primary"
-                class="row-btn"
+                class="row-btn btn-approve"
+                :loading="reviewingId === record.id"
                 @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
               >
                 <template #icon><CheckOutlined /></template>
@@ -153,16 +152,14 @@
               </a-button>
               <a-button
                 v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
-                size="small"
-                danger
-                class="row-btn"
+                class="row-btn btn-reject"
+                :loading="reviewingId === record.id"
                 @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
               >
                 <template #icon><CloseOutlined /></template>
                 拒绝
               </a-button>
               <a-button
-                size="small"
                 class="row-btn ghost-btn"
                 :href="`/add_picture?id=${record.id}`"
                 target="_blank"
@@ -170,6 +167,8 @@
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
+              <!-- 危险操作：与常规操作以分隔线隔开 -->
+              <i class="btn-sep" aria-hidden="true" />
               <a-popconfirm
                 title="确定删除该图片？"
                 description="删除后无法恢复"
@@ -178,8 +177,13 @@
                 ok-type="danger"
                 @confirm="doDelete(record.id)"
               >
-                <a-button size="small" type="text" danger class="row-btn">
+                <a-button
+                  danger
+                  class="row-btn btn-danger-text"
+                  :loading="deletingId === record.id"
+                >
                   <template #icon><DeleteOutlined /></template>
+                  删除
                 </a-button>
               </a-popconfirm>
             </a-space>
@@ -225,7 +229,7 @@ const columns = [
   { title: '用户 ID', key: 'userId', width: 200 },
   { title: '审核信息', key: 'reviewMessage', width: 210 },
   { title: '时间', key: 'time', width: 150 },
-  { title: '操作', key: 'action', width: 210, fixed: 'right' },
+  { title: '操作', key: 'action', width: 320, fixed: 'right' },
 ]
 
 // 定义数据
@@ -291,35 +295,47 @@ const doSearch = () => {
 }
 
 // 删除数据
+const deletingId = ref<string>('')
 const doDelete = async (id: string) => {
   if (!id) {
     return
   }
-  const res = await deletePictureUsingPost({ id })
-  if (res.data.code === 0) {
-    message.success('删除成功')
-    // 刷新数据
-    fetchData()
-  } else {
-    message.error('删除失败')
+  deletingId.value = id
+  try {
+    const res = await deletePictureUsingPost({ id })
+    if (res.data.code === 0) {
+      message.success('删除成功')
+      // 刷新数据
+      await fetchData()
+    } else {
+      message.error('删除失败')
+    }
+  } finally {
+    deletingId.value = ''
   }
 }
 
-// 审核图片
+// 审核图片（按行加锁，避免重复提交）
+const reviewingId = ref<string>('')
 const handleReview = async (record: API.Picture, reviewStatus: number) => {
   const reviewMessage =
     reviewStatus === PIC_REVIEW_STATUS_ENUM.PASS ? '管理员操作通过' : '管理员操作拒绝'
-  const res = await doPictureReviewUsingPost({
-    id: record.id,
-    reviewStatus,
-    reviewMessage,
-  })
-  if (res.data.code === 0) {
-    message.success('审核操作成功')
-    // 重新获取列表数据
-    fetchData()
-  } else {
-    message.error('审核操作失败，' + res.data.message)
+  reviewingId.value = record.id ?? ''
+  try {
+    const res = await doPictureReviewUsingPost({
+      id: record.id,
+      reviewStatus,
+      reviewMessage,
+    })
+    if (res.data.code === 0) {
+      message.success('审核操作成功')
+      // 重新获取列表数据
+      await fetchData()
+    } else {
+      message.error('审核操作失败，' + res.data.message)
+    }
+  } finally {
+    reviewingId.value = ''
   }
 }
 
@@ -485,9 +501,5 @@ const statusClass = (status?: number) => {
   width: 30px;
   font-size: 11px;
   color: var(--text-disabled);
-}
-
-.row-btn {
-  border-radius: 8px;
 }
 </style>

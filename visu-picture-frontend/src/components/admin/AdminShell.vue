@@ -121,11 +121,32 @@ html.dark .admin-shell {
   margin: 14px 0 18px;
 }
 
-/* 统一三个管理页的按钮风格：圆角 + 次级按钮走描边 */
+/* 统一三个管理页的按钮风格：圆角 + 过渡 + 按压反馈 + 键盘焦点环 */
 .admin-shell :deep(.ant-btn) {
   border-radius: 9px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease;
 }
 
+.admin-shell :deep(.ant-btn:not(:disabled):active) {
+  transform: scale(0.975);
+}
+
+.admin-shell :deep(.ant-btn:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.admin-shell :deep(.ant-btn:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 次级按钮：描边风格，视觉从属于主按钮 */
 .admin-shell :deep(.ghost-btn) {
   background: transparent;
   border-color: var(--border-color);
@@ -136,6 +157,85 @@ html.dark .admin-shell {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(22, 119, 255, 0.06);
+}
+
+/* ===== 表格行内按钮 ===== */
+/* 高度 32px、图标与文字成组，保证可点区域与可读性 */
+.admin-shell :deep(.row-btn) {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 审核按钮：通过 = 成功绿，拒绝 = 危险红，避免表格里一片蓝 */
+.admin-shell :deep(.btn-approve) {
+  color: #389e0d;
+  border-color: rgba(82, 196, 26, 0.4);
+  background: rgba(82, 196, 26, 0.1);
+}
+
+.admin-shell :deep(.btn-approve:hover) {
+  color: #237804;
+  border-color: #52c41a;
+  background: rgba(82, 196, 26, 0.18);
+}
+
+.admin-shell :deep(.btn-reject) {
+  color: #cf1322;
+  border-color: rgba(255, 77, 79, 0.4);
+  background: rgba(255, 77, 79, 0.08);
+}
+
+.admin-shell :deep(.btn-reject:hover) {
+  color: #a8071a;
+  border-color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.16);
+}
+
+html.dark .admin-shell :deep(.btn-approve) {
+  color: #95de64;
+  border-color: rgba(149, 222, 100, 0.32);
+  background: rgba(82, 196, 26, 0.16);
+}
+
+html.dark .admin-shell :deep(.btn-reject) {
+  color: #ff7875;
+  border-color: rgba(255, 120, 117, 0.32);
+  background: rgba(255, 77, 79, 0.16);
+}
+
+/* 删除：销毁性操作用危险色常显，悬停加深 */
+.admin-shell :deep(.btn-danger-text) {
+  color: #cf1322;
+  border-color: transparent;
+  background: transparent;
+}
+
+.admin-shell :deep(.btn-danger-text:hover) {
+  color: #a8071a;
+  background: rgba(255, 77, 79, 0.1);
+}
+
+html.dark .admin-shell :deep(.btn-danger-text) {
+  color: #ff7875;
+}
+
+html.dark .admin-shell :deep(.btn-danger-text:hover) {
+  color: #ffa39e;
+  background: rgba(255, 77, 79, 0.16);
+}
+
+/* 危险操作前的分隔线：与常规操作在视觉上拉开 */
+.admin-shell :deep(.btn-sep) {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--border-color);
 }
 
 /* ===== 筛选卡片 ===== */

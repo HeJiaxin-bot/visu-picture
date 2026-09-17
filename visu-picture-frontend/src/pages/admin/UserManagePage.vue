@@ -8,7 +8,7 @@
       :meta="`共 ${total} 位用户`"
     >
       <template #actions>
-        <a-button class="ghost-btn" @click="fetchData">
+        <a-button class="ghost-btn" :loading="loading" @click="fetchData">
           <template #icon><ReloadOutlined /></template>
           刷新
         </a-button>
@@ -27,7 +27,7 @@
             <a-input v-model:value="searchParams.userName" placeholder="输入用户名" allow-clear />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit">
+            <a-button type="primary" html-type="submit" :loading="loading">
               <template #icon><SearchOutlined /></template>
               搜索
             </a-button>
@@ -69,7 +69,13 @@
           <!-- 用户 id：等宽字体 + 快捷复制 -->
           <template v-else-if="column.key === 'id'">
             <span class="mono-text">{{ record.id }}</span>
-            <button class="mini-copy" type="button" title="复制 id" @click="copyId(record.id)">
+            <button
+              class="mini-copy"
+              type="button"
+              title="复制用户 id"
+              aria-label="复制用户 id"
+              @click="copyId(record.id)"
+            >
               <CopyOutlined />
             </button>
           </template>
@@ -94,7 +100,11 @@
               ok-type="danger"
               @confirm="doDelete(record.id)"
             >
-              <a-button danger size="small" type="text" class="row-btn">
+              <a-button
+                danger
+                class="row-btn btn-danger-text"
+                :loading="deletingId === record.id"
+              >
                 <template #icon><DeleteOutlined /></template>
                 删除
               </a-button>
@@ -126,7 +136,7 @@ const columns = [
   { title: '用户 ID', key: 'id', width: 210 },
   { title: '简介', key: 'userProfile', ellipsis: true },
   { title: '创建时间', key: 'createTime', width: 130 },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' },
+  { title: '操作', key: 'action', width: 110, fixed: 'right' },
 ]
 
 // 定义数据
@@ -191,17 +201,23 @@ const doSearch = () => {
 }
 
 // 删除数据
+const deletingId = ref<string>('')
 const doDelete = async (id: string) => {
   if (!id) {
     return
   }
-  const res = await deleteUserUsingPost({ id })
-  if (res.data.code === 0) {
-    message.success('删除成功')
-    // 刷新数据
-    fetchData()
-  } else {
-    message.error('删除失败')
+  deletingId.value = id
+  try {
+    const res = await deleteUserUsingPost({ id })
+    if (res.data.code === 0) {
+      message.success('删除成功')
+      // 刷新数据
+      await fetchData()
+    } else {
+      message.error('删除失败')
+    }
+  } finally {
+    deletingId.value = ''
   }
 }
 
@@ -291,8 +307,9 @@ const isVip = (record: API.UserVO) => {
   background: transparent;
   color: var(--text-disabled);
   cursor: pointer;
-  border-radius: 6px;
-  padding: 3px 5px;
+  border-radius: 7px;
+  /* 加大图标按钮的可点区域，避免过小的点击目标 */
+  padding: 5px 7px;
   line-height: 1;
   transition:
     color 0.2s ease,
@@ -317,9 +334,5 @@ const isVip = (record: API.UserVO) => {
 .time-sub {
   font-size: 12px;
   color: var(--text-disabled);
-}
-
-.row-btn {
-  border-radius: 8px;
 }
 </style>
