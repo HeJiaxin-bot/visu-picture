@@ -1,9 +1,17 @@
 <template>
-  <div class="space-tag-analyze">
-    <a-card title="空间图片标签分析">
-      <v-chart :option="options" style="height: 320px; max-width: 100%" :loading="loading" />
-    </a-card>
-  </div>
+  <AnalyzeCard title="标签词云" :icon="TagsOutlined" tint="#14b8a6">
+    <div v-if="!loading && dataList.length === 0" class="chart-empty">
+      <TagsOutlined class="empty-icon" />
+      <span>暂无标签数据</span>
+    </div>
+    <v-chart
+      v-else
+      :option="options"
+      style="height: 320px; width: 100%"
+      :loading="loading"
+      autoresize
+    />
+  </AnalyzeCard>
 </template>
 
 <script setup lang="ts">
@@ -11,8 +19,11 @@ import VChart from 'vue-echarts'
 import 'echarts'
 import 'echarts-wordcloud'
 import { computed, ref, watchEffect } from 'vue'
+import { TagsOutlined } from '@ant-design/icons-vue'
 import { getSpaceTagAnalyzeUsingPost } from '@/api/spaceAnalyzeController.ts'
 import { message } from 'ant-design-vue'
+import AnalyzeCard from './AnalyzeCard.vue'
+import { CHART_PALETTE, useChartTheme } from './chartTheme.ts'
 
 interface Props {
   queryAll?: boolean
@@ -29,6 +40,9 @@ const props = withDefaults(defineProps<Props>(), {
 const dataList = ref<API.SpaceCategoryAnalyzeResponse>([])
 // 加载状态
 const loading = ref(true)
+
+// 图表主题（跟随深浅模式）
+const chartTheme = useChartTheme()
 
 // 获取数据
 const fetchData = async () => {
@@ -55,29 +69,34 @@ watchEffect(() => {
 })
 
 // 图表选项
-const options =computed(() => {
-  const tagData = dataList.value.map((item) => ({
+const options = computed(() => {
+  const t = chartTheme.value
+  // 词云配色从统一色板循环取色，替代原来的随机色
+  const tagData = dataList.value.map((item, index) => ({
     name: item.tag,
     value: item.count,
+    textStyle: { color: CHART_PALETTE[index % CHART_PALETTE.length] },
   }))
 
   return {
     tooltip: {
+      ...t.tooltip,
       trigger: 'item',
-      formatter: (params: any) => `${params.name}: ${params.value} 次`,
+      formatter: (params: any) => `${params.name}：${params.value} 次`,
     },
     series: [
       {
         type: 'wordCloud',
-        gridSize: 10,
-        sizeRange: [12, 50], // 字体大小范围
-        rotationRange: [-90, 90],
         shape: 'circle',
-        textStyle: {
-          color: () =>
-              `rgb(${Math.round(Math.random() * 255)}, ${Math.round(
-                  Math.random() * 255,
-              )}, ${Math.round(Math.random() * 255)})`, // 随机颜色
+        gridSize: 6,
+        sizeRange: [14, 46],
+        rotationRange: [0, 0],
+        textStyle: { fontWeight: 600 },
+        emphasis: {
+          textStyle: {
+            textShadowBlur: 8,
+            textShadowColor: 'rgba(22,119,255,0.35)',
+          },
         },
         data: tagData,
       },
@@ -86,4 +105,19 @@ const options =computed(() => {
 })
 </script>
 
-<style scoped></style>
+<style scoped>
+.chart-empty {
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-disabled);
+  font-size: 13px;
+}
+
+.empty-icon {
+  font-size: 28px;
+}
+</style>

@@ -1,23 +1,30 @@
 <template>
-  <div class="space-user-analyze">
-    <a-card title="空间图片用户分析">
-      <v-chart :option="options" style="height: 320px; max-width: 100%" :loading="loading" />
-      <template #extra>
-        <a-space>
-          <a-segmented v-model:value="timeDimension" :options="timeDimensionOptions" />
-          <a-input-search placeholder="请输入用户 id" enter-button="搜索用户" @search="doSearch" />
-        </a-space>
-      </template>
-    </a-card>
-  </div>
+  <AnalyzeCard title="用户上传趋势" :icon="LineChartOutlined" tint="#3b82f6">
+    <template #extra>
+      <a-space :size="10">
+        <a-segmented v-model:value="timeDimension" :options="timeDimensionOptions" size="small" />
+        <a-input-search
+          placeholder="请输入用户 id"
+          enter-button="搜索"
+          size="small"
+          style="width: 190px"
+          @search="doSearch"
+        />
+      </a-space>
+    </template>
+    <v-chart :option="options" style="height: 320px; width: 100%" :loading="loading" autoresize />
+  </AnalyzeCard>
 </template>
 
 <script setup lang="ts">
 import VChart from 'vue-echarts'
 import 'echarts'
 import { computed, ref, watchEffect } from 'vue'
+import { LineChartOutlined } from '@ant-design/icons-vue'
 import { getSpaceUserAnalyzeUsingPost } from '@/api/spaceAnalyzeController.ts'
 import { message } from 'ant-design-vue'
+import AnalyzeCard from './AnalyzeCard.vue'
+import { useChartTheme } from './chartTheme.ts'
 
 interface Props {
   queryAll?: boolean
@@ -58,6 +65,9 @@ const dataList = ref<API.SpaceCategoryAnalyzeResponse>([])
 // 加载状态
 const loading = ref(true)
 
+// 图表主题（跟随深浅模式）
+const chartTheme = useChartTheme()
+
 // 获取数据
 const fetchData = async () => {
   loading.value = true
@@ -86,19 +96,54 @@ watchEffect(() => {
 
 // 图表选项
 const options = computed(() => {
+  const t = chartTheme.value
   const periods = dataList.value.map((item) => item.period) // 时间区间
   const counts = dataList.value.map((item) => item.count) // 上传数量
 
   return {
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: periods, name: '时间区间' },
-    yAxis: { type: 'value', name: '上传数量' },
+    tooltip: {
+      ...t.tooltip,
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: 'rgba(59,130,246,0.3)' } },
+    },
+    grid: { left: 4, right: 12, top: 30, bottom: 0, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: periods,
+      boundaryGap: false,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: t.axisLineColor } },
+      axisLabel: { color: t.textColor, fontSize: 12 },
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: t.textColor },
+      splitLine: { lineStyle: { color: t.splitLineColor } },
+    },
     series: [
       {
         name: '上传数量',
         type: 'line',
         data: counts,
-        smooth: true, // 平滑折线
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 7,
+        lineStyle: { width: 3, color: '#3b82f6' },
+        itemStyle: { color: '#3b82f6', borderColor: t.cardBg, borderWidth: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(59,130,246,0.22)' },
+              { offset: 1, color: 'rgba(59,130,246,0)' },
+            ],
+          },
+        },
         emphasis: {
           focus: 'series',
         },
@@ -107,5 +152,3 @@ const options = computed(() => {
   }
 })
 </script>
-
-<style scoped></style>
