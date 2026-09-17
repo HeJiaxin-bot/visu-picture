@@ -584,6 +584,15 @@ html.dark .pic-all-loaded {
   .center-container {
     grid-template-columns: 1fr;
   }
+
+  /* 小屏单列：恢复自然高度，避免页面滚动内再套一层滚动 */
+  .entry-card {
+    max-height: none;
+  }
+
+  .entry-card :deep(.ant-card-body) {
+    overflow-y: visible;
+  }
 }
 
 .profile-top {
@@ -719,6 +728,20 @@ html.dark .copy-vid-btn:hover {
   font-size: 20px;
 }
 
+/* 快捷入口卡片：限高 + 卡片主体滚动，避免条目过多把页面撑长 */
+.entry-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 440px;
+}
+
+.entry-card :deep(.ant-card-body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .entry-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -731,13 +754,18 @@ html.dark .copy-vid-btn:hover {
   padding: 16px;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
+/* 滚动容器内不使用位移与投影，避免被裁剪 */
 .entry-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent);
+  background: rgba(64, 169, 255, 0.06);
+}
+
+html.dark .entry-item:hover {
+  background: rgba(64, 169, 255, 0.12);
 }
 
 .entry-icon {

@@ -1,112 +1,192 @@
 <template>
   <div id="pictureManagePage">
-    <a-flex justify="space-between">
-      <h2>图片管理</h2>
-      <a-space>
-        <a-button type="primary" href="/add_picture" target="_blank">+ 创建图片</a-button>
-        <a-button type="primary" href="/add_picture/batch" target="_blank" ghost>+ 批量创建图片</a-button>
-      </a-space>
-    </a-flex>
-    <div style="margin-bottom: 16px" />
-    <!-- 搜索表单 -->
-    <a-form layout="inline" :model="searchParams" @finish="doSearch">
-      <a-form-item label="关键词">
-        <a-input
-          v-model:value="searchParams.searchText"
-          placeholder="从名称和简介搜索"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item label="类型">
-        <a-input v-model:value="searchParams.category" placeholder="请输入类型" allow-clear />
-      </a-form-item>
-      <a-form-item label="标签">
-        <a-select
-          v-model:value="searchParams.tags"
-          mode="tags"
-          placeholder="请输入标签"
-          style="min-width: 180px"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item name="reviewStatus" label="审核状态">
-        <a-select
-          v-model:value="searchParams.reviewStatus"
-          style="min-width: 180px"
-          placeholder="请选择审核状态"
-          :options="PIC_REVIEW_STATUS_OPTIONS"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit">搜索</a-button>
-      </a-form-item>
-    </a-form>
-    <div style="margin-bottom: 16px" />
-    <!-- 表格 -->
-    <a-table
-      :columns="columns"
-      :data-source="dataList"
-      :pagination="pagination"
-      @change="doTableChange"
+    <AdminShell
+      title="图片管理"
+      desc="审核与维护全站图片，可按关键词、类型、标签、审核状态筛选"
+      :icon="PictureOutlined"
+      tint="#13c2c2"
+      :meta="`共 ${total} 张图片`"
     >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.dataIndex === 'url'">
-          <a-image :src="record.url" :width="120" />
-        </template>
-        <template v-if="column.dataIndex === 'tags'">
-          <a-space wrap>
-            <a-tag v-for="tag in JSON.parse(record.tags || '[]')" :key="tag">
-              {{ tag }}
-            </a-tag>
-          </a-space>
-        </template>
-        <template v-if="column.dataIndex === 'picInfo'">
-          <div>格式：{{ record.picFormat }}</div>
-          <div>宽度：{{ record.picWidth }}</div>
-          <div>高度：{{ record.picHeight }}</div>
-          <div>宽高比：{{ record.picScale }}</div>
-          <div>大小：{{ (record.picSize / 1024).toFixed(2) }}KB</div>
-        </template>
-        <template v-if="column.dataIndex === 'reviewMessage'">
-          <div>审核状态：{{ PIC_REVIEW_STATUS_MAP[record.reviewStatus] }}</div>
-          <div>审核信息：{{ record.reviewMessage }}</div>
-          <div>审核人：{{ record.reviewerId }}</div>
-          <div v-if="record.reviewTime">
-            审核时间：{{ dayjs(record.reviewTime).format('YYYY-MM-DD HH:mm:ss') }}
-          </div>
-        </template>
-        <template v-if="column.dataIndex === 'createTime'">
-          {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-if="column.dataIndex === 'editTime'">
-          {{ dayjs(record.editTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <a-space wrap>
-            <a-button
-              v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS"
-              type="link"
-              @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
-            >
-              通过
-            </a-button>
-            <a-button
-              v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
-              type="link"
-              danger
-              @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
-            >
-              拒绝
-            </a-button>
-            <a-button type="link" :href="`/add_picture?id=${record.id}`" target="_blank">
-              编辑
-            </a-button>
-            <a-button danger @click="doDelete(record.id)">删除</a-button>
-          </a-space>
-        </template>
+      <template #actions>
+        <a-button type="primary" href="/add_picture" target="_blank">
+          <template #icon><PlusOutlined /></template>
+          创建图片
+        </a-button>
+        <a-button class="ghost-btn" href="/add_picture/batch" target="_blank">
+          <template #icon><CloudDownloadOutlined /></template>
+          批量创建
+        </a-button>
       </template>
-    </a-table>
+
+      <!-- 搜索表单 -->
+      <template #filters>
+        <a-form layout="inline" :model="searchParams" @finish="doSearch">
+          <a-form-item label="关键词">
+            <a-input
+              v-model:value="searchParams.searchText"
+              placeholder="从名称和简介搜索"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="类型">
+            <a-input v-model:value="searchParams.category" placeholder="请输入类型" allow-clear />
+          </a-form-item>
+          <a-form-item label="标签">
+            <a-select
+              v-model:value="searchParams.tags"
+              mode="tags"
+              placeholder="请输入标签"
+              style="min-width: 180px"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item name="reviewStatus" label="审核状态">
+            <a-select
+              v-model:value="searchParams.reviewStatus"
+              style="min-width: 160px"
+              placeholder="请选择审核状态"
+              :options="PIC_REVIEW_STATUS_OPTIONS"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" html-type="submit">
+              <template #icon><SearchOutlined /></template>
+              搜索
+            </a-button>
+          </a-form-item>
+        </a-form>
+      </template>
+
+      <!-- 表格 -->
+      <a-table
+        row-key="id"
+        :columns="columns"
+        :data-source="dataList"
+        :loading="loading"
+        :pagination="pagination"
+        :scroll="{ x: 1380 }"
+        @change="doTableChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <!-- 缩略图 -->
+          <template v-if="column.key === 'url'">
+            <a-image :src="record.url" :width="56" :height="56" class="cell-thumb" />
+          </template>
+          <!-- 名称 + 类型 -->
+          <template v-else-if="column.key === 'name'">
+            <div class="name-cell">
+              <div class="cell-name">{{ record.name || '未命名图片' }}</div>
+              <div class="cell-tags">
+                <span v-if="record.category" class="soft-chip">{{ record.category }}</span>
+                <span v-else class="soft-chip">未分类</span>
+              </div>
+            </div>
+          </template>
+          <!-- 简介（可作为 tooltip） -->
+          <template v-else-if="column.key === 'introduction'">
+            <a-tooltip :title="record.introduction">
+              <span class="muted-text intro-text">{{ record.introduction || '—' }}</span>
+            </a-tooltip>
+          </template>
+          <!-- 标签 -->
+          <template v-else-if="column.key === 'tags'">
+            <div class="tag-list">
+              <span v-for="tag in parseTags(record.tags)" :key="tag" class="tag-pill">{{ tag }}</span>
+              <span v-if="parseTags(record.tags).length === 0" class="muted-text">—</span>
+            </div>
+          </template>
+          <!-- 图片信息 -->
+          <template v-else-if="column.key === 'picInfo'">
+            <div class="tag-list">
+              <span class="meta-chip">{{ record.picFormat }}</span>
+              <span class="meta-chip">{{ record.picWidth }} × {{ record.picHeight }}</span>
+              <span class="meta-chip">{{ record.picScale }}</span>
+              <span class="meta-chip">{{ formatSize(record.picSize) }}</span>
+            </div>
+          </template>
+          <!-- 用户 id -->
+          <template v-else-if="column.key === 'userId'">
+            <span class="mono-text">{{ record.userId ?? '—' }}</span>
+          </template>
+          <!-- 审核信息 -->
+          <template v-else-if="column.key === 'reviewMessage'">
+            <div class="review-cell">
+              <span class="status-chip" :class="statusClass(record.reviewStatus)">
+                <i class="status-dot" />
+                {{ PIC_REVIEW_STATUS_MAP[record.reviewStatus] }}
+              </span>
+              <span class="cell-sub">{{ record.reviewMessage || '暂无审核备注' }}</span>
+              <span class="cell-sub">
+                审核人 {{ record.reviewerId ?? '—' }}
+                <template v-if="record.reviewTime">
+                  · {{ dayjs(record.reviewTime).format('MM-DD HH:mm') }}
+                </template>
+              </span>
+            </div>
+          </template>
+          <!-- 创建 / 编辑时间 -->
+          <template v-else-if="column.key === 'time'">
+            <div class="time-cell">
+              <div class="time-row">
+                <span class="time-label">创建</span>
+                {{ dayjs(record.createTime).format('YYYY-MM-DD') }}
+              </div>
+              <div class="time-row">
+                <span class="time-label">编辑</span>
+                {{ dayjs(record.editTime).format('YYYY-MM-DD') }}
+              </div>
+            </div>
+          </template>
+          <!-- 操作 -->
+          <template v-else-if="column.key === 'action'">
+            <a-space :size="6" wrap>
+              <a-button
+                v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS"
+                size="small"
+                type="primary"
+                class="row-btn"
+                @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
+              >
+                <template #icon><CheckOutlined /></template>
+                通过
+              </a-button>
+              <a-button
+                v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
+                size="small"
+                danger
+                class="row-btn"
+                @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
+              >
+                <template #icon><CloseOutlined /></template>
+                拒绝
+              </a-button>
+              <a-button
+                size="small"
+                class="row-btn ghost-btn"
+                :href="`/add_picture?id=${record.id}`"
+                target="_blank"
+              >
+                <template #icon><EditOutlined /></template>
+                编辑
+              </a-button>
+              <a-popconfirm
+                title="确定删除该图片？"
+                description="删除后无法恢复"
+                ok-text="删除"
+                cancel-text="取消"
+                ok-type="danger"
+                @confirm="doDelete(record.id)"
+              >
+                <a-button size="small" type="text" danger class="row-btn">
+                  <template #icon><DeleteOutlined /></template>
+                </a-button>
+              </a-popconfirm>
+            </a-space>
+          </template>
+        </template>
+      </a-table>
+    </AdminShell>
   </div>
 </template>
 <script lang="ts" setup>
@@ -121,77 +201,37 @@ import {
   PIC_REVIEW_STATUS_ENUM,
   PIC_REVIEW_STATUS_MAP,
   PIC_REVIEW_STATUS_OPTIONS,
-} from '../../constants/picture.ts'
+} from '@/constants/picture.ts'
 import dayjs from 'dayjs'
-
-// 长雪花 ID 列不换行展示
-const nowrapCell = () => ({ style: { whiteSpace: 'nowrap' } })
+import {
+  CheckOutlined,
+  CloseOutlined,
+  CloudDownloadOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  SearchOutlined,
+} from '@ant-design/icons-vue'
+import AdminShell from '@/components/admin/AdminShell.vue'
+import { formatSize } from '@/utils'
 
 const columns = [
-  {
-    title: 'id',
-    dataIndex: 'id',
-    width: 180,
-    customCell: nowrapCell,
-  },
-  {
-    title: '图片',
-    dataIndex: 'url',
-  },
-  {
-    title: '名称',
-    dataIndex: 'name',
-  },
-  {
-    title: '简介',
-    dataIndex: 'introduction',
-    ellipsis: true,
-  },
-  {
-    title: '类型',
-    dataIndex: 'category',
-  },
-  {
-    title: '标签',
-    dataIndex: 'tags',
-  },
-  {
-    title: '图片信息',
-    dataIndex: 'picInfo',
-  },
-  {
-    title: '用户 id',
-    dataIndex: 'userId',
-    width: 180,
-    customCell: nowrapCell,
-  },
-  {
-    title: '空间 id',
-    dataIndex: 'spaceId',
-    width: 180,
-    customCell: nowrapCell,
-  },
-  {
-    title: '审核信息',
-    dataIndex: 'reviewMessage',
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'createTime',
-  },
-  {
-    title: '编辑时间',
-    dataIndex: 'editTime',
-  },
-  {
-    title: '操作',
-    key: 'action',
-  },
+  { title: '图片', key: 'url', width: 92 },
+  { title: '名称', key: 'name', width: 210 },
+  { title: '简介', key: 'introduction', width: 200 },
+  { title: '标签', key: 'tags', width: 190 },
+  { title: '图片信息', key: 'picInfo', width: 210 },
+  { title: '用户 ID', key: 'userId', width: 200 },
+  { title: '审核信息', key: 'reviewMessage', width: 210 },
+  { title: '时间', key: 'time', width: 150 },
+  { title: '操作', key: 'action', width: 210, fixed: 'right' },
 ]
 
 // 定义数据
 const dataList = ref<API.Picture[]>([])
 const total = ref(0)
+const loading = ref(false)
 
 // 搜索条件
 const searchParams = reactive<API.PictureQueryRequest>({
@@ -203,15 +243,20 @@ const searchParams = reactive<API.PictureQueryRequest>({
 
 // 获取数据
 const fetchData = async () => {
-  const res = await listPictureByPageUsingPost({
-    ...searchParams,
-    nullSpaceId: true,
-  })
-  if (res.data.code === 0 && res.data.data) {
-    dataList.value = res.data.data.records ?? []
-    total.value = res.data.data.total ?? 0
-  } else {
-    message.error('获取数据失败，' + res.data.message)
+  loading.value = true
+  try {
+    const res = await listPictureByPageUsingPost({
+      ...searchParams,
+      nullSpaceId: true,
+    })
+    if (res.data.code === 0 && res.data.data) {
+      dataList.value = res.data.data.records ?? []
+      total.value = res.data.data.total ?? 0
+    } else {
+      message.error('获取数据失败，' + res.data.message)
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -227,7 +272,7 @@ const pagination = computed(() => {
     pageSize: searchParams.pageSize,
     total: total.value,
     showSizeChanger: true,
-    showTotal: (total) => `共 ${total} 条`,
+    showTotal: (total: number) => `共 ${total} 条`,
   }
 })
 
@@ -277,4 +322,172 @@ const handleReview = async (record: API.Picture, reviewStatus: number) => {
     message.error('审核操作失败，' + res.data.message)
   }
 }
+
+// 解析标签 JSON，兼容空值与非法内容
+const parseTags = (tags?: string): string[] => {
+  try {
+    const parsed = JSON.parse(tags || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+// 审核状态样式：待审核 / 通过 / 拒绝
+const statusClass = (status?: number) => {
+  if (status === PIC_REVIEW_STATUS_ENUM.PASS) return 'status-pass'
+  if (status === PIC_REVIEW_STATUS_ENUM.REJECT) return 'status-reject'
+  return 'status-reviewing'
+}
 </script>
+
+<style scoped>
+.cell-thumb {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cell-thumb :deep(img) {
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.name-cell {
+  min-width: 0;
+}
+
+.cell-name {
+  font-weight: 600;
+  color: var(--text-primary-light);
+  line-height: 1.35;
+}
+
+.cell-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.soft-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: rgba(128, 128, 128, 0.12);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-pill {
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--link);
+  background: rgba(22, 119, 255, 0.1);
+}
+
+.meta-chip {
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  background: rgba(128, 128, 128, 0.1);
+  font-variant-numeric: tabular-nums;
+}
+
+.mono-text {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.muted-text {
+  color: var(--text-secondary);
+}
+
+.intro-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.review-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 11.5px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-reviewing {
+  color: #d48806;
+  background: rgba(250, 173, 20, 0.16);
+}
+
+.status-pass {
+  color: #389e0d;
+  background: rgba(82, 196, 26, 0.16);
+}
+
+.status-reject {
+  color: #cf1322;
+  background: rgba(255, 77, 79, 0.14);
+}
+
+.cell-sub {
+  font-size: 12px;
+  color: var(--text-disabled);
+  line-height: 1.4;
+}
+
+.time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.time-row {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.time-label {
+  display: inline-block;
+  width: 30px;
+  font-size: 11px;
+  color: var(--text-disabled);
+}
+
+.row-btn {
+  border-radius: 8px;
+}
+</style>
