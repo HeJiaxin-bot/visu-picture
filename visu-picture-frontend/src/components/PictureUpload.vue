@@ -34,35 +34,81 @@ interface Props {
   picture?: API.PictureVO
   spaceId?: number
   onSuccess?: (newPicture: API.PictureVO) => void
+  /** 延迟上传：选中文件后只在本地预览，父组件调用 upload() 时才真正上传（避免未提交就产生 COS 文件） */
+  deferUpload?: boolean
 }
 
 const props = defineProps<Props>()
 
+const loading = ref<boolean>(false)
+// 延迟上传模式下待上传的本地文件与其本地预览地址
+const localFile = ref<File>()
+const localPreviewUrl = ref<string>()
+
 /**
- * 上传图片
+ * 选中文件：延迟上传模式只做本地预览，否则立即上传
  * @param file
  */
 const handleUpload = async ({ file }: any) => {
+  if (props.deferUpload) {
+    // 释放上一次的本地预览地址
+    if (localPreviewUrl.value) {
+      URL.revokeObjectURL(localPreviewUrl.value)
+    }
+    localFile.value = file as File
+    localPreviewUrl.value = URL.createObjectURL(file)
+    // 用本地预览构造占位图片，让父组件展示预览与表单（此时尚未上传到对象存储）
+    props.onSuccess?.({
+      id: props.picture?.id,
+      url: localPreviewUrl.value,
+      name: (file.name ?? '').replace(/\.[^.]+$/, ''),
+    } as API.PictureVO)
+    return
+  }
+  localFile.value = file as File
+  await upload()
+}
+
+/**
+ * 真正上传图片（延迟上传模式下由父组件在提交或执行 AI 操作前调用）
+ * @returns 上传成功后的图片信息
+ */
+const upload = async (): Promise<API.PictureVO | undefined> => {
+  const file = localFile.value
+  if (!file) {
+    return undefined
+  }
   loading.value = true
   try {
-    const params: API.PictureUploadRequest = props.picture ? { id: props.picture.id } : {}
+    const params: API.PictureUploadRequest = props.picture?.id ? { id: props.picture.id } : {}
     params.spaceId = props.spaceId;
     const res = await uploadPictureUsingPost(params, {}, file, { timeout: 40000 })
     if (res.data.code === 0 && res.data.data) {
       message.success('图片上传成功')
+      // 清理本地预览状态
+      if (localPreviewUrl.value) {
+        URL.revokeObjectURL(localPreviewUrl.value)
+        localPreviewUrl.value = undefined
+      }
+      localFile.value = undefined
       // 将上传成功的图片信息传递给父组件
       props.onSuccess?.(res.data.data)
-    } else {
-      message.error('图片上传失败，' + res.data.message)
+      return res.data.data
     }
-  } catch (error) {
+    message.error('图片上传失败，' + res.data.message)
+  } catch (error: any) {
     console.error('图片上传失败', error)
     message.error('图片上传失败，' + error.message)
+  } finally {
+    loading.value = false
   }
-  loading.value = false
+  return undefined
 }
 
-const loading = ref<boolean>(false)
+/** 是否存在尚未上传的本地文件 */
+const hasPendingFile = () => !!localFile.value
+
+defineExpose({ upload, hasPendingFile })
 
 /**
  * 上传前的校验

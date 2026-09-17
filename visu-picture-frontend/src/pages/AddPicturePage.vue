@@ -13,11 +13,23 @@
     <div class="layout">
       <!-- 左栏：上传 / 预览 / 编辑 -->
       <div class="card upload-card">
-        <PictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
+        <PictureUpload
+          ref="pictureUploadRef"
+          defer-upload
+          :picture="picture"
+          :spaceId="spaceId"
+          :onSuccess="onSuccess"
+        />
         <!-- 未上传时提供 URL 导入入口 -->
         <template v-if="!picture?.url">
           <div class="upload-divider"><span>或通过图片链接导入</span></div>
-          <UrlPictureUpload :picture="picture" :spaceId="spaceId" :onSuccess="onSuccess" />
+          <UrlPictureUpload
+            ref="urlPictureUploadRef"
+            defer-upload
+            :picture="picture"
+            :spaceId="spaceId"
+            :onSuccess="onSuccess"
+          />
         </template>
         <!-- 图片编辑 -->
         <div v-if="picture" class="edit-bar">
@@ -111,15 +123,16 @@
 
 <script setup lang="ts">
 import PictureUpload from '@/components/PictureUpload.vue'
-import { computed, h, onMounted, reactive, ref, watchEffect } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, watchEffect } from 'vue'
 import { message, Modal, Empty } from 'ant-design-vue'
 import {
   aiEditPictureUsingPost,
+  deletePictureUsingPost,
   editPictureUsingPost,
   getPictureVoByIdUsingGet,
   listPictureTagCategoryUsingGet,
 } from '@/api/pictureController.ts'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 import ImageCropper from '@/components/ImageCropper.vue'
 import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
@@ -132,6 +145,13 @@ const route = useRoute()
 
 const picture = ref<API.PictureVO>()
 const pictureForm = reactive<API.PictureEditRequest>({})
+// 上传组件引用（延迟上传模式下由本页在提交前触发真正上传）
+const pictureUploadRef = ref()
+const urlPictureUploadRef = ref()
+// 进入页面时已存在的图片 id（编辑模式），用于区分「新上传的图片」与「原有图片」
+const initialPictureId = ref<string | number>()
+// 本次会话中新上传、尚未提交的图片 id：离开页面时需要清理，避免留下孤儿图片
+const uploadedPictureId = ref<string | number>()
 // 空间 id
 const spaceId = computed(() => {
   return route.query?.spaceId
@@ -142,17 +162,95 @@ const spaceId = computed(() => {
  * @param newPicture
  */
 const onSuccess = (newPicture: API.PictureVO) => {
+  if (newPicture.id) {
+    // 编辑模式下原地替换文件时返回的是原有图片 id，不应清理
+    if (String(newPicture.id) !== String(initialPictureId.value)) {
+      // 之前还有未提交的新图片时先清理掉
+      const lastUploadedId = uploadedPictureId.value
+      if (lastUploadedId && String(lastUploadedId) !== String(newPicture.id)) {
+        deletePictureUsingPost({ id: lastUploadedId as number }).catch(() => {})
+      }
+      uploadedPictureId.value = newPicture.id
+    }
+  }
   picture.value = newPicture
   pictureForm.name = newPicture.name
 }
 
 /**
- * 提交表单
- * @param values
+ * 确保图片已上传：延迟上传模式下，点提交或使用 AI 功能前才真正上传
  */
+const ensureUploaded = async (): Promise<boolean> => {
+  const hasPending =
+    pictureUploadRef.value?.hasPendingFile?.() || urlPictureUploadRef.value?.hasPendingUrl?.()
+  if (!hasPending) {
+    if (!picture.value?.id) {
+      message.warning('请先选择图片')
+      return false
+    }
+    return true
+  }
+  const newPicture =
+    (await pictureUploadRef.value?.upload()) ?? (await urlPictureUploadRef.value?.upload())
+  if (!newPicture?.id) {
+    return false
+  }
+  return true
+}
+
+/**
+ * 清理本次会话中上传但未提交的图片（避免 COS 与数据库残留孤儿数据）
+ * @param keepalive 页面即将卸载/关闭时使用，保证请求能发出
+ */
+const cleanupUploadedPicture = (keepalive = false) => {
+  const id = uploadedPictureId.value
+  if (!id) {
+    return
+  }
+  uploadedPictureId.value = undefined
+  if (keepalive) {
+    // 刷新 / 关闭页面时用 keepalive 请求兜底
+    const baseURL = import.meta.env.DEV ? 'http://localhost:8123' : ''
+    fetch(`${baseURL}/api/picture/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      credentials: 'include',
+      keepalive: true,
+    }).catch(() => {})
+    return
+  }
+  deletePictureUsingPost({ id: id as number }).catch(() => {})
+}
+
+// 离开页面时清理未提交的图片
+onBeforeRouteLeave(() => {
+  cleanupUploadedPicture()
+})
+
+onUnmounted(() => {
+  cleanupUploadedPicture()
+})
+
+const onBeforeUnload = () => {
+  cleanupUploadedPicture(true)
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+})
+
+/** 提交表单 */
 const handleSubmit = async (values: any) => {
-  console.log(values)
-  const pictureId = picture.value.id
+  // 延迟上传：点击创建/保存时才真正上传图片
+  if (!(await ensureUploaded())) {
+    return
+  }
+  const pictureId = picture.value?.id
   if (!pictureId) {
     return
   }
@@ -163,6 +261,8 @@ const handleSubmit = async (values: any) => {
   })
   // 操作成功
   if (res.data.code === 0 && res.data.data) {
+    // 已提交成功，无需再清理
+    uploadedPictureId.value = undefined
     if (spaceId.value) {
       // 上传到空间（私人/团队空间）：直接返回对应空间详情页
       message.success('创建成功')
@@ -231,6 +331,7 @@ const getOldPicture = async () => {
     if (res.data.code === 0 && res.data.data) {
       const data = res.data.data
       picture.value = data
+      initialPictureId.value = data.id
       pictureForm.name = data.name
       pictureForm.introduction = data.introduction
       pictureForm.category = data.category
@@ -248,6 +349,10 @@ const imageCropperRef = ref()
 
 // 编辑图片
 const doEditPicture = async () => {
+  // 延迟上传：先上传再编辑（图片编辑器依赖已上传的图片）
+  if (!(await ensureUploaded())) {
+    return
+  }
   imageCropperRef.value?.openModal()
 }
 
@@ -261,6 +366,10 @@ const imageOutPaintingRef = ref()
 
 // 打开 AI 扩图弹窗
 const doImagePainting = async () => {
+  // 延迟上传：先上传再扩图（扩图依赖已上传的图片）
+  if (!(await ensureUploaded())) {
+    return
+  }
   imageOutPaintingRef.value?.openModal()
 }
 
@@ -276,6 +385,10 @@ const aiEditLoading = ref(false)
  * AI 智能配文：自动生成简介、分类、标签并回填表单
  */
 const doAiEdit = async () => {
+  // 延迟上传：AI 配文依赖已上传的图片，先完成上传
+  if (!(await ensureUploaded())) {
+    return
+  }
   const pictureId = picture.value?.id
   if (!pictureId) {
     message.warning('请先上传图片')
