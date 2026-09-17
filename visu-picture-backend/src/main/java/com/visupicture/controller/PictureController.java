@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -264,8 +265,18 @@ public class PictureController {
 //            }
         }
         // 查询数据库
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
+        QueryWrapper<Picture> queryWrapper = pictureService.getQueryWrapper(pictureQueryRequest);
+        // 空间图片同样需要审核：非管理员只能看到审核通过的图片，以及自己上传的图片（便于查看审核状态）
+        if (spaceId != null) {
+            User loginUser = userService.getLoginUser(request);
+            if (!userService.isAdmin(loginUser)) {
+                queryWrapper.and(wrapper -> wrapper
+                        .eq("reviewStatus", PictureReviewStatusEnum.PASS.getValue())
+                        .or()
+                        .eq("userId", loginUser.getId()));
+            }
+        }
+        Page<Picture> picturePage = pictureService.page(new Page<>(current, size), queryWrapper);
         // 获取封装类
         return ResultUtils.success(pictureService.getPictureVOPage(picturePage, request));
     }

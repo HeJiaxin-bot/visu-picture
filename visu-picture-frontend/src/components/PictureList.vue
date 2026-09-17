@@ -24,6 +24,19 @@
             />
             <!-- AI 生成内容标识（常显，符合内容标识规范） -->
             <div v-if="cell.picture.isAiGenerated === 1" class="ai-badge">AI 生成</div>
+            <!-- 审核状态标识：自己上传但尚未过审的图片（他人看不到这些图片） -->
+            <div
+              v-if="
+                cell.picture.reviewStatus != null &&
+                cell.picture.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS
+              "
+              class="review-badge"
+              :class="{
+                'is-reject': cell.picture.reviewStatus === PIC_REVIEW_STATUS_ENUM.REJECT,
+              }"
+            >
+              {{ PIC_REVIEW_STATUS_MAP[cell.picture.reviewStatus] }}
+            </div>
             <!-- 悬浮信息层 -->
             <div class="item-overlay">
               <div class="overlay-top">
@@ -94,6 +107,7 @@ import { message } from 'ant-design-vue'
 import ShareModal from '@/components/ShareModal.vue'
 import PictureDetailModal from '@/components/PictureDetailModal.vue'
 import { useLikeStore } from '@/stores/useLikeStore.ts'
+import { PIC_REVIEW_STATUS_ENUM, PIC_REVIEW_STATUS_MAP } from '@/constants/picture.ts'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 interface Props {
@@ -503,6 +517,26 @@ html.dark .pic-name {
   background: rgba(111, 66, 193, 0.75);
   backdrop-filter: blur(2px);
   pointer-events: none;
+}
+
+/* 审核状态标识：左上角常显 */
+.review-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(250, 173, 20, 0.9);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.review-badge.is-reject {
+  background: rgba(255, 77, 79, 0.9);
 }
 
 /* 悬浮信息层：默认隐藏，hover 渐显 */

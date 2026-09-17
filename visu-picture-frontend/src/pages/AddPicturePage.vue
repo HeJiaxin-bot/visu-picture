@@ -263,24 +263,25 @@ const handleSubmit = async (values: any) => {
   if (res.data.code === 0 && res.data.data) {
     // 已提交成功，无需再清理
     uploadedPictureId.value = undefined
-    if (spaceId.value) {
-      // 上传到空间（私人/团队空间）：直接返回对应空间详情页
-      message.success('创建成功')
-      router.push(`/space/${spaceId.value}`)
-      return
-    }
     const isAdmin = useLoginUserStore().loginUser.userRole === 'admin'
     if (isAdmin) {
       // 管理员上传直接过审
       message.success('创建成功')
     } else {
-      // 普通用户上传进入待审核状态
+      // 普通用户上传（公共图库 / 空间）都进入待审核状态
       Modal.success({
         title: '上传完成',
-        content: '待管理员审核通过后在首页展示',
+        content: spaceId.value
+          ? '待管理员审核通过后在空间展示'
+          : '待管理员审核通过后在首页展示',
         centered: true,
         okText: '知道了',
       })
+    }
+    if (spaceId.value) {
+      // 上传到空间（私人/团队空间）：返回对应空间详情页
+      router.push(`/space/${spaceId.value}`)
+      return
     }
     // 跳转到公共图库首页
     router.push('/')

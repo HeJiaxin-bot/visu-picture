@@ -259,9 +259,9 @@ const searchParams = reactive<API.PictureQueryRequest>({
 const fetchData = async () => {
   loading.value = true
   try {
+    // 不限制 nullSpaceId：公共图库与空间的图片都需要管理员审核
     const res = await listPictureByPageUsingPost({
       ...searchParams,
-      nullSpaceId: true,
     })
     if (res.data.code === 0 && res.data.data) {
       dataList.value = res.data.data.records ?? []

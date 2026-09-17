@@ -707,9 +707,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间访问权限");
         }
         // 3. 查询该空间下的所有图片（必须要有主色调）
+        // 空间图片同样需要审核：非管理员只能看到审核通过的图片，以及自己上传的图片
         List<Picture> pictureList = this.lambdaQuery()
                 .eq(Picture::getSpaceId, spaceId)
                 .isNotNull(Picture::getPicColor)
+                .and(!userService.isAdmin(loginUser), wrapper -> wrapper
+                        .eq(Picture::getReviewStatus, PictureReviewStatusEnum.PASS.getValue())
+                        .or()
+                        .eq(Picture::getUserId, loginUser.getId()))
                 .list();
         // 如果没有图片，直接返回空列表
         if (CollUtil.isEmpty(pictureList)) {

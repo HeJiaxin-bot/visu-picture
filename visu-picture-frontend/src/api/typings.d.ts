@@ -486,6 +486,7 @@ declare namespace API {
     picScale?: number
     picSize?: number
     picWidth?: number
+    reviewStatus?: number
     spaceId?: number
     tags?: string[]
     thumbnailUrl?: string
