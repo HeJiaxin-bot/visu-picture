@@ -606,7 +606,7 @@ watch(
 #spaceDetailPage {
   display: flex;
   align-items: flex-start;
-  gap: 24px;
+  gap: 16px;
   margin: 0 auto 16px;
   max-width: 1360px;
   padding: 8px 32px 0;
@@ -624,21 +624,19 @@ watch(
   }
 }
 
-/* ---------- 左侧空间栏 ---------- */
+/* ---------- 左侧空间栏（通栏融合样式，无卡片底） ---------- */
 .space-sidebar {
   flex-shrink: 0;
   width: 248px;
   position: sticky;
   top: 84px;
+  height: calc(100vh - 104px);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-height: calc(100vh - 104px);
   overflow-y: auto;
-  padding: 14px 12px;
-  border-radius: 16px;
-  background: var(--bg-card);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 10px 10px 12px 4px;
+  background: transparent;
 }
 
 .create-space-btn {
@@ -758,11 +756,10 @@ watch(
   padding: 6px 0;
 }
 
-/* 容量条 */
+/* 容量条（贴合图二：底部纯文本 + 细进度线） */
 .storage-bar {
   margin-top: auto;
   padding: 10px 10px 4px;
-  border-top: 1px solid var(--border-color);
 }
 
 .storage-text {
@@ -1223,11 +1220,6 @@ watch(
 }
 
 /* ---------- 深色模式 ---------- */
-html.dark .space-sidebar {
-  background: #2d2d2d;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-}
-
 html.dark .sidebar-label,
 html.dark .space-count,
 html.dark .storage-text {
@@ -1299,10 +1291,6 @@ html.dark .list-end-text {
   color: rgba(240, 240, 240, 0.35);
 }
 
-html.dark .storage-bar {
-  border-top-color: rgba(240, 240, 240, 0.08);
-}
-
 /* ---------- 响应式：窄屏侧栏转横向滚动条 ---------- */
 @media (max-width: 900px) {
   #spaceDetailPage {
@@ -1312,7 +1300,7 @@ html.dark .storage-bar {
   .space-sidebar {
     position: static;
     width: 100%;
-    max-height: none;
+    height: auto;
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
@@ -1342,7 +1330,6 @@ html.dark .storage-bar {
 
   .storage-bar {
     margin-top: 0;
-    border-top: none;
     padding: 0 8px;
     min-width: 160px;
     flex-shrink: 0;
