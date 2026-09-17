@@ -40,6 +40,15 @@
               allow-clear
             />
           </a-form-item>
+          <a-form-item label="空间类型">
+            <a-select
+              v-model:value="sourceType"
+              style="min-width: 140px"
+              placeholder="全部"
+              :options="SOURCE_TYPE_OPTIONS"
+              allow-clear
+            />
+          </a-form-item>
           <a-form-item name="reviewStatus" label="审核状态">
             <a-select
               v-model:value="searchParams.reviewStatus"
@@ -65,7 +74,7 @@
         :data-source="dataList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1697 }"
+        :scroll="{ x: 1847 }"
         @change="doTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -108,6 +117,11 @@
           <!-- 用户 id -->
           <template v-else-if="column.key === 'userId'">
             <span class="mono-text">{{ record.userId ?? '—' }}</span>
+          </template>
+          <!-- 来源：公共图库 / 空间 -->
+          <template v-else-if="column.key === 'source'">
+            <span v-if="record.spaceId" class="meta-chip">空间 {{ record.spaceId }}</span>
+            <span v-else class="soft-chip">公共图库</span>
           </template>
           <!-- 审核信息 -->
           <template v-else-if="column.key === 'reviewMessage'">
@@ -237,6 +251,7 @@ const columns = [
   { title: '标签', key: 'tags', width: 175 },
   { title: '图片信息', key: 'picInfo', width: 185 },
   { title: '用户 ID', key: 'userId', width: 185 },
+  { title: '来源', key: 'source', width: 150 },
   { title: '审核信息', key: 'reviewMessage', width: 200 },
   { title: '时间', key: 'time', width: 140 },
   { title: '操作', key: 'action', width: 340, fixed: 'right' },
@@ -255,13 +270,22 @@ const searchParams = reactive<API.PictureQueryRequest>({
   sortOrder: 'descend',
 })
 
+// 空间类型筛选：0-公共图库，1-空间，不选为全部
+const SOURCE_TYPE_OPTIONS = [
+  { label: '公共图库', value: 0 },
+  { label: '空间', value: 1 },
+]
+const sourceType = ref<number>()
+
 // 获取数据
 const fetchData = async () => {
   loading.value = true
   try {
-    // 不限制 nullSpaceId：公共图库与空间的图片都需要管理员审核
+    // 公共图库与空间的图片都需要管理员审核，按所选空间类型切换过滤条件
     const res = await listPictureByPageUsingPost({
       ...searchParams,
+      nullSpaceId: sourceType.value === 0,
+      notNullSpaceId: sourceType.value === 1,
     })
     if (res.data.code === 0 && res.data.data) {
       dataList.value = res.data.data.records ?? []

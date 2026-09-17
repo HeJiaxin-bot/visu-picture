@@ -404,6 +404,7 @@ declare namespace API {
     id?: number
     introduction?: string
     name?: string
+    notNullSpaceId?: boolean
     nullSpaceId?: boolean
     pageSize?: number
     picFormat?: string

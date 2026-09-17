@@ -101,9 +101,14 @@ public class PictureQueryRequest extends PageRequest implements Serializable {
     private Long spaceId;
 
     /**
-     * 是否只查询 spaceId 为 null 的数据
+     * 是否只查询 spaceId 为 null 的数据（公共图库）
      */
     private boolean nullSpaceId;
+
+    /**
+     * 是否只查询 spaceId 不为 null 的数据（空间）
+     */
+    private boolean notNullSpaceId;
 
     /*
      * 开始编辑时间
