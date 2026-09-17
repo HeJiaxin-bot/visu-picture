@@ -73,15 +73,17 @@ public class CosManager {
         compressRule.setBucket(cosClientConfig.getBucket());
         compressRule.setRule("imageMogr2/format/webp");
         rules.add(compressRule);
-        // 2. 缩略图处理，仅对 > 20 KB 的图片生成缩略图
+        // 2. 缩略图处理，仅对 > 2 KB 的图片生成缩略图
         if (file.length() > 2 * 1024) {
             PicOperations.Rule thumbnailRule = new PicOperations.Rule();
-            // 拼接缩略图的路径
-            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
+            // 拼接缩略图的路径；固定用 webp 后缀——URL 抓取的源文件常无后缀，沿用原后缀会生成以点结尾的无效 key，
+            // 导致缩略图生成失败并回退成压缩图（webp 原尺寸大图）
+            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail.webp";
             thumbnailRule.setFileId(thumbnailKey);
             thumbnailRule.setBucket(cosClientConfig.getBucket());
-            // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
-            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>", 256, 256));
+            // 缩放规则：/thumbnail/<Width>x<Height>>（大于原图宽高则不处理）+ /format/webp 显式转 webp
+            // （数据万象输出格式由规则决定、不跟文件名后缀走，不加 format 会内容是 jpg 而后缀是 webp）
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>/format/webp", 400, 400));
             rules.add(thumbnailRule);
         }
         // 构造处理参数
