@@ -20,6 +20,7 @@ import com.visupicture.model.entity.SpaceUser;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.SpaceLevelEnum;
 import com.visupicture.model.vo.SpaceVO;
+import com.visupicture.service.PictureService;
 import com.visupicture.service.SpaceService;
 import com.visupicture.service.SpaceUserService;
 import com.visupicture.service.UserService;
@@ -58,6 +59,9 @@ public class SpaceController {
     @Resource
     private SpaceUserAuthManager spaceUserAuthManager;
 
+    @Resource
+    private PictureService pictureService;
+
     @PostMapping("/add")
     public BaseResponse<Long> addSpace(@RequestBody SpaceAddRequest spaceAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(spaceAddRequest == null, ErrorCode.PARAMS_ERROR);
@@ -86,6 +90,10 @@ public class SpaceController {
         spaceUserService.lambdaUpdate()
                 .eq(SpaceUser::getSpaceId, id)
                 .remove();
+        // 清理空间下的图片（数据库记录 + 对象存储文件），避免留下查不到的孤儿数据与孤儿文件
+        pictureService.deletePicturesBySpaceId(id);
+        // 清理空间封面文件
+        spaceService.clearSpaceCoverFile(oldSpace.getCoverPicture());
         return ResultUtils.success(true);
     }
 

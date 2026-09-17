@@ -48,7 +48,6 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -589,11 +588,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
-    @Async
     @Override
     public void clearPictureFile(Picture oldPicture) {
         // 判断改图片是否被多条记录使用
         String pictureUrl = oldPicture.getUrl();
+        if (StrUtil.isBlank(pictureUrl)) {
+            return;
+        }
         long count = this.lambdaQuery()
                 .eq(Picture::getUrl, pictureUrl)
                 .count();
@@ -601,13 +602,22 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (count > 1) {
             return;
         }
-        // 删除图片
-        cosManager.deleteObject(pictureUrl);
-        // 删除缩略图
-        String thumbnailUrl = oldPicture.getThumbnailUrl();
-        if (StrUtil.isNotBlank(thumbnailUrl)) {
-            cosManager.deleteObject(thumbnailUrl);
+        // 异步清理对象存储中的图片文件与缩略图文件（含原图等变体文件）
+        cosManager.deletePictureFilesByUrl(pictureUrl);
+        cosManager.deletePictureFilesByUrl(oldPicture.getThumbnailUrl());
+    }
+
+    @Override
+    public void deletePicturesBySpaceId(long spaceId) {
+        List<Picture> pictureList = this.lambdaQuery()
+                .eq(Picture::getSpaceId, spaceId)
+                .list();
+        if (CollUtil.isEmpty(pictureList)) {
+            return;
         }
+        // 先删除数据库记录，再清理对象存储文件（文件清理为异步、失败不影响记录删除）
+        this.removeByIds(pictureList.stream().map(Picture::getId).collect(Collectors.toList()));
+        pictureList.forEach(this::clearPictureFile);
     }
 
     @Override

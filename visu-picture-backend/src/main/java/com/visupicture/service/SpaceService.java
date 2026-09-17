@@ -86,6 +86,13 @@ public interface SpaceService extends IService<Space> {
     void checkSpaceLevelPermission(Integer spaceLevel, User loginUser);
 
     /**
+     * 清理空间封面文件（删除空间时调用，避免遗留 COS 孤儿文件）
+     *
+     * @param coverUrl 封面访问地址
+     */
+    void clearSpaceCoverFile(String coverUrl);
+
+    /**
      * 上传空间封面（仅空间创建者或管理员可用）
      *
      * @param spaceId   空间 id

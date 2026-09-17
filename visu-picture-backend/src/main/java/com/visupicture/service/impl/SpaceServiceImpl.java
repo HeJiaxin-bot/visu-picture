@@ -331,6 +331,14 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     }
 
     /**
+     * 清理空间封面文件（删除空间时调用，避免遗留 COS 孤儿文件）
+     */
+    @Override
+    public void clearSpaceCoverFile(String coverUrl) {
+        this.deleteOldCover(coverUrl);
+    }
+
+    /**
      * 清理旧封面文件，避免 COS 孤儿文件
      */
     private void deleteOldCover(String oldCoverUrl) {

@@ -2,6 +2,7 @@ package com.visupicture.manager;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.model.COSObject;
 import com.qcloud.cos.model.DeleteObjectsRequest;
@@ -12,6 +13,8 @@ import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.PicOperations;
 import com.visupicture.config.CosClientConfig;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -20,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class CosManager {
 
@@ -99,6 +103,38 @@ public class CosManager {
      */
     public void deleteObject(String key) {
         cosClient.deleteObject(cosClientConfig.getBucket(), key);
+    }
+
+    /**
+     * 按图片访问地址清理对象存储中的文件（异步执行）
+     * 数据库中只保存了压缩图与缩略图的访问地址，原图等变体文件与它们共用主文件名，
+     * 因此统一按「主文件名前缀」清理，一次带走同一次上传产生的全部文件
+     *
+     * @param url 图片访问地址（含域名），为空或不是本存储域名时忽略
+     */
+    @Async
+    public void deletePictureFilesByUrl(String url) {
+        if (StrUtil.isBlank(url)) {
+            return;
+        }
+        String host = cosClientConfig.getHost();
+        if (!url.startsWith(host)) {
+            return;
+        }
+        try {
+            // 去掉域名与前导斜杠，得到对象键
+            String key = StrUtil.removePrefix(url.substring(host.length()), "/");
+            String mainName = FileUtil.mainName(key);
+            // 仅在能取到「目录 + 主文件名」且带后缀时按前缀清理，防止前缀过短误删其他文件
+            if (StrUtil.isBlank(FileUtil.extName(key)) || !StrUtil.contains(mainName, "/")) {
+                return;
+            }
+            // 兼容对象键带 / 不带前导斜杠两种写法
+            this.deleteObjectsByPrefix(mainName);
+            this.deleteObjectsByPrefix("/" + mainName);
+        } catch (Exception e) {
+            log.error("清理图片 COS 文件失败, url = {}", url, e);
+        }
     }
 
     /**
