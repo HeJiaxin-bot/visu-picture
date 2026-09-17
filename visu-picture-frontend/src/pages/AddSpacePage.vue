@@ -177,14 +177,10 @@ const loading = ref(false)
 
 const route = useRoute()
 const router = useRouter()
-// 空间类别，默认为私有空间
-const spaceType = computed(() => {
-  if (route.query?.type) {
-    return Number(route.query.type)
-  } else {
-    return SPACE_TYPE_ENUM.PRIVATE
-  }
-})
+// 空间类别，默认为私有空间；编辑模式下由接口数据回填
+const spaceType = ref<number>(
+  route.query?.type ? Number(route.query.type) : SPACE_TYPE_ENUM.PRIVATE,
+)
 
 // 是否为编辑模式
 const isEdit = computed(() => !!route.query?.id)
@@ -295,6 +291,11 @@ const handleSubmit = async (values: any) => {
   try {
     // 编辑模式直接用已有空间 id；创建模式在创建成功后拿到新 id
     let targetSpaceId: number | string | undefined = space.value?.id
+    // 编辑模式但没拿到空间数据时，禁止退回「创建」，否则会误建一个新空间
+    if (isEdit.value && !targetSpaceId) {
+      message.error('未获取到空间信息，无法保存，请返回列表重试')
+      return
+    }
     let res
     if (targetSpaceId) {
       // 更新
@@ -342,21 +343,31 @@ const handleSubmit = async (values: any) => {
 
 // 获取老数据
 const getOldSpace = async () => {
-  // 获取到 id
-  const id = route.query?.id
-  if (id) {
-    const res = await getSpaceVoByIdUsingGet({
-      id: Number(id),
-    })
+  // 获取到 id（雪花 id 超出 JS 安全整数范围，必须按字符串原样传给后端，不能 Number 转换）
+  const id = route.query?.id as string | undefined
+  if (!id) return
+  loading.value = true
+  try {
+    const res = await getSpaceVoByIdUsingGet({ id } as unknown as API.getSpaceVOByIdUsingGETParams)
     if (res.data.code === 0 && res.data.data) {
       const data = res.data.data
       space.value = data
       // 填充表单
       spaceForm.spaceName = data.spaceName
       spaceForm.spaceLevel = data.spaceLevel
+      // 回填空间类型（团队空间在编辑时不应显示为私有空间）
+      if (data.spaceType != null) {
+        spaceType.value = data.spaceType
+      }
       // 展示已有封面（仅编辑模式）
       serverCoverUrl.value = data.coverPicture
+    } else {
+      message.error('获取空间信息失败：' + res.data.message)
     }
+  } catch (e: any) {
+    message.error('获取空间信息失败：' + e.message)
+  } finally {
+    loading.value = false
   }
 }
 
