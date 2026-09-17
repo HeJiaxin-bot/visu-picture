@@ -15,9 +15,10 @@
         />
       </div>
     </div>
-    <!-- 分类筛选 -->
+    <!-- 分类筛选：推荐（默认）/最新 + 业务分类 -->
     <a-tabs v-model:active-key="selectedCategory" class="category-tabs" @change="doSearch">
-      <a-tab-pane key="all" tab="全部" />
+      <a-tab-pane key="all" tab="推荐" />
+      <a-tab-pane key="latest" tab="最新" />
       <a-tab-pane v-for="category in categoryList" :tab="category" :key="category" />
     </a-tabs>
     <!-- 图片列表（滚动加载） -->
@@ -44,7 +45,7 @@ const dataList = ref<API.PictureVO[]>([])
 const total = ref(0)
 const loading = ref(true)
 
-// 搜索条件（首页按点赞数从高到低展示）
+// 搜索条件（排序由选中 tab 决定：推荐=点赞降序，最新=时间降序）
 const searchParams = reactive<API.PictureQueryRequest>({
   current: 1,
   pageSize: 12,
@@ -58,12 +59,19 @@ const finished = computed(() => !loading.value && dataList.value.length >= total
 // 获取数据（滚动加载模式：第 1 页替换列表，之后追加）
 const fetchData = async () => {
   loading.value = true
-  // 转换搜索参数
+  // 转换搜索参数：推荐=点赞降序；最新=创建时间降序
   const params = {
     ...searchParams,
   }
-  if (selectedCategory.value !== 'all') {
-    params.category = selectedCategory.value
+  if (selectedCategory.value === 'latest') {
+    params.sortField = 'createTime'
+    params.sortOrder = 'descend'
+  } else {
+    params.sortField = 'likeCount'
+    params.sortOrder = 'descend'
+    if (selectedCategory.value !== 'all') {
+      params.category = selectedCategory.value
+    }
   }
   try {
     const res = await listPictureVoByPageUsingPost(params)
