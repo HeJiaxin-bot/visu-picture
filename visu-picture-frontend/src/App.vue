@@ -14,7 +14,7 @@ import { useThemeStore } from '@/stores/useThemeStore.ts'
 
 const themeStore = useThemeStore()
 
-// 全局主题：参考悦目图库风格（亮蓝主色 + 暗色默认）；深色模式使用 antd darkAlgorithm
+// 全局主题：悦目暗黑默认 + 浅色四季背景渐变；主色固定悦目蓝（不随季节变化）
 const themeConfig = computed(() => ({
   algorithm: themeStore.isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
   token: {

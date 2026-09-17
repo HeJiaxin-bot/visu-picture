@@ -1,6 +1,9 @@
 <template>
   <div id="basicLayout">
-    <a-layout style="min-height: 100vh">
+    <!-- 四季氛围粒子层（纯装饰，跟随季节切换：花瓣/光斑/落叶/雪花） -->
+    <SeasonEffects />
+    <!-- z-index:1 让页面内容整体压在粒子层之上，特效只在背景空隙可见 -->
+    <a-layout style="min-height: 100vh; position: relative; z-index: 1">
       <a-layout-header class="header" :class="{ 'header-hidden': headerHidden }">
         <GlobalHeader />
       </a-layout-header>
@@ -39,6 +42,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import GlobalHeader from '@/components/GlobalHeader.vue'
+import SeasonEffects from '@/components/SeasonEffects.vue'
 import { useThemeStore } from '@/stores/useThemeStore.ts'
 
 const themeStore = useThemeStore()

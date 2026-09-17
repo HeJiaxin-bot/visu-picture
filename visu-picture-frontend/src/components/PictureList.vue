@@ -371,15 +371,22 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   margin-bottom: 0;
 }
 
-/* 悦目卡片：12px 圆角、无边框、暗阴影，hover scale(1.05) + 阴影加深 */
+/* 悦目风格：图片独立圆角卡片 + 信息条无框；hover 图片微放大 + 阴影加深 */
 .justified-item {
   position: relative;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+  /* 无卡片容器：图片独立成圆角卡片，下方信息直接排在页面背景上，去边框感 */
+}
+
+/* 图片区：独立圆角 + 阴影，hover 时仅图片微放大加深阴影 */
+.img-wrapper {
+  position: relative;
+  flex-shrink: 0;
   border-radius: var(--card-radius);
   overflow: hidden;
-  cursor: pointer;
   background: var(--bg-card);
   box-shadow: var(--card-shadow);
   transition:
@@ -387,15 +394,13 @@ const doShare = (picture: API.PictureVO, e: Event) => {
     box-shadow 0.3s ease;
 }
 
-.justified-item:hover {
-  transform: scale(1.05);
-  box-shadow: var(--card-shadow-hover);
+.justified-item:hover .img-wrapper {
+  transform: scale(1.03);
+  /* 季节色调深阴影 + 1px 季节色微光环（内环不改变图片尺寸） */
+  box-shadow:
+    var(--card-shadow-hover),
+    0 0 0 1px var(--glow-ring);
   z-index: 2;
-}
-
-.img-wrapper {
-  position: relative;
-  flex-shrink: 0;
 }
 
 .justified-item img {

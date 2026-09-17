@@ -144,11 +144,37 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* Hero 区域：无卡片容器，标题/搜索直接融入页面浅蓝渐变背景 */
+/* Hero 区域：无卡片容器，标题/搜索直接融入季节渐变背景；光晕随季节变色 */
 #homePage .hero {
+  position: relative;
   text-align: center;
   padding: 48px 32px 40px;
   margin-bottom: 8px;
+}
+
+/* 季节光晕：radial 渐变自然淡出，无边界感（不用 overflow 裁剪避免生硬切边） */
+#homePage .hero::before,
+#homePage .hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+#homePage .hero::before {
+  top: -60px;
+  right: 6%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--glow-a) 0%, transparent 70%);
+}
+
+#homePage .hero::after {
+  bottom: -80px;
+  left: 4%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, var(--glow-b) 0%, transparent 70%);
 }
 
 #homePage .hero-title {

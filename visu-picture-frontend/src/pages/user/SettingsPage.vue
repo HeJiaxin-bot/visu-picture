@@ -54,6 +54,41 @@
               aria-label="深色模式开关"
             />
           </div>
+
+          <!-- 四季主题：点击展开选择（默认跟随当前季节） -->
+          <div
+            class="settings-item"
+            role="button"
+            tabindex="0"
+            :aria-expanded="seasonExpanded"
+            @click="seasonExpanded = !seasonExpanded"
+            @keydown.enter="seasonExpanded = !seasonExpanded"
+          >
+            <BgColorsOutlined class="item-icon" style="background: #e6fffb; color: #13a8a8" />
+            <div class="item-body">
+              <div class="item-title">主题风格</div>
+              <div class="item-desc">当前：{{ seasonLabel }}</div>
+            </div>
+            <CaretRightOutlined class="item-arrow" :class="{ expanded: seasonExpanded }" />
+          </div>
+          <div v-if="seasonExpanded" class="season-grid-wrap">
+            <div class="season-grid">
+              <div
+                v-for="opt in seasonOptions"
+                :key="opt.value"
+                class="season-option"
+                role="radio"
+                :aria-checked="themeStore.season === opt.value"
+                :class="{ active: themeStore.season === opt.value }"
+                @click="themeStore.setSeason(opt.value)"
+              >
+                <div class="season-preview" :style="{ background: opt.gradient }">
+                  <CheckOutlined v-if="themeStore.season === opt.value" class="season-check" />
+                </div>
+                <div class="season-name">{{ opt.label }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -82,24 +117,61 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
   ArrowLeftOutlined,
+  BgColorsOutlined,
   BulbOutlined,
   CaretRightOutlined,
+  CheckOutlined,
   LockOutlined,
   LogoutOutlined,
   RightOutlined,
 } from '@ant-design/icons-vue'
 import { changePasswordUsingPost, userLogoutUsingPost } from '@/api/userController.ts'
-import { useThemeStore } from '@/stores/useThemeStore'
+import { useThemeStore, type SeasonPreference } from '@/stores/useThemeStore'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
 
 const router = useRouter()
 const themeStore = useThemeStore()
 const loginUserStore = useLoginUserStore()
+
+// ----- 四季主题选择 -----
+const seasonExpanded = ref(false)
+
+const seasonOptions: { value: SeasonPreference; label: string; gradient: string }[] = [
+  {
+    value: 'auto',
+    label: '跟随季节',
+    gradient: 'linear-gradient(135deg, #fdeef5 0%, #e9f1fc 34%, #fdf3e6 67%, #e9f1f7 100%)',
+  },
+  {
+    value: 'spring',
+    label: '春 · 樱粉',
+    gradient: 'linear-gradient(135deg, #fdeef5 0%, #f9d5e5 100%)',
+  },
+  {
+    value: 'summer',
+    label: '夏 · 浅蓝',
+    gradient: 'linear-gradient(135deg, #e9f1fc 0%, #c9e2f9 100%)',
+  },
+  {
+    value: 'autumn',
+    label: '秋 · 金橙',
+    gradient: 'linear-gradient(135deg, #fdf3e6 0%, #f5d9ae 100%)',
+  },
+  {
+    value: 'winter',
+    label: '冬 · 冰青',
+    gradient: 'linear-gradient(135deg, #e9f1f7 0%, #c7e6e4 100%)',
+  },
+]
+
+const seasonLabel = computed(
+  () => seasonOptions.find((opt) => opt.value === themeStore.season)?.label ?? '跟随季节',
+)
 
 // ----- 修改密码（点击行展开表单） -----
 const pwdExpanded = ref(false)
@@ -302,10 +374,82 @@ html.dark .pwd-form-wrap {
   background: rgba(64, 169, 255, 0.05);
 }
 
+/* 四季主题选择区 */
+.season-grid-wrap {
+  padding: 14px 18px 18px 72px;
+  border-top: 1px dashed var(--border-color);
+}
+
+html.dark .season-grid-wrap {
+  border-top-color: var(--border-color);
+}
+
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.season-option {
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+}
+
+.season-preview {
+  position: relative;
+  height: 52px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.season-option:hover .season-preview {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.season-option.active .season-preview {
+  border-color: var(--link);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.season-check {
+  color: #fff;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  padding: 4px;
+}
+
+.season-name {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.season-option.active .season-name {
+  color: var(--link);
+  font-weight: 600;
+}
+
 /* 移动端：表单缩进收窄 */
 @media (max-width: 640px) {
-  .pwd-form-wrap {
+  .pwd-form-wrap,
+  .season-grid-wrap {
     padding-left: 18px;
+  }
+
+  .season-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 </style>

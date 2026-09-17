@@ -116,6 +116,13 @@
                     <FolderOutlined class="item-icon" />
                     <span>我的空间</span>
                   </div>
+                  <div
+                    class="team-panel-item user-panel-item"
+                    @click="router.push('/user/settings')"
+                  >
+                    <SettingOutlined class="item-icon" />
+                    <span>设置</span>
+                  </div>
                   <div class="team-panel-item user-panel-item" @click="router.push('/user/invite')">
                     <GiftOutlined class="item-icon" />
                     <span>邀请好友</span>
@@ -614,11 +621,11 @@ html.dark #globalHeader .points-badge:hover {
 </style>
 
 <style>
-/* 团队下拉面板：渲染在 body 下，需全局样式（浅色主题面板） */
+/* 团队下拉面板：渲染在 body 下，需全局样式（浅色主题面板，随季节染色） */
 .team-panel {
   min-width: 216px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--bg-elevated);
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);

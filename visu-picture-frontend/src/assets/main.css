@@ -1,6 +1,6 @@
 /* ===== 全局风格（悦目图库风格：暗色默认 #1a1a1a 底 + #2d2d2d 卡片 + 亮蓝 #40a9ff 强调）===== */
 
-/* 设计令牌：浅色（页面底色贴近首页 Hero 浅蓝渐变） */
+/* 设计令牌：浅色（默认 = 夏季；四季仅覆盖背景渐变与阴影色调，按钮/文字主色保持悦目蓝不变） */
 :root {
   --bg-body: #eef3fa;
   --bg-nav: #ffffff;
@@ -14,9 +14,79 @@
   --text-disabled: rgba(0, 0, 0, 0.35);
   --accent: #40a9ff;
   --link: #1677ff;
+  --accent-soft: rgba(22, 119, 255, 0.22);
+  --body-gradient: linear-gradient(180deg, #e9f1fc 0%, #f6f9fd 40%, #eef3fa 100%);
+  --glow-a: rgba(64, 169, 255, 0.16);
+  --glow-b: rgba(22, 119, 255, 0.1);
+  --glow-ring: rgba(64, 169, 255, 0.25);
   --card-radius: 12px;
   --card-shadow: 0 4px 20px rgba(30, 70, 140, 0.06);
   --card-shadow-hover: 0 8px 28px rgba(30, 70, 140, 0.12);
+}
+
+/* ===== 四季背景（页面渐变 / 面板染色 / 阴影与光晕色调；按钮与文字主色不随季节变） ===== */
+
+/* 春 · 樱粉 */
+html.season-spring:not(.dark) {
+  --bg-body: #fdf2f7;
+  --bg-nav: #fff7fa;
+  --bg-card: #fffafc;
+  --bg-elevated: #fffafc;
+  --body-gradient: linear-gradient(180deg, #fdeef5 0%, #fff8fb 40%, #fdf2f7 100%);
+  --glow-a: rgba(247, 89, 171, 0.14);
+  --glow-b: rgba(235, 47, 150, 0.09);
+  --glow-ring: rgba(247, 89, 171, 0.22);
+  --card-shadow: 0 4px 20px rgba(160, 50, 110, 0.06);
+  --card-shadow-hover: 0 8px 28px rgba(160, 50, 110, 0.12);
+}
+
+/* 夏 · 浅蓝（默认，显式声明便于切回） */
+html.season-summer:not(.dark) {
+  --bg-body: #eef3fa;
+  --bg-nav: #ffffff;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --body-gradient: linear-gradient(180deg, #e9f1fc 0%, #f6f9fd 40%, #eef3fa 100%);
+  --glow-a: rgba(64, 169, 255, 0.16);
+  --glow-b: rgba(22, 119, 255, 0.1);
+  --glow-ring: rgba(64, 169, 255, 0.25);
+  --card-shadow: 0 4px 20px rgba(30, 70, 140, 0.06);
+  --card-shadow-hover: 0 8px 28px rgba(30, 70, 140, 0.12);
+}
+
+/* 秋 · 金橙 */
+html.season-autumn:not(.dark) {
+  --bg-body: #fbf1e3;
+  --bg-nav: #fffaf1;
+  --bg-card: #fffcf5;
+  --bg-elevated: #fffcf5;
+  --body-gradient: linear-gradient(180deg, #fdf3e6 0%, #fffbf4 40%, #fbf1e3 100%);
+  --glow-a: rgba(250, 140, 22, 0.14);
+  --glow-b: rgba(212, 107, 8, 0.09);
+  --glow-ring: rgba(250, 140, 22, 0.24);
+  --card-shadow: 0 4px 20px rgba(160, 90, 20, 0.06);
+  --card-shadow-hover: 0 8px 28px rgba(160, 90, 20, 0.12);
+}
+
+/* 冬 · 冰青 */
+html.season-winter:not(.dark) {
+  --bg-body: #eef3f8;
+  --bg-nav: #f7fafc;
+  --bg-card: #fafcfe;
+  --bg-elevated: #fafcfe;
+  --body-gradient: linear-gradient(180deg, #e9f1f7 0%, #fafcfe 40%, #eef3f8 100%);
+  --glow-a: rgba(54, 207, 201, 0.13);
+  --glow-b: rgba(8, 151, 156, 0.09);
+  --glow-ring: rgba(54, 207, 201, 0.22);
+  --card-shadow: 0 4px 20px rgba(30, 90, 110, 0.06);
+  --card-shadow-hover: 0 8px 28px rgba(30, 90, 110, 0.12);
+}
+
+/* 深色模式：面板与光晕回归悦目暗黑体系（微弱季节光晕保留氛围） */
+html.dark {
+  --glow-a: rgba(64, 169, 255, 0.07);
+  --glow-b: rgba(22, 119, 255, 0.05);
+  --glow-ring: rgba(64, 169, 255, 0.2);
 }
 
 /* 暗色（默认主题）：悦目图库配色 */
@@ -45,9 +115,9 @@ body {
 
 body {
   color: var(--text-secondary);
-  /* 浅色：贴近首页 Hero 的浅蓝白渐变（fixed 让滚动时背景稳定） */
+  /* 浅色：随季节变化的页面渐变（fixed 让滚动时背景稳定） */
   background-color: var(--bg-body);
-  background-image: linear-gradient(180deg, #e9f1fc 0%, #f6f9fd 40%, #eef3fa 100%);
+  background-image: var(--body-gradient);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
@@ -96,7 +166,7 @@ a {
 
 /* ===== 按钮 ===== */
 .ant-btn-primary:not(:disabled):hover {
-  box-shadow: 0 6px 16px rgba(64, 169, 255, 0.32);
+  box-shadow: 0 6px 16px var(--accent-soft);
 }
 
 /* ===== 弹窗 / 气泡 ===== */
@@ -132,7 +202,7 @@ a {
 
 /* ===== 文本选中色 ===== */
 ::selection {
-  background: rgba(64, 169, 255, 0.28);
+  background: var(--accent-soft);
 }
 
 /* ===== 主题切换渐变：仅切换瞬间挂 theme-transitioning 类时生效 ===== */
@@ -231,7 +301,7 @@ html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable {
 
 html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable:hover {
   color: var(--accent);
-  border-color: rgba(64, 169, 255, 0.6);
+  border-color: var(--accent-soft);
 }
 
 html.dark #homePage .tag-label {
