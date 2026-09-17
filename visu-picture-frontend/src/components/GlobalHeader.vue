@@ -369,7 +369,7 @@ const doLogout = async () => {
   height: 40px;
   display: flex;
   align-items: center;
-  color: #26283a;
+  color: var(--text-primary-light);
   font-size: 15px;
   white-space: nowrap;
   border-radius: 8px;
@@ -378,7 +378,7 @@ const doLogout = async () => {
 
 #globalHeader .nav-link:hover,
 #globalHeader .nav-link.router-link-exact-active {
-  color: #1890ff;
+  color: var(--accent);
 }
 
 /* 移动端汉堡按钮：桌面隐藏 */
@@ -389,7 +389,7 @@ const doLogout = async () => {
   width: 40px;
   height: 40px;
   font-size: 18px;
-  color: #26283a;
+  color: var(--text-primary-light);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -398,8 +398,8 @@ const doLogout = async () => {
 }
 
 #globalHeader .mobile-menu-btn:hover {
-  background: rgba(61, 90, 245, 0.08);
-  color: #3d5af5;
+  background: rgba(64, 169, 255, 0.12);
+  color: var(--accent);
 }
 
 /* 中屏：隐藏下拉类入口与积分徽章，仅保留首页/发布/用户 + 汉堡 */
@@ -429,7 +429,7 @@ const doLogout = async () => {
   }
 }
 
-/* 剩余积分徽章：药丸样式跟随主题（浅色：白底蓝光；深色：黑底紫光） */
+/* 剩余积分徽章：药丸样式跟随主题（亮蓝光晕） */
 #globalHeader .points-badge {
   display: flex;
   align-items: center;
@@ -437,12 +437,12 @@ const doLogout = async () => {
   height: 34px;
   padding: 0 14px;
   border-radius: 999px;
-  color: #3d5af5;
+  color: var(--accent);
   font-size: 14px;
   font-weight: 600;
-  background: #ffffff;
-  border: 1.5px solid rgba(61, 90, 245, 0.4);
-  box-shadow: 0 2px 10px rgba(61, 90, 245, 0.18);
+  background: var(--bg-card);
+  border: 1.5px solid rgba(64, 169, 255, 0.45);
+  box-shadow: 0 2px 10px rgba(64, 169, 255, 0.18);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -456,8 +456,8 @@ const doLogout = async () => {
 
 #globalHeader .points-badge:hover {
   transform: translateY(-2px) scale(1.05);
-  border-color: #3d5af5;
-  box-shadow: 0 4px 16px rgba(61, 90, 245, 0.35);
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(64, 169, 255, 0.35);
 }
 
 #globalHeader .points-badge:active {
@@ -472,20 +472,20 @@ const doLogout = async () => {
   line-height: 1;
 }
 
-/* 深色主题：黑底 + 紫色光晕描边 */
+/* 深色主题：暗底 + 亮蓝光晕描边 */
 html.dark #globalHeader .points-badge {
-  color: #e8eaf6;
-  background: rgba(16, 18, 32, 0.92);
-  border-color: rgba(124, 150, 255, 0.85);
-  box-shadow: 0 0 10px rgba(124, 150, 255, 0.35);
+  color: #40a9ff;
+  background: rgba(45, 45, 45, 0.92);
+  border-color: rgba(64, 169, 255, 0.6);
+  box-shadow: 0 0 10px rgba(64, 169, 255, 0.25);
 }
 
 html.dark #globalHeader .points-badge:hover {
-  border-color: #7c96ff;
-  box-shadow: 0 0 16px rgba(124, 150, 255, 0.6);
+  border-color: #40a9ff;
+  box-shadow: 0 0 16px rgba(64, 169, 255, 0.5);
 }
 
-/* 发布按钮（原"创建图片"入口）：蓝色药丸 + 悬停动效 */
+/* 发布按钮（原"创建图片"入口）：亮蓝药丸 + 悬停动效 */
 #globalHeader .publish-btn {
   display: flex;
   align-items: center;
@@ -496,8 +496,8 @@ html.dark #globalHeader .points-badge:hover {
   color: #fff;
   font-size: 15px;
   font-weight: 600;
-  background: linear-gradient(135deg, #4f6bff, #3d5af5);
-  box-shadow: 0 4px 14px rgba(61, 90, 245, 0.35);
+  background: linear-gradient(135deg, #40a9ff, #1677ff);
+  box-shadow: 0 4px 14px rgba(22, 119, 255, 0.35);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -508,7 +508,7 @@ html.dark #globalHeader .points-badge:hover {
 
 #globalHeader .publish-btn:hover {
   transform: translateY(-2px) scale(1.04);
-  box-shadow: 0 8px 22px rgba(61, 90, 245, 0.5);
+  box-shadow: 0 8px 22px rgba(22, 119, 255, 0.5);
 }
 
 #globalHeader .publish-btn:active {
@@ -532,7 +532,7 @@ html.dark #globalHeader .points-badge:hover {
   padding: 0 16px;
   height: 40px;
   cursor: pointer;
-  color: #26283a;
+  color: var(--text-primary-light);
   font-size: 15px;
   white-space: nowrap;
   border-radius: 8px;
@@ -540,7 +540,7 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 #globalHeader .team-trigger:hover {
-  color: #1890ff;
+  color: var(--accent);
 }
 
 .team-trigger-arrow {
@@ -587,12 +587,12 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 .title {
-  color: #171a2b;
+  color: var(--text-primary-light);
   font-size: 17px;
   font-weight: 700;
   margin-left: 12px;
   padding-left: 12px;
-  border-left: 1px solid #e4e8f2;
+  border-left: 1px solid var(--border-color);
   line-height: 26px;
   white-space: nowrap;
 }
@@ -609,7 +609,7 @@ html.dark #globalHeader .points-badge:hover {
 
 #globalHeader .user-info {
   cursor: pointer;
-  color: #26283a;
+  color: var(--text-primary-light);
 }
 </style>
 
@@ -620,8 +620,8 @@ html.dark #globalHeader .points-badge:hover {
   padding: 8px;
   background: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
-  border: 1px solid #e4e8f2;
-  box-shadow: 0 12px 32px rgba(37, 55, 120, 0.12);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(8px);
 }
 
@@ -633,11 +633,11 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 .team-panel .team-panel-item:hover {
-  background: #eef2ff;
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .team-panel .item-title {
-  color: #26283a;
+  color: #212121;
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
@@ -647,7 +647,7 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 .team-panel .item-desc {
-  color: rgba(35, 44, 86, 0.55);
+  color: rgba(107, 107, 107, 0.75);
   font-size: 12px;
   line-height: 18px;
   margin-top: 1px;
@@ -657,13 +657,13 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 .team-panel .team-panel-item:hover .item-desc {
-  color: #4f6bff;
+  color: var(--accent);
 }
 
 .team-panel .team-panel-divider {
   height: 1px;
   margin: 6px 8px;
-  background: #e4e8f2;
+  background: var(--border-color);
 }
 
 /* 头像用户面板：顶部用户名区 + 图标菜单项 */
@@ -683,19 +683,19 @@ html.dark #globalHeader .points-badge:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #26283a;
+  color: #212121;
   font-size: 14px;
   line-height: 22px;
 }
 
 .user-panel .item-icon {
   font-size: 15px;
-  color: rgba(35, 44, 86, 0.6);
+  color: rgba(107, 107, 107, 0.6);
   transition: color 0.15s ease;
 }
 
 .user-panel .team-panel-item:hover .item-icon {
-  color: #4f6bff;
+  color: var(--accent);
 }
 
 /* 移动端抽屉菜单（Drawer 渲染在 body 下，需全局样式） */
@@ -705,7 +705,7 @@ html.dark #globalHeader .points-badge:hover {
 
 .mobile-drawer .drawer-group-title {
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.45);
+  color: rgba(107, 107, 107, 0.55);
   letter-spacing: 1px;
   margin-bottom: 6px;
 }
@@ -716,48 +716,48 @@ html.dark #globalHeader .points-badge:hover {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  color: #26283a;
+  color: #212121;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .mobile-drawer .drawer-item:hover {
-  background: #eef2ff;
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .mobile-drawer .drawer-item--sub {
   padding-left: 28px;
   font-size: 13px;
-  color: rgba(35, 44, 86, 0.75);
+  color: rgba(107, 107, 107, 0.8);
 }
 
 .mobile-drawer .drawer-icon {
   font-size: 15px;
-  color: rgba(35, 44, 86, 0.55);
+  color: rgba(107, 107, 107, 0.6);
 }
 
 .mobile-drawer .drawer-item:hover .drawer-icon {
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 html.dark .mobile-drawer .drawer-group-title {
-  color: rgba(232, 234, 242, 0.45);
+  color: rgba(179, 179, 179, 0.5);
 }
 
 html.dark .mobile-drawer .drawer-item {
-  color: #e8eaf2;
+  color: #f0f0f0;
 }
 
 html.dark .mobile-drawer .drawer-item:hover {
-  background: rgba(79, 107, 255, 0.2);
+  background: rgba(64, 169, 255, 0.18);
 }
 
 html.dark .mobile-drawer .drawer-item--sub {
-  color: rgba(232, 234, 242, 0.75);
+  color: rgba(240, 240, 240, 0.7);
 }
 
 html.dark .mobile-drawer .drawer-icon {
-  color: rgba(232, 234, 242, 0.55);
+  color: rgba(179, 179, 179, 0.55);
 }
 </style>

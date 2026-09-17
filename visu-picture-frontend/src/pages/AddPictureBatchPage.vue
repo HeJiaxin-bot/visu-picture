@@ -209,10 +209,10 @@ const handleSubmit = async (values: any) => {
 }
 
 .page-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 6px 24px rgba(31, 45, 92, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 
 .page-header {
@@ -231,24 +231,24 @@ const handleSubmit = async (values: any) => {
   justify-content: center;
   font-size: 26px;
   color: #fff;
-  background: linear-gradient(135deg, #3d5af1 0%, #6a82f7 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #69c0ff 100%);
   flex-shrink: 0;
 }
 
 .header-text h2 {
   margin: 0 0 4px;
   font-size: 20px;
-  color: #232c56;
+  color: var(--text-primary-light);
 }
 
 .header-text p {
   margin: 0;
   font-size: 13px;
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
 }
 
 .input-icon {
-  color: rgba(35, 44, 86, 0.35);
+  color: var(--text-disabled);
 }
 
 .preset-tags {
@@ -262,25 +262,25 @@ const handleSubmit = async (values: any) => {
 .source-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
 }
 
 html.dark .source-tip {
-  color: rgba(232, 234, 242, 0.45);
+  color: rgba(240, 240, 240, 0.45);
 }
 
 .preset-tag {
   cursor: pointer;
   padding: 2px 12px;
   border-radius: 999px;
-  border: 1px solid #dfe5f5;
-  background: #f6f8ff;
-  color: #4f6bff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-body);
+  color: var(--accent);
   transition: all 0.2s;
 }
 
 .preset-tag:hover {
-  border-color: #4f6bff;
+  border-color: var(--accent);
   transform: translateY(-1px);
 }
 
@@ -296,33 +296,33 @@ html.dark .source-tip {
   gap: 16px;
   width: 100%;
   padding: 14px 18px;
-  border: 1px solid #e7ebf6;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: rgba(61, 90, 245, 0.04);
+  background: rgba(64, 169, 255, 0.04);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .ai-edit-row:hover {
-  border-color: rgba(61, 90, 245, 0.45);
+  border-color: rgba(64, 169, 255, 0.45);
 }
 
 .ai-edit-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #232c56;
+  color: var(--text-primary-light);
   font-size: 14px;
   font-weight: 500;
 }
 
 .ai-edit-icon {
-  color: #4f6bff;
+  color: var(--accent);
 }
 
 .ai-edit-desc {
   margin-top: 2px;
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -334,9 +334,9 @@ html.dark .source-tip {
 
 .progress-wrapper {
   padding: 14px 18px;
-  border: 1px solid #e7ebf6;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: rgba(61, 90, 245, 0.04);
+  background: rgba(64, 169, 255, 0.04);
 }
 
 .progress-text {
@@ -344,13 +344,13 @@ html.dark .source-tip {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  color: rgba(35, 44, 86, 0.7);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .progress-text b {
   margin-left: auto;
-  color: #4f6bff;
+  color: var(--accent);
 }
 
 /* 深色模式适配 */
@@ -359,43 +359,35 @@ html.dark .page-card {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
-html.dark .header-text h2 {
-  color: #e8eaf2;
-}
-
 html.dark .header-text p {
-  color: rgba(232, 234, 242, 0.55);
+  color: rgba(240, 240, 240, 0.55);
 }
 
 html.dark .input-icon {
-  color: rgba(232, 234, 242, 0.35);
+  color: rgba(240, 240, 240, 0.35);
 }
 
 html.dark .preset-tag {
-  background: rgba(79, 107, 255, 0.14);
-  border-color: rgba(79, 107, 255, 0.35);
-  color: #8fa4ff;
+  background: rgba(64, 169, 255, 0.14);
+  border-color: rgba(64, 169, 255, 0.35);
+  color: var(--accent);
 }
 
 html.dark .progress-wrapper {
   border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(79, 107, 255, 0.1);
+  background: rgba(64, 169, 255, 0.1);
 }
 
 html.dark .progress-text {
-  color: rgba(232, 234, 242, 0.7);
+  color: rgba(240, 240, 240, 0.7);
 }
 
 html.dark .ai-edit-row {
   border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(79, 107, 255, 0.1);
-}
-
-html.dark .ai-edit-label {
-  color: #e8eaf2;
+  background: rgba(64, 169, 255, 0.1);
 }
 
 html.dark .ai-edit-desc {
-  color: rgba(232, 234, 242, 0.55);
+  color: rgba(240, 240, 240, 0.55);
 }
 </style>

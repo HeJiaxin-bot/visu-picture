@@ -371,24 +371,26 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   margin-bottom: 0;
 }
 
+/* 悦目卡片：12px 圆角、无边框、暗阴影，hover scale(1.05) + 阴影加深 */
 .justified-item {
   position: relative;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: var(--card-radius);
   overflow: hidden;
   cursor: pointer;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(37, 55, 120, 0.06);
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
+    transform 0.3s cubic-bezier(0.33, 0.8, 0.4, 1),
+    box-shadow 0.3s ease;
 }
 
 .justified-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(37, 55, 120, 0.16);
+  transform: scale(1.05);
+  box-shadow: var(--card-shadow-hover);
+  z-index: 2;
 }
 
 .img-wrapper {
@@ -401,7 +403,7 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   height: 100%;
   object-fit: cover;
   display: block;
-  background: #f0f2f7;
+  background: var(--bg-card);
 }
 
 /* 卡片底部信息条：名称 + 作者 + 点赞 */
@@ -412,10 +414,14 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 .pic-name {
   font-size: 13px;
   font-weight: 600;
-  color: #232c56;
+  color: var(--text-primary-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+html.dark .pic-name {
+  color: var(--text-primary);
 }
 
 .card-meta {
@@ -431,12 +437,12 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: rgba(35, 44, 86, 0.65);
+  color: var(--text-secondary);
   transition: color 0.2s;
 }
 
 .pic-author:hover {
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 .pic-author .author-name {
@@ -457,7 +463,7 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   gap: 4px;
   flex-shrink: 0;
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.6);
+  color: var(--text-secondary);
   transition:
     color 0.2s,
     transform 0.15s;
@@ -501,10 +507,10 @@ const doShare = (picture: API.PictureVO, e: Event) => {
   transition: opacity 0.2s ease;
   background: linear-gradient(
     180deg,
-    rgba(10, 15, 40, 0.45) 0%,
-    rgba(10, 15, 40, 0) 40%,
-    rgba(10, 15, 40, 0) 60%,
-    rgba(10, 15, 40, 0.5) 100%
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0) 40%,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.5) 100%
   );
 }
 
@@ -553,25 +559,7 @@ const doShare = (picture: API.PictureVO, e: Event) => {
 }
 
 .no-more-text {
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-secondary);
   font-size: 13px;
-}
-
-/* 深色模式 */
-html.dark .justified-item {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-html.dark .pic-name {
-  color: #e8eaf6;
-}
-
-html.dark .pic-author,
-html.dark .pic-like {
-  color: rgba(200, 208, 240, 0.6);
-}
-
-html.dark .pic-author:hover {
-  color: #8fa4ff;
 }
 </style>

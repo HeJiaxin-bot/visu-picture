@@ -1,4 +1,42 @@
-/* ===== 全局风格（参考 Vexor：浅蓝紫背景 + 网格纹理 + 白色圆角卡片 + 蓝色主按钮）===== */
+/* ===== 全局风格（悦目图库风格：暗色默认 #1a1a1a 底 + #2d2d2d 卡片 + 亮蓝 #40a9ff 强调）===== */
+
+/* 设计令牌：浅色（页面底色贴近首页 Hero 浅蓝渐变） */
+:root {
+  --bg-body: #eef3fa;
+  --bg-nav: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --bg-elevated: #ffffff;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #f0f0f0;
+  --text-primary-light: #212121;
+  --text-secondary: #6b6b6b;
+  --text-disabled: rgba(0, 0, 0, 0.35);
+  --accent: #40a9ff;
+  --link: #1677ff;
+  --card-radius: 12px;
+  --card-shadow: 0 4px 20px rgba(30, 70, 140, 0.06);
+  --card-shadow-hover: 0 8px 28px rgba(30, 70, 140, 0.12);
+}
+
+/* 暗色（默认主题）：悦目图库配色 */
+html.dark {
+  --bg-body: #1a1a1a;
+  --bg-nav: #1d1d1f;
+  --bg-card: #2d2d2d;
+  --bg-card-hover: #323232;
+  --bg-elevated: #2d2d2d;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #f0f0f0;
+  --text-primary-light: #f0f0f0;
+  --text-secondary: #b3b3b3;
+  --text-disabled: rgba(255, 255, 255, 0.35);
+  --accent: #40a9ff;
+  --link: #1677ff;
+  --card-radius: 12px;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  --card-shadow-hover: 0 10px 32px rgba(0, 0, 0, 0.45);
+}
 
 html,
 body {
@@ -6,50 +44,65 @@ body {
 }
 
 body {
-  color: #26283a;
-  background-color: #eef1f9;
-  /* 浅色网格纹理 */
-  background-image:
-    linear-gradient(to right, rgba(93, 113, 190, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(93, 113, 190, 0.07) 1px, transparent 1px);
-  background-size: 48px 48px;
+  color: var(--text-secondary);
+  /* 浅色：贴近首页 Hero 的浅蓝白渐变（fixed 让滚动时背景稳定） */
+  background-color: var(--bg-body);
+  background-image: linear-gradient(180deg, #e9f1fc 0%, #f6f9fd 40%, #eef3fa 100%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
-/* 标题使用近黑色加粗，贴近参考风格 */
+html.dark body {
+  color: var(--text-secondary);
+  background-color: var(--bg-body);
+  /* 深色下移除浅色渐变 */
+  background-image: none;
+}
+
+/* 标题使用近白/近黑加粗 */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  color: #171a2b;
+  color: var(--text-primary-light);
   font-weight: 700;
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: var(--text-primary);
 }
 
 a {
   transition: color 0.2s ease;
 }
 
-/* ===== 卡片 ===== */
+/* ===== 卡片（悦目：无边框 + 暗阴影 + 12px 圆角） ===== */
 .ant-card {
-  border: 1px solid #eceff7;
-  box-shadow: 0 2px 12px rgba(37, 55, 120, 0.05);
+  border: none;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
 }
 
 .ant-card .ant-card-head {
-  border-bottom-color: #f0f2f8;
+  border-bottom-color: var(--border-color);
 }
 
 /* ===== 按钮 ===== */
 .ant-btn-primary:not(:disabled):hover {
-  box-shadow: 0 6px 16px rgba(61, 90, 245, 0.32);
+  box-shadow: 0 6px 16px rgba(64, 169, 255, 0.32);
 }
 
 /* ===== 弹窗 / 气泡 ===== */
 .ant-modal .ant-modal-content {
   border-radius: 16px;
-  box-shadow: 0 18px 50px rgba(24, 39, 92, 0.18);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
 /* ===== 标签 ===== */
@@ -65,12 +118,12 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(83, 104, 168, 0.25);
+  background: rgba(140, 140, 140, 0.3);
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(83, 104, 168, 0.45);
+  background: rgba(140, 140, 140, 0.5);
 }
 
 ::-webkit-scrollbar-track {
@@ -79,7 +132,7 @@ a {
 
 /* ===== 文本选中色 ===== */
 ::selection {
-  background: rgba(61, 90, 245, 0.18);
+  background: rgba(64, 169, 255, 0.28);
 }
 
 /* ===== 主题切换渐变：仅切换瞬间挂 theme-transitioning 类时生效 ===== */
@@ -96,61 +149,45 @@ html.theme-transitioning *::after {
     stroke 0.8s ease !important;
 }
 
-/* ===== 深色模式（html.dark，配合 antd darkAlgorithm） ===== */
-html.dark body {
-  color: #c9cde4;
-  background-color: #101320;
-  background-image:
-    linear-gradient(to right, rgba(120, 140, 220, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(120, 140, 220, 0.06) 1px, transparent 1px);
-}
-
-html.dark h1,
-html.dark h2,
-html.dark h3,
-html.dark h4,
-html.dark h5,
-html.dark h6 {
-  color: #e8eaf6;
-}
+/* ===== 深色模式专项（html.dark，配合 antd darkAlgorithm） ===== */
 
 /* 顶部导航栏 */
 html.dark #basicLayout .header {
-  background: rgba(20, 25, 42, 0.92);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: var(--bg-nav);
+  border-bottom-color: var(--border-color);
   backdrop-filter: blur(8px);
 }
 
 html.dark #basicLayout .team-trigger,
 html.dark #basicLayout .user-info {
-  color: #c9cde4;
+  color: var(--text-secondary);
 }
 
 html.dark #basicLayout .title {
-  color: #e8eaf6;
+  color: var(--text-primary);
   border-left-color: rgba(255, 255, 255, 0.12);
 }
 
 /* 页脚 */
 html.dark #basicLayout .footer,
 html.dark #basicLayout .footer a {
-  color: rgba(200, 208, 240, 0.45);
+  color: rgba(179, 179, 179, 0.45);
 }
 
 /* 卡片与弹层 */
 html.dark .ant-card {
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  border-color: var(--border-color);
+  box-shadow: var(--card-shadow);
 }
 
 html.dark .ant-card .ant-card-head {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: var(--border-color);
 }
 
 /* 下拉面板（团队/用户面板在 GlobalHeader 全局样式中定义） */
 html.dark .team-panel {
-  background: rgba(30, 36, 56, 0.98);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: #2d2d2d;
+  border-color: var(--border-color);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
@@ -159,15 +196,15 @@ html.dark .team-panel .team-panel-item:hover {
 }
 
 html.dark .team-panel .item-title {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark .team-panel .item-desc {
-  color: rgba(200, 208, 240, 0.55);
+  color: var(--text-secondary);
 }
 
 html.dark .team-panel .user-panel-item {
-  color: #c9cde4;
+  color: var(--text-secondary);
 }
 
 html.dark .team-panel .team-panel-divider {
@@ -175,56 +212,56 @@ html.dark .team-panel .team-panel-divider {
 }
 
 html.dark .team-panel .item-icon {
-  color: rgba(200, 208, 240, 0.6);
+  color: var(--text-secondary);
 }
 
 /* 搜索卡片与标签药丸（首页） */
 html.dark #homePage .search-bar {
-  background: #1a2032;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  border-color: var(--border-color);
 }
 
 /* 注意：main.css 是全局样式，:deep() 不是合法选择器会导致整条规则失效，直接写类名 */
 /* 双类名 .ant-tag.ant-tag-checkable 提高优先级，压过组件 scoped 的浅色规则 */
 html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable {
-  background: #1a2032;
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #c9cde4;
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
 }
 
 html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable:hover {
-  color: #7d92ff;
-  border-color: rgba(61, 90, 245, 0.6);
+  color: var(--accent);
+  border-color: rgba(64, 169, 255, 0.6);
 }
 
 html.dark #homePage .tag-label {
-  color: rgba(200, 208, 240, 0.65);
+  color: var(--text-secondary);
 }
 
 /* 首页副标题 */
 html.dark #homePage .hero-desc {
-  color: rgba(200, 208, 240, 0.6);
+  color: var(--text-secondary);
 }
 
 /* 用户中心：个人信息与快捷入口文字 */
 html.dark #userCenterPage .profile-name,
 html.dark #userCenterPage .desc-content,
 html.dark #userCenterPage .entry-title {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark #userCenterPage .profile-account,
 html.dark #userCenterPage .desc-label,
 html.dark #userCenterPage .entry-desc {
-  color: rgba(200, 208, 240, 0.55);
+  color: var(--text-secondary);
 }
 
 html.dark #userCenterPage .profile-avatar {
-  background: #1a2032;
+  background: var(--bg-card);
 }
 
 html.dark #userCenterPage .entry-item {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-color);
 }
 
 html.dark #userCenterPage .entry-item:hover {
@@ -233,23 +270,23 @@ html.dark #userCenterPage .entry-item:hover {
 
 /* 用户中心：积分与签到 */
 html.dark #userCenterPage .points-value {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark #userCenterPage .points-value b {
-  color: #7c96ff;
+  color: var(--accent);
 }
 
-/* 登录 / 注册页：白色卡片与说明文字 */
+/* 登录 / 注册页：卡片与说明文字 */
 html.dark .auth-card {
-  background: #161c2e;
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--card-shadow);
 }
 
 html.dark .auth-card .desc,
 html.dark .auth-card .tips {
-  color: rgba(200, 208, 240, 0.55);
+  color: var(--text-secondary);
 }
 
 /* 滚动条 */
@@ -263,9 +300,9 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 /* 瀑布流图片底色与文字 */
 html.dark .justified-item img {
-  background: #1a2032;
+  background: var(--bg-card);
 }
 
 html.dark .no-more-text {
-  color: rgba(200, 208, 240, 0.45);
+  color: var(--text-secondary);
 }

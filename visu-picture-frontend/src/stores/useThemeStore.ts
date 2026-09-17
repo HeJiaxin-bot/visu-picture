@@ -8,7 +8,8 @@ const THEME_KEY = 'visu-theme'
  * 切换时在 html 根元素上挂/摘 dark class，配合全局样式与 antd darkAlgorithm 生效
  */
 export const useThemeStore = defineStore('theme', () => {
-  const isDark = ref<boolean>(localStorage.getItem(THEME_KEY) === 'dark')
+  // 默认暗色（悦目风格）；仅当用户明确选择过浅色时才用浅色
+  const isDark = ref<boolean>(localStorage.getItem(THEME_KEY) !== 'light')
 
   const applyTheme = () => {
     document.documentElement.classList.toggle('dark', isDark.value)

@@ -144,7 +144,7 @@
             <div class="entry-desc">发现海量优质图片</div>
           </div>
           <div class="entry-item" @click="router.push('/my_space')">
-            <FolderOutlined class="entry-icon" style="color: #4f6bff" />
+            <FolderOutlined class="entry-icon" style="color: #40a9ff" />
             <div class="entry-title">我的空间</div>
             <div class="entry-desc">管理我的私人空间</div>
           </div>
@@ -184,7 +184,7 @@
       <a-card v-if="loginUser.userRole === 'admin'" class="entry-card admin-card" title="管理员功能">
         <div class="entry-grid">
           <div class="entry-item" @click="router.push('/admin/userManage')">
-            <UserOutlined class="entry-icon" style="color: #4f6bff" />
+            <UserOutlined class="entry-icon" style="color: #40a9ff" />
             <div class="entry-title">用户管理</div>
             <div class="entry-desc">管理平台用户</div>
           </div>
@@ -571,7 +571,7 @@ html.dark .pic-all-loaded {
 }
 
 .pic-count {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -593,7 +593,7 @@ html.dark .pic-all-loaded {
 }
 
 .profile-avatar {
-  background: #eef2ff;
+  background: rgba(64, 169, 255, 0.1);
   flex-shrink: 0;
 }
 
@@ -618,7 +618,7 @@ html.dark .pic-all-loaded {
   padding: 4px 0;
   font-size: 12px;
   color: #fff;
-  background: rgba(23, 26, 43, 0.55);
+  background: rgba(0, 0, 0, 0.55);
   opacity: 0;
   transform: translateY(100%);
   transition:
@@ -639,14 +639,14 @@ html.dark .pic-all-loaded {
 .profile-name {
   font-size: 18px;
   font-weight: 700;
-  color: #26283a;
+  color: var(--text-primary-light);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .profile-account {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 13px;
   margin-top: 6px;
   display: flex;
@@ -657,7 +657,7 @@ html.dark .pic-all-loaded {
 .copy-vid-btn {
   border: none;
   background: transparent;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
   cursor: pointer;
   padding: 2px 6px;
   margin-left: 4px;
@@ -670,8 +670,8 @@ html.dark .pic-all-loaded {
 }
 
 .copy-vid-btn:hover {
-  color: #3d5af5;
-  background: rgba(61, 90, 245, 0.08);
+  color: var(--accent);
+  background: rgba(64, 169, 255, 0.08);
 }
 
 html.dark .copy-vid-btn {
@@ -679,8 +679,8 @@ html.dark .copy-vid-btn {
 }
 
 html.dark .copy-vid-btn:hover {
-  color: #7b9bff;
-  background: rgba(79, 107, 255, 0.2);
+  color: var(--accent);
+  background: rgba(64, 169, 255, 0.2);
 }
 
 .profile-desc {
@@ -688,13 +688,13 @@ html.dark .copy-vid-btn:hover {
 }
 
 .desc-label {
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
   font-size: 12px;
   margin-bottom: 4px;
 }
 
 .desc-content {
-  color: #26283a;
+  color: var(--text-primary-light);
   font-size: 14px;
 }
 
@@ -707,7 +707,7 @@ html.dark .copy-vid-btn:hover {
 }
 
 .points-value {
-  color: #26283a;
+  color: var(--text-primary-light);
   font-size: 14px;
   display: flex;
   align-items: baseline;
@@ -715,7 +715,7 @@ html.dark .copy-vid-btn:hover {
 }
 
 .points-value b {
-  color: #3d5af5;
+  color: var(--accent);
   font-size: 20px;
 }
 
@@ -726,7 +726,7 @@ html.dark .copy-vid-btn:hover {
 }
 
 .entry-item {
-  border: 1px solid #e4e8f2;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 16px;
   cursor: pointer;
@@ -737,7 +737,7 @@ html.dark .copy-vid-btn:hover {
 
 .entry-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(37, 55, 120, 0.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .entry-icon {
@@ -746,12 +746,12 @@ html.dark .copy-vid-btn:hover {
 
 .entry-title {
   font-weight: 600;
-  color: #26283a;
+  color: var(--text-primary-light);
   margin-top: 8px;
 }
 
 .entry-desc {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 12px;
   margin-top: 2px;
 }
@@ -775,7 +775,7 @@ html.dark .copy-vid-btn:hover {
 }
 
 .edit-profile-modal .edit-avatar {
-  background: #eef2ff;
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .edit-profile-modal .edit-avatar-mask {
@@ -788,7 +788,7 @@ html.dark .copy-vid-btn:hover {
   gap: 2px;
   font-size: 12px;
   color: #fff;
-  background: rgba(23, 26, 43, 0.55);
+  background: rgba(0, 0, 0, 0.55);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -801,7 +801,7 @@ html.dark .copy-vid-btn:hover {
 .edit-profile-modal .edit-avatar-tip {
   text-align: center;
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.4);
+  color: var(--text-disabled);
   margin: 8px 0 4px;
 }
 
@@ -810,10 +810,10 @@ html.dark .copy-vid-btn:hover {
 }
 
 html.dark .edit-profile-modal .edit-avatar {
-  background: rgba(79, 107, 255, 0.2);
+  background: rgba(64, 169, 255, 0.2);
 }
 
 html.dark .edit-profile-modal .edit-avatar-tip {
-  color: rgba(232, 234, 242, 0.4);
+  color: rgba(240, 240, 240, 0.4);
 }
 </style>

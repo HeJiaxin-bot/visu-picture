@@ -179,11 +179,11 @@ const doLogout = async () => {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary, #171a2b);
+  color: var(--text-primary-light);
 }
 
 html.dark .page-title {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 /* 分组 */
@@ -193,23 +193,23 @@ html.dark .page-title {
 
 .section-label {
   font-size: 13px;
-  color: rgba(23, 26, 43, 0.45);
+  color: var(--text-disabled);
   margin: 0 4px 8px;
 }
 
 html.dark .section-label {
-  color: rgba(232, 234, 246, 0.45);
+  color: rgba(240, 240, 240, 0.45);
 }
 
 .settings-card {
-  background: var(--card-bg, #fff);
+  background: var(--bg-card);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(23, 26, 43, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 html.dark .settings-card {
-  background: #1f2338;
+  background: var(--bg-card);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -224,19 +224,19 @@ html.dark .settings-card {
 }
 
 .settings-item + .settings-item {
-  border-top: 1px solid rgba(23, 26, 43, 0.06);
+  border-top: 1px solid var(--border-color);
 }
 
 html.dark .settings-item + .settings-item {
-  border-top-color: rgba(232, 234, 246, 0.08);
+  border-top-color: var(--border-color);
 }
 
 .settings-item:hover {
-  background: rgba(22, 119, 255, 0.04);
+  background: rgba(64, 169, 255, 0.04);
 }
 
 html.dark .settings-item:hover {
-  background: rgba(22, 119, 255, 0.1);
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .item-icon {
@@ -258,31 +258,31 @@ html.dark .settings-item:hover {
 .item-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary, #171a2b);
+  color: var(--text-primary-light);
 }
 
 html.dark .item-title {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 .item-desc {
   font-size: 12px;
-  color: rgba(23, 26, 43, 0.45);
+  color: var(--text-disabled);
   margin-top: 2px;
 }
 
 html.dark .item-desc {
-  color: rgba(232, 234, 246, 0.45);
+  color: rgba(240, 240, 240, 0.45);
 }
 
 .item-arrow {
-  color: rgba(23, 26, 43, 0.25);
+  color: var(--text-disabled);
   font-size: 12px;
   transition: transform 0.2s;
 }
 
 html.dark .item-arrow {
-  color: rgba(232, 234, 246, 0.25);
+  color: rgba(240, 240, 240, 0.25);
 }
 
 /* 展开态箭头旋转 */
@@ -293,13 +293,13 @@ html.dark .item-arrow {
 /* 修改密码表单区 */
 .pwd-form-wrap {
   padding: 4px 18px 18px 72px;
-  border-top: 1px dashed rgba(23, 26, 43, 0.08);
-  background: rgba(22, 119, 255, 0.02);
+  border-top: 1px dashed var(--border-color);
+  background: rgba(64, 169, 255, 0.02);
 }
 
 html.dark .pwd-form-wrap {
-  border-top-color: rgba(232, 234, 246, 0.08);
-  background: rgba(22, 119, 255, 0.05);
+  border-top-color: var(--border-color);
+  background: rgba(64, 169, 255, 0.05);
 }
 
 /* 移动端：表单缩进收窄 */

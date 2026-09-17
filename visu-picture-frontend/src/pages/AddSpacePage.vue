@@ -284,13 +284,13 @@ onMounted(() => {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #3d5af5, #8b5cf6);
+  background: linear-gradient(135deg, var(--accent), #69c0ff);
   color: #fff;
   font-size: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(61, 90, 245, 0.28);
+  box-shadow: 0 8px 20px rgba(64, 169, 255, 0.28);
   flex-shrink: 0;
 }
 
@@ -299,7 +299,7 @@ onMounted(() => {
 }
 
 .header-desc {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 0;
 }
@@ -333,7 +333,7 @@ onMounted(() => {
 
 .level-card {
   position: relative;
-  border: 1.5px solid #e4e8f2;
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
   padding: 16px 12px;
   text-align: center;
@@ -346,17 +346,17 @@ onMounted(() => {
 
 .level-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(37, 55, 120, 0.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .level-card.active {
-  border-color: #3d5af5;
-  background: rgba(61, 90, 245, 0.04);
-  box-shadow: 0 6px 16px rgba(61, 90, 245, 0.15);
+  border-color: var(--accent);
+  background: rgba(64, 169, 255, 0.04);
+  box-shadow: 0 6px 16px rgba(64, 169, 255, 0.15);
 }
 
 .level-card.locked {
-  background: #f7f8fc;
+  background: var(--bg-body);
 }
 
 .level-card.locked .level-icon,
@@ -366,17 +366,17 @@ onMounted(() => {
 
 .level-icon {
   font-size: 24px;
-  color: #3d5af5;
+  color: var(--accent);
   margin-bottom: 8px;
 }
 
 .level-card.locked .level-icon {
-  color: rgba(35, 44, 86, 0.4);
+  color: var(--text-disabled);
 }
 
 .level-name {
   font-weight: 600;
-  color: #26283a;
+  color: var(--text-primary-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -390,7 +390,7 @@ onMounted(() => {
 }
 
 .level-quota {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 12px;
   margin-top: 6px;
 }
@@ -398,11 +398,11 @@ onMounted(() => {
 .level-state {
   margin-top: 8px;
   font-size: 12px;
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 .level-card.locked .level-state {
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
 }
 
 .tip-alert {
@@ -430,19 +430,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #e4e8f2;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 12px;
 }
 
 .compare-row.active {
-  border-color: #3d5af5;
-  background: rgba(61, 90, 245, 0.04);
+  border-color: var(--accent);
+  background: rgba(64, 169, 255, 0.04);
 }
 
 .compare-name {
   font-weight: 600;
-  color: #26283a;
+  color: var(--text-primary-light);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -450,14 +450,14 @@ onMounted(() => {
 }
 
 .compare-icon {
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 .compare-quota {
   flex: 1;
   display: flex;
   flex-direction: column;
-  color: rgba(35, 44, 86, 0.65);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 20px;
 }

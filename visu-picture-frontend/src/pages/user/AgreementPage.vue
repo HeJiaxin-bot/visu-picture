@@ -118,18 +118,18 @@ watch(isPrivacy, (v) => {
 }
 
 .agreement-card {
-  background: #fff;
-  border: 1px solid #eceff7;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(37, 55, 120, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   padding: 28px 32px;
   line-height: 1.9;
-  color: #333;
+  color: var(--text-primary-light);
   font-size: 14px;
 }
 
 .update-date {
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
   font-size: 13px;
   text-align: right;
 }
@@ -138,7 +138,7 @@ watch(isPrivacy, (v) => {
   font-size: 15px;
   font-weight: 700;
   margin: 18px 0 8px;
-  color: #26283a;
+  color: var(--text-primary-light);
 }
 
 .agreement-card p {
@@ -148,16 +148,16 @@ watch(isPrivacy, (v) => {
 
 /* ===== 深色模式 ===== */
 html.dark .agreement-card {
-  background: rgba(30, 36, 56, 0.9);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(220, 226, 250, 0.88);
+  background: rgba(45, 45, 45, 0.9);
+  border-color: var(--border-color);
+  color: rgba(240, 240, 240, 0.88);
 }
 
 html.dark .agreement-card h3 {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark .update-date {
-  color: rgba(200, 208, 240, 0.45);
+  color: rgba(179, 179, 179, 0.45);
 }
 </style>

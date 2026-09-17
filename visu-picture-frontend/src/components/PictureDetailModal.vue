@@ -350,7 +350,7 @@ const formatDate = (time?: string) => {
   justify-content: space-between;
   gap: 12px;
   padding: 4px 4px 12px;
-  border-bottom: 1px solid rgba(35, 44, 86, 0.08);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .top-author {
@@ -364,18 +364,18 @@ const formatDate = (time?: string) => {
 }
 
 .top-author:hover {
-  background: rgba(61, 90, 245, 0.06);
+  background: rgba(64, 169, 255, 0.06);
 }
 
 .author-name {
   font-weight: 600;
   font-size: 15px;
-  color: #171a2b;
+  color: var(--text-primary-light);
 }
 
 .author-tip {
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
 }
 
 /* 顶部操作按钮组：胶囊样式 */
@@ -393,9 +393,9 @@ const formatDate = (time?: string) => {
   height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(35, 44, 86, 0.14);
+  border: 1px solid var(--border-color);
   background: transparent;
-  color: #232c56;
+  color: var(--text-primary-light);
   font-size: 13px;
   cursor: pointer;
   transition:
@@ -406,8 +406,8 @@ const formatDate = (time?: string) => {
 }
 
 .pill-btn:hover {
-  background: rgba(61, 90, 245, 0.06);
-  border-color: rgba(61, 90, 245, 0.4);
+  background: rgba(64, 169, 255, 0.06);
+  border-color: rgba(64, 169, 255, 0.4);
   transform: translateY(-1px);
 }
 
@@ -451,7 +451,7 @@ const formatDate = (time?: string) => {
   justify-content: center;
   padding: 16px;
   border-radius: 12px;
-  background-color: #fff;
+  background-color: var(--bg-card);
 }
 
 .preview-area :deep(.ant-image) {
@@ -483,7 +483,7 @@ const formatDate = (time?: string) => {
 .pic-title {
   font-size: 18px;
   font-weight: 700;
-  color: #171a2b;
+  color: var(--text-primary-light);
   margin: 0;
   line-height: 1.4;
 }
@@ -495,8 +495,8 @@ const formatDate = (time?: string) => {
 .intro-block {
   font-size: 13px;
   line-height: 1.7;
-  color: rgba(35, 44, 86, 0.75);
-  background: rgba(61, 90, 245, 0.05);
+  color: var(--text-secondary);
+  background: rgba(64, 169, 255, 0.05);
   border-radius: 10px;
   padding: 10px 12px;
   margin: 0;
@@ -516,7 +516,7 @@ const formatDate = (time?: string) => {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: rgba(61, 90, 245, 0.04);
+  background: rgba(64, 169, 255, 0.04);
   border-radius: 8px;
   padding: 8px 10px;
 }
@@ -527,13 +527,13 @@ const formatDate = (time?: string) => {
 
 .meta-label {
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
 }
 
 .meta-value {
   font-size: 13px;
   font-weight: 500;
-  color: #26283a;
+  color: var(--text-primary-light);
   display: flex;
   align-items: center;
 }
@@ -543,15 +543,15 @@ const formatDate = (time?: string) => {
   height: 14px;
   border-radius: 4px;
   margin-left: 6px;
-  border: 1px solid rgba(35, 44, 86, 0.15);
+  border: 1px solid var(--border-color);
 }
 
 .switch-tip {
   align-self: flex-start;
   font-size: 12px;
-  color: rgba(61, 90, 245, 0.7);
-  background: rgba(61, 90, 245, 0.06);
-  border: 1px solid rgba(61, 90, 245, 0.16);
+  color: rgba(64, 169, 255, 0.7);
+  background: rgba(64, 169, 255, 0.06);
+  border: 1px solid rgba(64, 169, 255, 0.16);
 }
 
 /* 弹窗整体 padding 微调 */
@@ -560,28 +560,18 @@ const formatDate = (time?: string) => {
 }
 
 /* 深色模式 */
-html.dark .author-name,
-html.dark .pic-title,
-html.dark .meta-value {
-  color: #e8eaf6;
-}
-
 html.dark .author-tip,
 html.dark .meta-label {
-  color: rgba(200, 208, 240, 0.5);
+  color: rgba(179, 179, 179, 0.5);
 }
 
 html.dark .intro-block {
-  color: rgba(200, 208, 240, 0.75);
-  background: rgba(120, 140, 220, 0.08);
+  color: rgba(179, 179, 179, 0.75);
+  background: rgba(64, 169, 255, 0.08);
 }
 
 html.dark .meta-item {
-  background: rgba(120, 140, 220, 0.07);
-}
-
-html.dark .preview-area {
-  background-color: #171d30;
+  background: rgba(64, 169, 255, 0.07);
 }
 
 html.dark .top-bar {
@@ -589,13 +579,13 @@ html.dark .top-bar {
 }
 
 html.dark .pill-btn {
-  color: #e8eaf6;
+  color: var(--text-primary);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
 html.dark .pill-btn:hover {
-  background: rgba(120, 140, 220, 0.12);
-  border-color: rgba(120, 140, 220, 0.5);
+  background: rgba(64, 169, 255, 0.12);
+  border-color: rgba(64, 169, 255, 0.5);
 }
 
 html.dark .pill-btn.danger:hover {

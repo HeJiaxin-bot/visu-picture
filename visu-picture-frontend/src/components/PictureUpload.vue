@@ -93,19 +93,19 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 
 /* 未上传：虚线引导区 */
 .picture-upload :deep(.ant-upload:not(:has(img))) {
-  border: 1.5px dashed #b9c6ff !important;
-  background: rgba(61, 90, 245, 0.03) !important;
+  border: 1.5px dashed rgba(64, 169, 255, 0.45) !important;
+  background: rgba(64, 169, 255, 0.03) !important;
 }
 
 .picture-upload :deep(.ant-upload:not(:has(img)):hover) {
-  border-color: #4f6bff !important;
-  background: rgba(61, 90, 245, 0.07) !important;
+  border-color: var(--accent) !important;
+  background: rgba(64, 169, 255, 0.07) !important;
 }
 
 /* 已上传：白底实线展示 */
 .picture-upload :deep(.ant-upload:has(img)) {
-  border: 1px solid #e3e8f5 !important;
-  background: #fafbff !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-body) !important;
 }
 
 .empty-box {
@@ -115,12 +115,12 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 
 .upload-icon {
   font-size: 56px;
-  color: #4f6bff;
+  color: var(--accent);
 }
 
 .upload-text {
   margin-top: 16px;
-  color: #232c56;
+  color: var(--text-primary-light);
   font-size: 15px;
 }
 
@@ -134,8 +134,8 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 .format-tag {
   padding: 2px 10px;
   border-radius: 6px;
-  background: rgba(61, 90, 245, 0.08);
-  color: #5a6a94;
+  background: rgba(64, 169, 255, 0.08);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
 }
@@ -153,14 +153,14 @@ const beforeUpload = (file: UploadProps['fileList'][number]) => {
 
 .preview-tip {
   margin-top: 10px;
-  color: #98a4c5;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 /* 深色模式适配 */
 html.dark .picture-upload :deep(.ant-upload:not(:has(img))) {
-  border-color: rgba(79, 107, 255, 0.4) !important;
-  background: rgba(79, 107, 255, 0.08) !important;
+  border-color: rgba(64, 169, 255, 0.4) !important;
+  background: rgba(64, 169, 255, 0.08) !important;
 }
 
 html.dark .picture-upload :deep(.ant-upload:has(img)) {
@@ -168,16 +168,12 @@ html.dark .picture-upload :deep(.ant-upload:has(img)) {
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
-html.dark .upload-text {
-  color: #e8eaf2;
-}
-
 html.dark .format-tag {
-  background: rgba(79, 107, 255, 0.15);
-  color: rgba(232, 234, 242, 0.6);
+  background: rgba(64, 169, 255, 0.15);
+  color: rgba(240, 240, 240, 0.6);
 }
 
 html.dark .preview-tip {
-  color: rgba(232, 234, 242, 0.45);
+  color: rgba(240, 240, 240, 0.45);
 }
 </style>

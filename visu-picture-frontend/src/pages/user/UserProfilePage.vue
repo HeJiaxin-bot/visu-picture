@@ -193,10 +193,10 @@ const formatDate = (time?: string) => {
 }
 
 .profile-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 6px 24px rgba(31, 45, 92, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   margin-bottom: 20px;
 }
 
@@ -207,14 +207,14 @@ const formatDate = (time?: string) => {
 }
 
 .profile-avatar {
-  background: rgba(61, 90, 245, 0.1);
+  background: rgba(64, 169, 255, 0.1);
   flex-shrink: 0;
 }
 
 .profile-name {
   font-size: 22px;
   font-weight: 700;
-  color: #171a2b;
+  color: var(--text-primary-light);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -228,17 +228,17 @@ const formatDate = (time?: string) => {
   margin-top: 8px;
   padding: 2px 10px 2px 12px;
   border-radius: 999px;
-  background: rgba(61, 90, 245, 0.07);
+  background: rgba(64, 169, 255, 0.07);
   width: fit-content;
   font-size: 13px;
 }
 
 .vid-label {
-  color: rgba(35, 44, 86, 0.5);
+  color: var(--text-secondary);
 }
 
 .vid-value {
-  color: #3d5af5;
+  color: var(--accent);
   font-weight: 600;
   letter-spacing: 0.5px;
 }
@@ -246,7 +246,7 @@ const formatDate = (time?: string) => {
 .vid-copy-btn {
   border: none;
   background: transparent;
-  color: rgba(35, 44, 86, 0.4);
+  color: var(--text-disabled);
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 4px;
@@ -258,32 +258,32 @@ const formatDate = (time?: string) => {
 }
 
 .vid-copy-btn:hover {
-  color: #3d5af5;
-  background: rgba(61, 90, 245, 0.12);
+  color: var(--accent);
+  background: rgba(64, 169, 255, 0.12);
 }
 
 .profile-desc {
   margin-top: 8px;
-  color: rgba(35, 44, 86, 0.65);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .profile-extra {
   margin-top: 6px;
-  color: rgba(35, 44, 86, 0.4);
+  color: var(--text-disabled);
   font-size: 13px;
 }
 
 .works-card {
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(31, 45, 92, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 
 .works-total {
   margin-left: 10px;
   font-size: 13px;
   font-weight: 400;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
 }
 
 .works-loading {
@@ -314,38 +314,38 @@ html.dark .profile-card {
 }
 
 html.dark .profile-name {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark .profile-desc {
-  color: rgba(200, 208, 240, 0.65);
+  color: rgba(179, 179, 179, 0.65);
 }
 
 html.dark .profile-vid {
-  background: rgba(79, 107, 255, 0.18);
+  background: rgba(64, 169, 255, 0.18);
 }
 
 html.dark .vid-label {
-  color: rgba(200, 208, 240, 0.5);
+  color: rgba(179, 179, 179, 0.5);
 }
 
 html.dark .vid-value {
-  color: #7b9bff;
+  color: var(--accent);
 }
 
 html.dark .vid-copy-btn {
-  color: rgba(200, 208, 240, 0.4);
+  color: rgba(179, 179, 179, 0.4);
 }
 
 html.dark .vid-copy-btn:hover {
-  color: #7b9bff;
-  background: rgba(79, 107, 255, 0.25);
+  color: var(--accent);
+  background: rgba(64, 169, 255, 0.25);
 }
 
 html.dark .profile-extra,
 html.dark .works-total,
 html.dark .works-more-hint,
 html.dark .works-all-loaded {
-  color: rgba(200, 208, 240, 0.45);
+  color: rgba(179, 179, 179, 0.45);
 }
 </style>

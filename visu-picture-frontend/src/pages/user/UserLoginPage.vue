@@ -100,10 +100,10 @@ const handleSubmit = async (values: any) => {
 .auth-card {
   width: 400px;
   max-width: 100%;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid #eceff7;
-  box-shadow: 0 14px 40px rgba(37, 55, 120, 0.1);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
   padding: 40px 36px 28px;
 }
 
@@ -124,12 +124,12 @@ const handleSubmit = async (values: any) => {
 
 .desc {
   text-align: center;
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   margin-bottom: 28px;
 }
 
 .tips {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   text-align: center;
   font-size: 13px;
   margin-bottom: 8px;

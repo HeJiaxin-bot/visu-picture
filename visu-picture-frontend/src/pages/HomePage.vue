@@ -136,39 +136,48 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 内容区约 1344px 居中（悦目布局规格） */
 #homePage {
-  max-width: 1600px;
+  max-width: 1344px;
   margin: 0 auto 16px;
-  padding: 0 32px;
+  padding: 0 16px;
   box-sizing: border-box;
 }
 
-/* Hero 区域：大标题 + 居中搜索卡片 */
+/* Hero 区域：无卡片容器，标题/搜索直接融入页面浅蓝渐变背景 */
 #homePage .hero {
   text-align: center;
-  padding: 40px 0 8px;
+  padding: 48px 32px 40px;
+  margin-bottom: 8px;
 }
 
 #homePage .hero-title {
   font-size: 40px;
   margin-bottom: 12px;
   letter-spacing: 1px;
+  color: #f0f0f0;
+  position: relative;
+  z-index: 1;
 }
 
 #homePage .hero-desc {
-  color: rgba(35, 44, 86, 0.6);
+  color: #b3b3b3;
   font-size: 15px;
   margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
 }
 
 #homePage .search-bar {
   max-width: 640px;
-  margin: 0 auto 20px;
-  background: #fff;
+  margin: 0 auto;
+  background: var(--bg-card);
   padding: 8px;
   border-radius: 16px;
-  border: 1px solid #eceff7;
-  box-shadow: 0 10px 30px rgba(37, 55, 120, 0.08);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  position: relative;
+  z-index: 1;
 }
 
 #homePage .search-bar :deep(.ant-input) {
@@ -183,6 +192,15 @@ onMounted(() => {
 
 #homePage .search-bar :deep(.ant-input-search-button) {
   border-radius: 10px;
+}
+
+/* 浅色模式文字色适配（Hero 已无卡片背景） */
+html:not(.dark) #homePage .hero-title {
+  color: #212121;
+}
+
+html:not(.dark) #homePage .hero-desc {
+  color: #6b6b6b;
 }
 
 /* 分类 Tab 居中 */

@@ -14,17 +14,17 @@ import { useThemeStore } from '@/stores/useThemeStore.ts'
 
 const themeStore = useThemeStore()
 
-// 全局主题：参考 Vexor 风格（蓝色主色 + 浅色圆角）；深色模式使用 antd darkAlgorithm
+// 全局主题：参考悦目图库风格（亮蓝主色 + 暗色默认）；深色模式使用 antd darkAlgorithm
 const themeConfig = computed(() => ({
   algorithm: themeStore.isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
   token: {
-    colorPrimary: '#3d5af5',
-    colorInfo: '#3d5af5',
-    colorLink: '#3d5af5',
+    colorPrimary: '#1677ff',
+    colorInfo: '#1677ff',
+    colorLink: '#1677ff',
     borderRadius: 8,
-    borderRadiusLG: 14,
+    borderRadiusLG: 12,
     colorBgLayout: 'transparent',
-    colorTextHeading: themeStore.isDark ? '#e8eaf6' : '#171a2b',
+    colorTextHeading: themeStore.isDark ? '#f0f0f0' : '#212121',
     fontFamily:
       "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
   },
@@ -32,11 +32,11 @@ const themeConfig = computed(() => ({
     Menu: {
       itemBorderRadius: 10,
       itemMarginInline: 8,
-      itemSelectedBg: 'rgba(61, 90, 245, 0.08)',
-      itemHoverBg: 'rgba(61, 90, 245, 0.06)',
+      itemSelectedBg: 'rgba(22, 119, 255, 0.12)',
+      itemHoverBg: 'rgba(22, 119, 255, 0.08)',
     },
     Card: {
-      borderRadiusLG: 14,
+      borderRadiusLG: 12,
     },
   },
 }))

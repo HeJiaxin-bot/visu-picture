@@ -90,9 +90,9 @@ const backToTop = () => {
 <style scoped>
 #basicLayout .header {
   padding-inline: 20px;
-  background: #ffffff;
+  background: var(--bg-nav);
   color: unset;
-  border-bottom: 1px solid #edf0f7;
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -108,7 +108,7 @@ const backToTop = () => {
 }
 
 #basicLayout .content {
-  padding: 28px;
+  padding: 24px;
   background: transparent;
   margin-bottom: 28px;
 }
@@ -121,12 +121,12 @@ const backToTop = () => {
 }
 
 #basicLayout .footer a {
-  color: rgba(35, 44, 86, 0.4);
+  color: var(--text-disabled);
   text-decoration: none;
 }
 
 #basicLayout .footer a:hover {
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 /* 右下角悬浮按钮组 */
@@ -147,11 +147,11 @@ const backToTop = () => {
   align-items: center;
   justify-content: center;
   font-size: 17px;
-  color: #26283a;
-  background: #fff;
-  border: 1px solid #eceff7;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(37, 55, 120, 0.12);
+  box-shadow: var(--card-shadow);
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -161,19 +161,7 @@ const backToTop = () => {
 
 .float-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 26px rgba(37, 55, 120, 0.18);
-  color: #3d5af5;
-}
-
-/* 深色模式下的悬浮按钮 */
-html.dark .float-btn {
-  color: #c9cde4;
-  background: #1a2032;
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-}
-
-html.dark .float-btn:hover {
-  color: #7d94ff;
+  box-shadow: var(--card-shadow-hover);
+  color: var(--accent);
 }
 </style>

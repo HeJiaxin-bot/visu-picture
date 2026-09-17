@@ -288,21 +288,21 @@ defineExpose({
 .points-tip {
   margin: 0 auto 16px;
   font-size: 13px;
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
 }
 
 .points-tip b {
-  color: #3d5af5;
+  color: var(--accent);
   font-size: 15px;
   margin: 0 2px;
 }
 
 /* 深色模式 */
 html.dark .points-tip {
-  color: rgba(200, 208, 240, 0.6);
+  color: rgba(179, 179, 179, 0.6);
 }
 
 html.dark .points-tip b {
-  color: #7c96ff;
+  color: var(--accent);
 }
 </style>

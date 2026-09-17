@@ -456,15 +456,15 @@ watch(
   overflow-y: auto;
   padding: 14px 12px;
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(23, 26, 43, 0.06);
+  background: var(--bg-card);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .create-space-btn {
   border-radius: 999px;
   height: 40px;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(64, 169, 255, 0.25);
 }
 
 .sidebar-group {
@@ -475,7 +475,7 @@ watch(
 
 .sidebar-label {
   font-size: 12px;
-  color: rgba(23, 26, 43, 0.45);
+  color: var(--text-disabled);
   margin: 4px 4px 2px;
 }
 
@@ -491,15 +491,15 @@ watch(
 }
 
 .space-item:hover {
-  background: rgba(22, 119, 255, 0.06);
+  background: rgba(64, 169, 255, 0.06);
 }
 
 .space-item.active {
-  background: rgba(22, 119, 255, 0.1);
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .space-item.active .space-name {
-  color: #1677ff;
+  color: var(--accent);
 }
 
 /* 空间首字头像 */
@@ -514,11 +514,11 @@ watch(
   font-size: 15px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #4f6bff, #7a5cff);
+  background: linear-gradient(135deg, var(--accent), #69c0ff);
 }
 
 .space-avatar.avatar-team {
-  background: linear-gradient(135deg, #13c2c2, #4f6bff);
+  background: linear-gradient(135deg, #13c2c2, var(--accent));
 }
 
 .space-meta {
@@ -529,7 +529,7 @@ watch(
 .space-name {
   font-size: 14px;
   font-weight: 600;
-  color: #171a2b;
+  color: var(--text-primary-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -537,7 +537,7 @@ watch(
 
 .space-count {
   font-size: 12px;
-  color: rgba(23, 26, 43, 0.45);
+  color: var(--text-disabled);
   margin-top: 1px;
 }
 
@@ -556,14 +556,14 @@ watch(
 }
 
 .badge-team {
-  color: #1677ff;
-  background: rgba(22, 119, 255, 0.1);
+  color: var(--accent);
+  background: rgba(64, 169, 255, 0.1);
 }
 
 .sidebar-empty,
 .sidebar-loaded {
   font-size: 12px;
-  color: rgba(23, 26, 43, 0.35);
+  color: var(--text-disabled);
   text-align: center;
   padding: 6px 0;
 }
@@ -572,12 +572,12 @@ watch(
 .storage-bar {
   margin-top: auto;
   padding: 10px 10px 4px;
-  border-top: 1px solid rgba(23, 26, 43, 0.06);
+  border-top: 1px solid var(--border-color);
 }
 
 .storage-text {
   font-size: 12px;
-  color: rgba(23, 26, 43, 0.45);
+  color: var(--text-disabled);
   margin-top: 2px;
   text-align: center;
 }
@@ -607,8 +607,8 @@ watch(
   font-size: 22px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #7a9bff, #a58bff);
-  box-shadow: 0 4px 14px rgba(122, 155, 255, 0.28);
+  background: linear-gradient(135deg, var(--accent), #69c0ff);
+  box-shadow: 0 4px 14px rgba(64, 169, 255, 0.28);
 }
 
 .space-header-name {
@@ -617,12 +617,12 @@ watch(
   gap: 10px;
   font-size: 20px;
   font-weight: 700;
-  color: #171a2b;
+  color: var(--text-primary-light);
 }
 
 .space-header-meta {
   font-size: 13px;
-  color: rgba(23, 26, 43, 0.5);
+  color: var(--text-secondary);
   margin-top: 3px;
 }
 
@@ -647,11 +647,11 @@ watch(
 
 /* 搜索区卡片 */
 .search-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
   padding: 16px 16px 6px;
   margin-bottom: 18px;
-  box-shadow: 0 2px 12px rgba(23, 26, 43, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 .search-card :deep(.ant-form-item) {
@@ -659,7 +659,7 @@ watch(
 }
 
 .search-card :deep(.ant-form-item-label > label) {
-  color: rgba(23, 26, 43, 0.55);
+  color: var(--text-secondary);
 }
 
 .color-search-row {
@@ -667,79 +667,74 @@ watch(
   align-items: center;
   gap: 10px;
   padding: 10px 0 12px;
-  border-top: 1px dashed rgba(23, 26, 43, 0.08);
+  border-top: 1px dashed var(--border-color);
 }
 
 .color-label {
   font-size: 13px;
-  color: rgba(23, 26, 43, 0.55);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 /* 到底提示 */
 .list-end-text {
   text-align: center;
-  color: rgba(23, 26, 43, 0.35);
+  color: var(--text-disabled);
   font-size: 13px;
   padding: 16px 0;
 }
 
 /* ---------- 深色模式 ---------- */
 html.dark .space-sidebar {
-  background: #1f2338;
+  background: #2d2d2d;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 html.dark .sidebar-label,
 html.dark .space-count,
 html.dark .storage-text {
-  color: rgba(232, 234, 246, 0.45);
+  color: rgba(240, 240, 240, 0.45);
 }
 
 html.dark .space-item:hover {
-  background: rgba(22, 119, 255, 0.12);
+  background: rgba(64, 169, 255, 0.12);
 }
 
 html.dark .space-item.active {
-  background: rgba(22, 119, 255, 0.2);
+  background: rgba(64, 169, 255, 0.2);
 }
 
 html.dark .space-item.active .space-name {
-  color: #8fa4ff;
-}
-
-html.dark .space-name,
-html.dark .space-header-name {
-  color: #e8eaf6;
+  color: var(--accent);
 }
 
 html.dark .space-header-meta {
-  color: rgba(232, 234, 246, 0.5);
+  color: rgba(240, 240, 240, 0.5);
 }
 
 /* 深色模式：搜索卡片 */
 html.dark .search-card {
-  background: #1f2338;
+  background: #2d2d2d;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 html.dark .color-search-row {
-  border-top-color: rgba(232, 234, 246, 0.08);
+  border-top-color: rgba(240, 240, 240, 0.08);
 }
 
 html.dark .color-label,
 html.dark .search-card :deep(.ant-form-item-label > label) {
-  color: rgba(232, 234, 246, 0.55);
+  color: rgba(240, 240, 240, 0.55);
 }
 
 html.dark .storage-bar {
-  border-top-color: rgba(232, 234, 246, 0.08);
+  border-top-color: rgba(240, 240, 240, 0.08);
 }
 
 html.dark .sidebar-empty,
 html.dark .sidebar-loaded,
 html.dark .list-end-text {
-  color: rgba(232, 234, 246, 0.35);
+  color: rgba(240, 240, 240, 0.35);
 }
 
 /* ---------- 响应式：窄屏侧栏转横向滚动条 ---------- */

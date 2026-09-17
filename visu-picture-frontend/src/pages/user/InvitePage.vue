@@ -162,16 +162,16 @@ onMounted(() => {
 
 /* 邀请码卡片 */
 .invite-card {
-  background: #fff;
-  border: 1px solid #eceff7;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(37, 55, 120, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   padding: 28px 32px;
   text-align: center;
 }
 
 .card-label {
-  color: rgba(35, 44, 86, 0.6);
+  color: var(--text-secondary);
   font-size: 15px;
   margin-bottom: 16px;
 }
@@ -180,8 +180,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgba(61, 90, 245, 0.06);
-  border: 1px dashed rgba(61, 90, 245, 0.35);
+  background: rgba(64, 169, 255, 0.06);
+  border: 1px dashed rgba(64, 169, 255, 0.35);
   border-radius: 12px;
   padding: 14px 18px;
 }
@@ -192,7 +192,7 @@ onMounted(() => {
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 5px;
-  color: #3d5af5;
+  color: var(--accent);
   font-family: 'Segoe UI', 'PingFang SC', sans-serif;
 }
 
@@ -202,7 +202,7 @@ onMounted(() => {
 }
 
 .card-hint {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 13px;
   margin-top: 14px;
 }
@@ -210,11 +210,11 @@ onMounted(() => {
 .progress-line {
   margin-top: 10px;
   font-size: 14px;
-  color: rgba(35, 44, 86, 0.8);
+  color: var(--text-secondary);
 }
 
 .progress-line b {
-  color: #3d5af5;
+  color: var(--accent);
 }
 
 .progress-line .ok-icon {
@@ -223,7 +223,7 @@ onMounted(() => {
 }
 
 .progress-line .expire {
-  color: rgba(35, 44, 86, 0.55);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -233,10 +233,10 @@ onMounted(() => {
 }
 
 .list-card {
-  background: #fff;
-  border: 1px solid #eceff7;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  box-shadow: 0 6px 24px rgba(37, 55, 120, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
   padding: 10px 20px;
   min-height: 260px;
   display: flex;
@@ -248,7 +248,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 4px;
-  border-bottom: 1px solid rgba(35, 44, 86, 0.06);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .record-info {
@@ -257,12 +257,12 @@ onMounted(() => {
 
 .record-name {
   font-weight: 600;
-  color: #26283a;
+  color: var(--text-primary-light);
 }
 
 .record-time {
   font-size: 12px;
-  color: rgba(35, 44, 86, 0.45);
+  color: var(--text-disabled);
   margin-top: 2px;
 }
 
@@ -275,7 +275,7 @@ onMounted(() => {
   width: 24px;
   text-align: center;
   font-weight: 800;
-  color: rgba(35, 44, 86, 0.5);
+  color: var(--text-secondary);
 }
 
 .rank-num.top-1 {
@@ -291,7 +291,7 @@ onMounted(() => {
 }
 
 .rank-count {
-  color: #3d5af5;
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -308,16 +308,16 @@ onMounted(() => {
 
 .empty-icon {
   font-size: 40px;
-  color: rgba(35, 44, 86, 0.25);
+  color: var(--text-disabled);
 }
 
 .empty-text {
-  color: rgba(35, 44, 86, 0.5);
+  color: var(--text-secondary);
 }
 
 .list-footer {
   text-align: center;
-  color: rgba(35, 44, 86, 0.35);
+  color: var(--text-disabled);
   font-size: 12px;
   padding: 12px 0 6px;
 }
@@ -325,35 +325,35 @@ onMounted(() => {
 /* ===== 深色模式 ===== */
 html.dark .invite-card,
 html.dark .list-card {
-  background: rgba(30, 36, 56, 0.9);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(45, 45, 45, 0.9);
+  border-color: var(--border-color);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
 
 html.dark .card-label,
 html.dark .card-hint {
-  color: rgba(200, 208, 240, 0.6);
+  color: rgba(179, 179, 179, 0.6);
 }
 
 html.dark .code-row {
-  background: rgba(61, 90, 245, 0.12);
-  border-color: rgba(93, 120, 255, 0.45);
+  background: rgba(64, 169, 255, 0.12);
+  border-color: rgba(64, 169, 255, 0.45);
 }
 
 html.dark .invite-code {
-  color: #7d92ff;
+  color: var(--accent);
 }
 
 html.dark .progress-line {
-  color: rgba(200, 208, 240, 0.85);
+  color: rgba(179, 179, 179, 0.85);
 }
 
 html.dark .progress-line b {
-  color: #7d92ff;
+  color: var(--accent);
 }
 
 html.dark .progress-line .expire {
-  color: rgba(200, 208, 240, 0.55);
+  color: rgba(179, 179, 179, 0.55);
 }
 
 html.dark .record-item {
@@ -361,26 +361,26 @@ html.dark .record-item {
 }
 
 html.dark .record-name {
-  color: #e8eaf6;
+  color: var(--text-primary);
 }
 
 html.dark .record-time {
-  color: rgba(200, 208, 240, 0.45);
+  color: rgba(179, 179, 179, 0.45);
 }
 
 html.dark .rank-num {
-  color: rgba(200, 208, 240, 0.5);
+  color: rgba(179, 179, 179, 0.5);
 }
 
 html.dark .empty-icon {
-  color: rgba(200, 208, 240, 0.25);
+  color: rgba(179, 179, 179, 0.25);
 }
 
 html.dark .empty-text {
-  color: rgba(200, 208, 240, 0.5);
+  color: rgba(179, 179, 179, 0.5);
 }
 
 html.dark .list-footer {
-  color: rgba(200, 208, 240, 0.35);
+  color: rgba(179, 179, 179, 0.35);
 }
 </style>

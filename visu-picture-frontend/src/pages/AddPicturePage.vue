@@ -343,12 +343,12 @@ watchEffect(() => {
   margin: 0 0 6px;
   font-size: 24px;
   font-weight: 700;
-  color: #232c56;
+  color: var(--text-primary-light);
 }
 
 .page-sub {
   margin: 0;
-  color: #8593ad;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -359,10 +359,10 @@ watchEffect(() => {
 }
 
 .card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid rgba(61, 90, 245, 0.08);
-  box-shadow: 0 4px 24px rgba(61, 90, 245, 0.06);
+  border: 1px solid rgba(64, 169, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(64, 169, 255, 0.06);
 }
 
 .upload-card {
@@ -376,7 +376,7 @@ watchEffect(() => {
   align-items: center;
   gap: 16px;
   margin: 20px 0 16px;
-  color: #98a4c5;
+  color: var(--text-secondary);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -386,7 +386,7 @@ watchEffect(() => {
   content: '';
   flex: 1;
   height: 1px;
-  background: #e3e8f5;
+  background: var(--border-color);
 }
 
 .info-card {
@@ -405,7 +405,7 @@ watchEffect(() => {
 .info-title {
   font-weight: 600;
   font-size: 16px;
-  color: #232c56;
+  color: var(--text-primary-light);
 }
 
 .edit-bar {
@@ -414,7 +414,7 @@ watchEffect(() => {
   gap: 12px;
   margin-top: 12px;
   padding-top: 16px;
-  border-top: 1px dashed #e3e8f5;
+  border-top: 1px dashed var(--border-color);
 }
 
 .submit-btn {
@@ -425,22 +425,14 @@ watchEffect(() => {
 }
 
 /* 深色模式适配 */
-html.dark .page-title {
-  color: #e8eaf2;
-}
-
 html.dark .page-sub {
-  color: rgba(232, 234, 242, 0.55);
+  color: rgba(240, 240, 240, 0.55);
 }
 
 html.dark .card {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
-}
-
-html.dark .info-title {
-  color: #e8eaf2;
 }
 
 html.dark .edit-bar {
