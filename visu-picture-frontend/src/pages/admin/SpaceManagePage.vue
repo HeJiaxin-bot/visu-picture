@@ -65,7 +65,7 @@
         :data-source="dataList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1280 }"
+        :scroll="{ x: 1540 }"
         @change="doTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -88,6 +88,19 @@
                 </div>
               </div>
             </div>
+          </template>
+          <!-- 空间 id：等宽字体 + 快捷复制 -->
+          <template v-else-if="column.key === 'id'">
+            <span class="mono-text">{{ record.id }}</span>
+            <button
+              class="mini-copy"
+              type="button"
+              title="复制空间 id"
+              aria-label="复制空间 id"
+              @click="copyId(record.id, '空间 id')"
+            >
+              <CopyOutlined />
+            </button>
           </template>
           <!-- 空间级别 -->
           <template v-else-if="column.key === 'spaceLevel'">
@@ -134,7 +147,7 @@
               type="button"
               title="复制用户 id"
               aria-label="复制用户 id"
-              @click="copyId(record.userId)"
+              @click="copyId(record.userId, '用户 id')"
             >
               <CopyOutlined />
             </button>
@@ -162,7 +175,7 @@
                 target="_blank"
               >
                 <template #icon><BarChartOutlined /></template>
-                分析
+                空间分析
               </a-button>
               <a-button
                 class="row-btn ghost-btn"
@@ -227,12 +240,13 @@ import AdminShell from '@/components/admin/AdminShell.vue'
 
 const columns = [
   { title: '空间', key: 'space', width: 250 },
+  { title: '空间 ID', key: 'id', width: 210 },
   { title: '级别', key: 'spaceLevel', width: 110 },
   { title: '使用情况', key: 'spaceUseInfo', width: 230 },
   { title: '用户 ID', key: 'userId', width: 200 },
   { title: '创建时间', key: 'createTime', width: 120 },
   { title: '编辑时间', key: 'editTime', width: 120 },
-  { title: '操作', key: 'action', width: 250, fixed: 'right' },
+  { title: '操作', key: 'action', width: 300, fixed: 'right' },
 ]
 
 // 定义数据
@@ -317,12 +331,12 @@ const doDelete = async (id: string) => {
   }
 }
 
-// 复制用户 id
-const copyId = async (id?: string | number) => {
+// 复制 id
+const copyId = async (id?: string | number, label = 'id') => {
   if (id == null) return
   try {
     await navigator.clipboard.writeText(String(id))
-    message.success('用户 id 已复制')
+    message.success(`${label} 已复制`)
   } catch {
     message.error('复制失败，请手动选择复制')
   }

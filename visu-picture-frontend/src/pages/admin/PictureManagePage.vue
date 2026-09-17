@@ -65,7 +65,7 @@
         :data-source="dataList"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1680 }"
+        :scroll="{ x: 1697 }"
         @change="doTableChange"
       >
         <template #bodyCell="{ column, record }">
@@ -141,24 +141,34 @@
           <!-- 操作 -->
           <template v-else-if="column.key === 'action'">
             <a-space :size="6" wrap>
+              <!-- 已通过：不再提供审核操作，只展示状态（不可点击） -->
               <a-button
-                v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS"
+                v-if="record.reviewStatus === PIC_REVIEW_STATUS_ENUM.PASS"
                 class="row-btn btn-approve"
-                :loading="reviewingId === record.id"
-                @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
+                disabled
               >
                 <template #icon><CheckOutlined /></template>
-                通过
+                已通过
               </a-button>
-              <a-button
-                v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
-                class="row-btn btn-reject"
-                :loading="reviewingId === record.id"
-                @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
-              >
-                <template #icon><CloseOutlined /></template>
-                拒绝
-              </a-button>
+              <template v-else>
+                <a-button
+                  class="row-btn btn-approve"
+                  :loading="reviewingId === record.id"
+                  @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
+                >
+                  <template #icon><CheckOutlined /></template>
+                  通过
+                </a-button>
+                <a-button
+                  v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
+                  class="row-btn btn-reject"
+                  :loading="reviewingId === record.id"
+                  @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
+                >
+                  <template #icon><CloseOutlined /></template>
+                  拒绝
+                </a-button>
+              </template>
               <a-button
                 class="row-btn ghost-btn"
                 :href="`/add_picture?id=${record.id}`"
@@ -222,14 +232,14 @@ import { formatSize } from '@/utils'
 
 const columns = [
   { title: '图片', key: 'url', width: 92 },
-  { title: '名称', key: 'name', width: 210 },
-  { title: '简介', key: 'introduction', width: 200 },
-  { title: '标签', key: 'tags', width: 190 },
-  { title: '图片信息', key: 'picInfo', width: 210 },
-  { title: '用户 ID', key: 'userId', width: 200 },
-  { title: '审核信息', key: 'reviewMessage', width: 210 },
-  { title: '时间', key: 'time', width: 150 },
-  { title: '操作', key: 'action', width: 320, fixed: 'right' },
+  { title: '名称', key: 'name', width: 200 },
+  { title: '简介', key: 'introduction', width: 180 },
+  { title: '标签', key: 'tags', width: 175 },
+  { title: '图片信息', key: 'picInfo', width: 185 },
+  { title: '用户 ID', key: 'userId', width: 185 },
+  { title: '审核信息', key: 'reviewMessage', width: 200 },
+  { title: '时间', key: 'time', width: 140 },
+  { title: '操作', key: 'action', width: 340, fixed: 'right' },
 ]
 
 // 定义数据

@@ -319,23 +319,30 @@ html.dark .admin-shell :deep(.btn-danger-text:hover) {
   border-bottom: none;
 }
 
+/* 固定列（fixed）必须使用不透明底色，否则横向滚动 / 悬浮时下层列的内容会透出来，看起来像文字重叠 */
+.admin-table-card :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right),
 .admin-table-card :deep(.ant-table-tbody > tr > td.ant-table-cell-fix-right) {
   background: var(--bg-card);
 }
 
-.admin-table-card :deep(.ant-table-tbody > tr:hover > td),
-.admin-table-card :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: rgba(22, 119, 255, 0.05);
-}
-
-html.dark .admin-table-card :deep(.ant-table-tbody > tr:hover > td),
-html.dark .admin-table-card :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: rgba(64, 169, 255, 0.1);
+/* 固定列左侧划一条分隔线，替代默认投影，明确「下面还有内容」 */
+.admin-table-card :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right-first),
+.admin-table-card :deep(.ant-table-tbody > tr > td.ant-table-cell-fix-right-first) {
+  border-left: 1px solid var(--border-color);
 }
 
 .admin-table-card :deep(.ant-table-tbody > tr > td.ant-table-cell-fix-right-first::after),
 .admin-table-card :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right-first::after) {
   box-shadow: none;
+}
+
+/* 行悬浮：统一用不透明底色（半透明会透出被覆盖的固定列 / 下层内容） */
+.admin-table-card :deep(.ant-table-tbody > tr:hover > td) {
+  background: #f2f8ff;
+}
+
+html.dark .admin-table-card :deep(.ant-table-tbody > tr:hover > td) {
+  background: #2f3942;
 }
 
 .admin-table-card :deep(.ant-table-placeholder .ant-table-cell) {
