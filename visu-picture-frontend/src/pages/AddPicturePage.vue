@@ -88,6 +88,7 @@
             class="ai-btn"
             :icon="h(ThunderboltOutlined)"
             :loading="aiEditLoading"
+            :disabled="aiEditLoading"
             @click="doAiEdit"
           >
             AI 配文
@@ -305,7 +306,10 @@ const onSuccess = (newPicture: API.PictureVO) => {
     }
   }
   picture.value = newPicture
-  pictureForm.name = newPicture.name
+  // 仅在名称为空时用文件名兜底，避免覆盖用户填写或 AI 生成的内容
+  if (!pictureForm.name) {
+    pictureForm.name = newPicture.name
+  }
 }
 
 /**
@@ -376,7 +380,7 @@ onUnmounted(() => {
 })
 
 /** 提交表单 */
-const handleSubmit = async (values: any) => {
+const handleSubmit = async () => {
   // 延迟上传：点击创建/保存时才真正上传图片
   if (!(await ensureUploaded())) {
     return
@@ -385,10 +389,14 @@ const handleSubmit = async (values: any) => {
   if (!pictureId) {
     return
   }
+  // 表单未使用 a-form-item，@finish 回传的 values 为空，直接取 pictureForm 的当前值
   const res = await editPictureUsingPost({
     id: pictureId,
     spaceId: spaceId.value,
-    ...values,
+    name: pictureForm.name,
+    introduction: pictureForm.introduction,
+    category: pictureForm.category,
+    tags: pictureForm.tags,
   })
   // 操作成功
   if (res.data.code === 0 && res.data.data) {
@@ -567,17 +575,21 @@ const aiEditLoading = ref(false)
  * AI 智能配文：自动生成简介、分类、标签并回填表单
  */
 const doAiEdit = async () => {
-  // 延迟上传：AI 配文依赖已上传的图片，先完成上传
-  if (!(await ensureUploaded())) {
-    return
-  }
-  const pictureId = picture.value?.id
-  if (!pictureId) {
-    message.warning('请先上传图片')
+  // 防重复点击：AI 调用耗时较长，避免并发触发多次请求
+  if (aiEditLoading.value) {
     return
   }
   aiEditLoading.value = true
   try {
+    // 延迟上传：AI 配文依赖已上传的图片，先完成上传
+    if (!(await ensureUploaded())) {
+      return
+    }
+    const pictureId = picture.value?.id
+    if (!pictureId) {
+      message.warning('请先上传图片')
+      return
+    }
     // AI 调用耗时较长，延长超时时间
     const res = await aiEditPictureUsingPost({ pictureId }, { timeout: 60000 })
     if (res.data.code === 0 && res.data.data) {
