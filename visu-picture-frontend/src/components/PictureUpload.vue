@@ -82,7 +82,7 @@ const upload = async (): Promise<API.PictureVO | undefined> => {
   try {
     const params: API.PictureUploadRequest = props.picture?.id ? { id: props.picture.id } : {}
     params.spaceId = props.spaceId;
-    const res = await uploadPictureUsingPost(params, {}, file, { timeout: 40000 })
+    const res = await uploadPictureUsingPost(params, {}, file, { timeout: 300000 })
     if (res.data.code === 0 && res.data.data) {
       message.success('图片上传成功')
       // 清理本地预览状态

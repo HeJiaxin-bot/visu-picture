@@ -76,7 +76,8 @@ const upload = async (): Promise<API.PictureVO | undefined> => {
     if (props.picture?.id) {
       params.id = props.picture.id
     }
-    const res = await uploadPictureByUrlUsingPost(params)
+    // 链接上传由后端抓取远端图片，耗时可能较长，同样放宽到 5 分钟
+    const res = await uploadPictureByUrlUsingPost(params, { timeout: 300000 })
     if (res.data.code === 0 && res.data.data) {
       message.success('图片上传成功')
       pendingUrl.value = undefined

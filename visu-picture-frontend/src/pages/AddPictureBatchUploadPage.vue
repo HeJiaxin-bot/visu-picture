@@ -319,8 +319,8 @@ const uploadOne = async (item: BatchItem) => {
     }
     const res =
       item.kind === 'file'
-        ? await uploadPictureUsingPost(params, {}, item.file as File, { timeout: 40000 })
-        : await uploadPictureByUrlUsingPost({ ...params, fileUrl: item.fileUrl })
+        ? await uploadPictureUsingPost(params, {}, item.file as File, { timeout: 300000 })
+        : await uploadPictureByUrlUsingPost({ ...params, fileUrl: item.fileUrl }, { timeout: 300000 })
     if (res.data.code !== 0 || !res.data.data) {
       item.status = 'failed'
       item.error = res.data.message || '上传失败'
