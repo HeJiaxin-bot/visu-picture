@@ -271,7 +271,9 @@ const cleanupUploadedPicture = (keepalive = false) => {
   uploadedPictureId.value = undefined
   if (keepalive) {
     // 刷新 / 关闭页面时用 keepalive 请求兜底
-    const baseURL = import.meta.env.DEV ? 'http://localhost:8123' : ''
+    const baseURL = import.meta.env.DEV
+      ? 'http://localhost:8123'
+      : (import.meta.env.VITE_API_BASE_URL as string | undefined) || ''
     fetch(`${baseURL}/api/picture/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

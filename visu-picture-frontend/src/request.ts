@@ -3,8 +3,9 @@ import {message} from "ant-design-vue";
 
 // 区分开发和生产环境
 const DEV_BASE_URL = "http://localhost:8123";
-// 生产环境走同源（接口路径本身含 /api 前缀），由 Nginx 反向代理转发到后端
-const PROD_BASE_URL = "";
+// APP 打包（Capacitor）时由 .env.app 注入公网 API 地址；
+// 网页生产环境走同源（接口路径本身含 /api 前缀），由 Nginx 反向代理转发到后端
+const PROD_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
 // 创建 Axios 实例
 const myAxios = axios.create({
     baseURL: import.meta.env.DEV ? DEV_BASE_URL : PROD_BASE_URL,

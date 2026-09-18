@@ -16,7 +16,11 @@ export default class PictureEditWebSocket {
     const DEV_BASE_URL = "ws://localhost:8123";
     // 线上走同源 ws 协议（http→ws / https→wss），由 Nginx 转发到后端
     const PROD_BASE_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
-    const base = import.meta.env.DEV ? DEV_BASE_URL : PROD_BASE_URL;
+    // APP 打包（Capacitor）时由 .env.app 注入 http(s) API 地址，http→ws / https→wss 推导
+    const APP_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '';
+    const base =
+      APP_BASE_URL ||
+      (import.meta.env.DEV ? DEV_BASE_URL : PROD_BASE_URL);
     const url = `${base}/api/ws/picture/edit?pictureId=${this.pictureId}`
     this.socket = new WebSocket(url)
 

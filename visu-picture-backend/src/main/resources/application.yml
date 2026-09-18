@@ -84,6 +84,12 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.visupicture.controller
+# Sa-Token 配置：登录 Cookie 跨站场景（Android APP 内 WebView 来源为 https://localhost）
+# 必须同时开启 SameSite=None 与 Secure，浏览器/WebView 才会接受跨站 Cookie
+sa-token:
+  cookie:
+    same-site: None
+    secure: true
 ## 对象存储配置（需要从腾讯云获取）
 #cos:
 #  client:
@@ -96,3 +102,7 @@ knife4j:
 ## 阿里云 AI 配置
 #aliYunAi:
 #  apiKey: xxx
+
+# Pexels 图片搜索配置
+#pexels:
+  #apiKey: xxx

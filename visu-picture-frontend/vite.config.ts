@@ -8,7 +8,7 @@ import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 import compression from 'vite-plugin-compression2'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // server: {
   //   proxy: {
   //     '/api': 'http://localhost:8123'
@@ -28,18 +28,23 @@ export default defineConfig({
       ],
       dts: false,
     }),
-    // 构建时预生成 Gzip 与 Brotli 压缩产物，部署方开启对应压缩即可大幅减小传输体积
-    compression({
-      algorithms: ['gzip'],
-      threshold: 1024,
-      // 保留原文件，让服务器在支持 gzip 时返回 .gz，否则用原文件（更稳妥）
-      deleteOriginalAssets: false,
-    }),
-    compression({
-      algorithms: ['brotliCompress'],
-      threshold: 1024,
-      deleteOriginalAssets: false,
-    }),
+    // 构建时预生成 Gzip 与 Brotli 压缩产物，部署方开启对应压缩即可大幅减小传输体积。
+    // APP 打包模式（--mode app）不生成：.gz/.br 会被同步进 APK，资源合并时与原文件冲突（Duplicate resources）
+    ...(mode === 'app'
+      ? []
+      : [
+          compression({
+            algorithms: ['gzip'],
+            threshold: 1024,
+            // 保留原文件，让服务器在支持 gzip 时返回 .gz，否则用原文件（更稳妥）
+            deleteOriginalAssets: false,
+          }),
+          compression({
+            algorithms: ['brotliCompress'],
+            threshold: 1024,
+            deleteOriginalAssets: false,
+          }),
+        ]),
   ],
   resolve: {
     alias: {
@@ -58,4 +63,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

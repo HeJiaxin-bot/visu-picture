@@ -10,11 +10,17 @@
     "openapi": "node openapi.config.js",
     "preview": "vite preview",
     "build-only": "vite build",
+    "app:build": "vite build --mode app",
+    "app:sync": "npm run app:build && cap sync android",
+    "app:open": "cap open android",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.7.9",
     "echarts": "^5.5.1",
