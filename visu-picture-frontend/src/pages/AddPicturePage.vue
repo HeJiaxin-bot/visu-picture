@@ -133,7 +133,7 @@
             />
 
             <div class="submit-row">
-              <a-button type="primary" html-type="submit" class="submit-btn">
+              <a-button type="primary" html-type="submit" class="submit-btn" :disabled="aiEditLoading">
                 {{ isEditMode ? '保存修改' : '创建' }}
               </a-button>
             </div>
@@ -307,6 +307,10 @@ onUnmounted(() => {
 
 /** 提交表单 */
 const handleSubmit = async () => {
+  // AI 配文进行中不允许提交，避免拿到旧的配文内容或并发冲突
+  if (aiEditLoading.value) {
+    return
+  }
   // 延迟上传：点击创建/保存时才真正上传图片
   if (!(await ensureUploaded())) {
     return
