@@ -11,6 +11,7 @@ const AddPicturePage = () => import('@/pages/AddPicturePage.vue')
 const PictureManagePage = () => import('@/pages/admin/PictureManagePage.vue')
 const PictureDetailPage = () => import('@/pages/PictureDetailPage.vue')
 const AddPictureBatchPage = () => import('@/pages/AddPictureBatchPage.vue')
+const AddPictureBatchUploadPage = () => import('@/pages/AddPictureBatchUploadPage.vue')
 const SpaceManagePage = () => import('@/pages/admin/SpaceManagePage.vue')
 const AddSpacePage = () => import('@/pages/AddSpacePage.vue')
 const MySpacePage = () => import('@/pages/MySpacePage.vue')
@@ -80,6 +81,11 @@ const router = createRouter({
       path: '/add_picture/batch',
       name: '批量创建图片',
       component: AddPictureBatchPage,
+    },
+    {
+      path: '/add_picture/batch-upload',
+      name: '批量上传图片',
+      component: AddPictureBatchUploadPage,
     },
     {
       path: '/picture/:id',

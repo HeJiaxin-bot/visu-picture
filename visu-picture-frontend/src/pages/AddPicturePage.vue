@@ -12,7 +12,13 @@
         </template>
         <template v-else>保存至公共图库，审核通过后展示在首页</template>
       </p>
-      <p class="page-note">支持 JPG / PNG / WEBP，单张不超过 10 MB</p>
+      <p class="page-note">
+        支持 JPG / PNG / WEBP，单张不超过 10 MB
+        <span class="note-sep">·</span>
+        <router-link v-if="!isEditMode" class="batch-entry" :to="batchUploadPath">
+          批量上传多张图片
+        </router-link>
+      </p>
     </header>
 
     <div class="layout">
@@ -121,27 +127,10 @@
               />
             </div>
 
-            <div class="picker-row" @click="openCategoryModal">
-              <span class="field-lead">
-                <span class="field-icon"><AppstoreOutlined /></span>
-                分类
-              </span>
-              <span class="picker-value" :class="{ 'is-empty': !pictureForm.category }">
-                {{ pictureForm.category || '选择分类' }}
-              </span>
-              <RightOutlined class="picker-arrow" />
-            </div>
-
-            <div class="picker-row is-last" @click="openTagModal">
-              <span class="field-lead">
-                <span class="field-icon"><TagsOutlined /></span>
-                标签
-              </span>
-              <span class="picker-value" :class="{ 'is-empty': !pictureForm.tags?.length }">
-                {{ tagSummary }}
-              </span>
-              <RightOutlined class="picker-arrow" />
-            </div>
+            <PictureMetaPicker
+              v-model:category="pictureForm.category"
+              v-model:tags="pictureForm.tags"
+            />
 
             <div class="submit-row">
               <a-button type="primary" html-type="submit" class="submit-btn">
@@ -159,65 +148,6 @@
         </div>
       </aside>
     </div>
-
-    <!-- 分类选择 -->
-    <a-modal
-      v-model:open="categoryModalOpen"
-      title="选择分类"
-      :width="440"
-      :footer="null"
-      centered
-      :body-style="{ padding: '4px 24px 24px' }"
-    >
-      <label class="picker-search">
-        <SearchOutlined class="picker-search-icon" />
-        <input v-model="categoryKeyword" class="picker-search-input" placeholder="搜索分类..." />
-      </label>
-      <div class="picker-grid">
-        <button
-          v-for="item in categoryChoices"
-          :key="item"
-          type="button"
-          class="picker-chip"
-          :class="{ 'is-active': pictureForm.category === item }"
-          @click="selectCategory(item)"
-        >
-          {{ item }}
-        </button>
-      </div>
-      <div v-if="!categoryChoices.length" class="picker-empty">没有找到匹配的分类</div>
-    </a-modal>
-
-    <!-- 标签选择 -->
-    <a-modal
-      v-model:open="tagModalOpen"
-      title="选择标签"
-      :width="440"
-      centered
-      :body-style="{ padding: '4px 24px 20px' }"
-    >
-      <template #footer>
-        <a-button @click="tagModalOpen = false">取消</a-button>
-        <a-button type="primary" @click="confirmTags">确定</a-button>
-      </template>
-      <label class="picker-search">
-        <SearchOutlined class="picker-search-icon" />
-        <input v-model="tagKeyword" class="picker-search-input" placeholder="搜索标签..." />
-      </label>
-      <div class="picker-grid">
-        <button
-          v-for="item in tagChoices"
-          :key="item"
-          type="button"
-          class="picker-chip"
-          :class="{ 'is-active': tagDraft.includes(item) }"
-          @click="toggleTag(item)"
-        >
-          {{ item }}
-        </button>
-      </div>
-      <div v-if="!tagChoices.length" class="picker-empty">没有找到匹配的标签，输入后可直接创建</div>
-    </a-modal>
   </div>
 </template>
 
@@ -230,20 +160,12 @@ import {
   deletePictureUsingPost,
   editPictureUsingPost,
   getPictureVoByIdUsingGet,
-  listPictureTagCategoryUsingGet,
 } from '@/api/pictureController.ts'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 import ImageCropper from '@/components/ImageCropper.vue'
-import {
-  AppstoreOutlined,
-  EditOutlined,
-  FullscreenOutlined,
-  RightOutlined,
-  SearchOutlined,
-  TagsOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons-vue'
+import PictureMetaPicker from '@/components/PictureMetaPicker.vue'
+import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
@@ -288,6 +210,11 @@ const formatPicSize = (size: number) => {
 const spaceId = computed(() => {
   return route.query?.spaceId
 })
+
+// 批量上传入口（带上当前空间，保持上传目标一致）
+const batchUploadPath = computed(() =>
+  spaceId.value ? `/add_picture/batch-upload?spaceId=${spaceId.value}` : '/add_picture/batch-upload',
+)
 
 /**
  * 图片上传成功
@@ -426,87 +353,6 @@ const handleSubmit = async () => {
   } else {
     message.error('创建失败，' + res.data.message)
   }
-}
-
-const categoryList = ref<string[]>([])
-const tagList = ref<string[]>([])
-
-/**
- * 获取标签和分类选项
- * @param values
- */
-const getTagCategoryOptions = async () => {
-  const res = await listPictureTagCategoryUsingGet()
-  if (res.data.code === 0 && res.data.data) {
-    tagList.value = res.data.data.tagList ?? []
-    categoryList.value = res.data.data.categoryList ?? []
-  } else {
-    message.error('获取标签分类列表失败，' + res.data.message)
-  }
-}
-
-onMounted(() => {
-  getTagCategoryOptions()
-})
-
-// ----- 分类 / 标签选择弹窗 -----
-// 右侧行内摘要：未选择时显示占位提示
-const tagSummary = computed(() => {
-  const tags = pictureForm.tags ?? []
-  return tags.length ? tags.join(' · ') : '添加标签'
-})
-
-/** 按关键词过滤，未收录的关键词追加到末尾以便直接创建 */
-const filterChoices = (list: string[], keyword: string) => {
-  const kw = keyword.trim()
-  if (!kw) {
-    return list
-  }
-  const matched = list.filter((item) => item.includes(kw))
-  return matched.includes(kw) ? matched : [...matched, kw]
-}
-
-// 分类：单选，点选后立即写回并关闭
-const categoryModalOpen = ref(false)
-const categoryKeyword = ref('')
-
-const categoryChoices = computed(() => filterChoices(categoryList.value, categoryKeyword.value))
-
-const openCategoryModal = () => {
-  categoryKeyword.value = ''
-  categoryModalOpen.value = true
-}
-
-const selectCategory = (value: string) => {
-  pictureForm.category = value
-  categoryModalOpen.value = false
-}
-
-// 标签：多选，弹窗内先记草稿，点确定才写回
-const tagModalOpen = ref(false)
-const tagKeyword = ref('')
-const tagDraft = ref<string[]>([])
-
-const tagChoices = computed(() => filterChoices(tagList.value, tagKeyword.value))
-
-const openTagModal = () => {
-  tagKeyword.value = ''
-  tagDraft.value = [...(pictureForm.tags ?? [])]
-  tagModalOpen.value = true
-}
-
-const toggleTag = (value: string) => {
-  const index = tagDraft.value.indexOf(value)
-  if (index > -1) {
-    tagDraft.value.splice(index, 1)
-  } else {
-    tagDraft.value.push(value)
-  }
-}
-
-const confirmTags = () => {
-  pictureForm.tags = tagDraft.value
-  tagModalOpen.value = false
 }
 
 // 获取老数据
@@ -670,6 +516,18 @@ watchEffect(() => {
   color: var(--text-disabled);
 }
 
+.note-sep {
+  margin: 0 6px;
+}
+
+.batch-entry {
+  color: var(--accent);
+}
+
+.batch-entry:hover {
+  text-decoration: underline;
+}
+
 .space-link {
   font-weight: 500;
   color: var(--accent);
@@ -797,28 +655,6 @@ watchEffect(() => {
   border-bottom: 1px solid var(--border-color);
 }
 
-.field-lead {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-
-.field-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--bg-body);
-  color: var(--text-secondary);
-  font-size: 15px;
-  transition: transform 0.15s ease;
-}
-
 /* 输入控件：无边框，仅靠占位文字与留白区分 */
 .info-form :deep(.ant-input) {
   width: 100%;
@@ -838,121 +674,6 @@ watchEffect(() => {
   padding: 2px 0 !important;
   line-height: 1.7;
   resize: none;
-}
-
-/* 分类 / 标签：整行可点，右侧显示当前值 + 箭头 */
-.picker-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-}
-
-.picker-row.is-last {
-  border-bottom: none;
-}
-
-.picker-row:hover .picker-value {
-  color: var(--text-primary-light);
-}
-
-.picker-row:hover .picker-arrow {
-  transform: translateX(2px);
-}
-
-.picker-value {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  color: var(--text-primary-light);
-  transition: color 0.15s ease;
-}
-
-.picker-value.is-empty {
-  color: var(--text-disabled);
-}
-
-.picker-arrow {
-  flex: 0 0 auto;
-  font-size: 12px;
-  color: var(--text-disabled);
-  transition: transform 0.15s ease;
-}
-
-/* 选择弹窗：搜索框 + 三列可点选项 */
-.picker-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  background: var(--bg-body);
-}
-
-.picker-search-icon {
-  flex: 0 0 auto;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.picker-search-input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 14px;
-  color: var(--text-primary-light);
-}
-
-.picker-search-input::placeholder {
-  color: var(--text-disabled);
-}
-
-.picker-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-height: 320px;
-  margin-top: 18px;
-  overflow-y: auto;
-}
-
-.picker-chip {
-  height: 40px;
-  padding: 0 8px;
-  border: none;
-  border-radius: 10px;
-  background: var(--bg-body);
-  font-size: 14px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.picker-chip:hover {
-  color: var(--text-primary-light);
-}
-
-.picker-chip.is-active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.picker-empty {
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--text-disabled);
 }
 
 /* 未选图时的引导状态：在剩余空间里垂直居中，与左栏底部齐平 */
@@ -1047,16 +768,6 @@ html.dark .card {
 html.dark .info-form :deep(.ant-input) {
   border: none !important;
   background: transparent !important;
-}
-
-html.dark .field-icon,
-html.dark .picker-search,
-html.dark .picker-chip {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-html.dark .picker-chip.is-active {
-  background: var(--accent);
 }
 
 html.dark .empty-art {

@@ -119,6 +119,14 @@
               创建图片
             </a-button>
             <a-button
+              v-if="canUploadPicture"
+              class="hero-btn"
+              :icon="h(CloudUploadOutlined)"
+              @click="router.push(`/add_picture/batch-upload?spaceId=${id}`)"
+            >
+              批量上传
+            </a-button>
+            <a-button
               v-if="canManageSpace"
               class="hero-btn"
               :icon="h(EditOutlined)"
@@ -248,6 +256,7 @@ import {
   BarChartOutlined,
   CameraOutlined,
   CloseOutlined,
+  CloudUploadOutlined,
   CrownOutlined,
   EditOutlined,
   FilterOutlined,
