@@ -190,12 +190,14 @@ const isEdit = computed(() => !!route.query?.id)
 const loginUserStore = useLoginUserStore()
 const isAdmin = computed(() => loginUserStore.loginUser.userRole === 'admin')
 
-// 是否为有效会员（与后端一致：以到期时间判断，无到期时间时回退到会员角色）
+// 是否为有效会员（与后端一致：以 isVip 字段判断，回退按到期时间兼容）
 const isVip = computed(() => {
   const user = loginUserStore.loginUser
+  if (user.isVip != null) {
+    return user.isVip === 1
+  }
   const expireTime = user.vipExpireTime
-  if (!expireTime) return user.userRole === 'vip'
-  return new Date(expireTime).getTime() > Date.now()
+  return !!expireTime && new Date(expireTime).getTime() > Date.now()
 })
 
 // 页头说明文案

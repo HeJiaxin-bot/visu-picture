@@ -50,9 +50,14 @@ public class User implements Serializable {
     private String userProfile;
 
     /**
-     * 用户角色：user/admin
+     * 用户角色：user/admin（会员状态由 isVip 字段表示，与角色无关）
      */
     private String userRole;
+
+    /**
+     * 是否会员：0-否 1-是（管理员视为会员，但不改变角色）
+     */
+    private Integer isVip;
 
     /**
      * 会员过期时间

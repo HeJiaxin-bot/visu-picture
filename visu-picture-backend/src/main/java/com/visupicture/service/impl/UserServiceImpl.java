@@ -176,7 +176,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         User update = new User();
         update.setId(inviterId);
-        update.setUserRole(VIP_ROLE);
+        // 只更新会员权益字段，不改动 userRole（管理员身份不受影响）
+        update.setIsVip(VIP_YES);
         // 累计满 N 人：升级永久会员（重复设置幂等，无副作用）
         if (inviteCount >= UserConstant.INVITE_PERMANENT_COUNT) {
             update.setVipExpireTime(PERMANENT_VIP_TIME);
@@ -405,8 +406,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     // 文件读写锁（确保并发安全）
     private final ReentrantLock fileLock = new ReentrantLock();
 
-    // VIP 角色常量（根据你的需求自定义）
-    private static final String VIP_ROLE = "vip";
+    // isVip 字段取值
+    private static final int VIP_YES = 1;
+    private static final int VIP_NO = 0;
 
     /**
      * 永久会员的到期时间表示（远期日期）
@@ -490,7 +492,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     /**
-     * 更新用户会员信息
+     * 更新用户会员信息（只写会员字段，不改 userRole，管理员兑换不会被降级）
      */
     private void updateUserVipInfo(User user, String usedVipCode) {
         // 计算过期时间（当前时间 + 1 年）
@@ -501,7 +503,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         updateUser.setId(user.getId());
         updateUser.setVipExpireTime(expireTime); // 设置过期时间
         updateUser.setVipCode(usedVipCode);     // 记录使用的兑换码
-        updateUser.setUserRole(VIP_ROLE);       // 修改用户角色
+        updateUser.setIsVip(VIP_YES);           // 标记为会员（不动 userRole）
 
         // 执行更新
         boolean updated = this.updateById(updateUser);
@@ -647,9 +649,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         vo.setRemainCount(Math.max(UserConstant.INVITE_PERMANENT_COUNT - records.size(), 0));
         Date expireTime = user.getVipExpireTime();
         vo.setVipExpireTime(expireTime);
-        boolean unlocked = expireTime != null && expireTime.after(new Date());
+        // 会员状态以 isVip 字段为准；历史数据回退按到期时间判断
+        boolean unlocked = user.getIsVip() != null ? user.getIsVip() == VIP_YES
+                : expireTime != null && expireTime.after(new Date());
         vo.setMemberUnlocked(unlocked);
-        vo.setPermanentMember(unlocked && expireTime.compareTo(PERMANENT_VIP_TIME) >= 0);
+        vo.setPermanentMember(unlocked && expireTime != null && expireTime.compareTo(PERMANENT_VIP_TIME) >= 0);
         return vo;
     }
 

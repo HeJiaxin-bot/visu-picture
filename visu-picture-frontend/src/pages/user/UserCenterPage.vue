@@ -426,9 +426,13 @@ const parseDate = (time?: string): Date | null => {
   return isNaN(d.getTime()) ? null : d
 }
 
-// VIP 有效期是否未过（未过期即 VIP 用户）
+// 会员状态：以后端 isVip 字段为准；无该字段时回退按到期时间判断（兼容旧数据）
 const isVip = computed(() => {
-  const expire = parseDate(loginUser.value.vipExpireTime)
+  const user = loginUser.value
+  if (user.isVip != null) {
+    return user.isVip === 1
+  }
+  const expire = parseDate(user.vipExpireTime)
   return !!expire && expire.getTime() > Date.now()
 })
 

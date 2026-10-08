@@ -269,6 +269,8 @@ declare namespace API {
     userName?: string
     userProfile?: string
     userRole?: string
+    /** 是否会员：0-否 1-是 */
+    isVip?: number
     vipExpireTime?: string
   }
 
@@ -713,6 +715,8 @@ declare namespace API {
     userPassword?: string
     userProfile?: string
     userRole?: string
+    /** 是否会员：0-否 1-是 */
+    isVip?: number
     vipCode?: string
     vipExpireTime?: string
     vipNumber?: number
@@ -768,6 +772,8 @@ declare namespace API {
     userName?: string
     userProfile?: string
     userRole?: string
+    /** 是否会员：0-否 1-是 */
+    isVip?: number
     vipCode?: string
     vipExpireTime?: string
     vipNumber?: number

@@ -232,8 +232,11 @@ const copyId = async (id?: string | number) => {
   }
 }
 
-// 会员有效期是否未过
+// 会员状态：以 isVip 字段为准；无该字段时回退按到期时间判断（兼容旧数据）
 const isVip = (record: API.UserVO) => {
+  if (record.isVip != null) {
+    return record.isVip === 1
+  }
   if (!record.vipExpireTime) return false
   const expire = new Date(String(record.vipExpireTime).replace(/-/g, '/').replace('T', ' '))
   return !isNaN(expire.getTime()) && expire.getTime() > Date.now()

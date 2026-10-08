@@ -289,7 +289,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     }
 
     /**
-     * 是否为有效会员：以会员到期时间判断，无到期时间时回退到会员角色
+     * 是否为有效会员：以 isVip 字段判断，无 isVip 值时回退按会员到期时间兼容
      */
     private boolean isVipUser(User loginUser) {
         if (loginUser == null) {
@@ -297,11 +297,12 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         }
         User dbUser = userService.getById(loginUser.getId());
         User user = dbUser != null ? dbUser : loginUser;
-        Date expireTime = user.getVipExpireTime();
-        if (expireTime == null) {
-            return UserConstant.VIP_ROLE.equals(user.getUserRole());
+        if (user.getIsVip() != null) {
+            return user.getIsVip() == 1;
         }
-        return expireTime.after(new Date());
+        // 兼容历史数据：无 isVip 值时按到期时间判断（vip 角色已废弃）
+        Date expireTime = user.getVipExpireTime();
+        return expireTime != null && expireTime.after(new Date());
     }
 
     /**
