@@ -121,7 +121,7 @@ const router = createRouter({
     },
     {
       path: '/user/invite',
-      name: '邀请计划',
+      name: '会员中心',
       component: InvitePage,
     },
     {

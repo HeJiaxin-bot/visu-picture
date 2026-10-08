@@ -249,7 +249,7 @@ const goBack = () => {
       </div>
       <!-- 空态：选择图片 -->
       <div v-else class="pic-empty" @click="doPickFile">
-        <van-icon name="photograph" size="40" color="#c9cdd4" />
+        <van-icon name="photograph" size="40" color="#94a3b8" />
         <div class="pic-empty-text">点击选择图片</div>
         <div class="pic-empty-sub">支持 JPG / PNG / WebP，拍摄或从相册选择</div>
       </div>
@@ -274,7 +274,7 @@ const goBack = () => {
         <div class="ai-desc">自动生成简介、分类与标签</div>
       </div>
       <van-loading v-if="aiEditLoading" size="18" />
-      <van-icon v-else name="arrow" color="#c9cdd4" />
+      <van-icon v-else name="arrow" color="#94a3b8" />
     </div>
 
     <!-- 表单 -->

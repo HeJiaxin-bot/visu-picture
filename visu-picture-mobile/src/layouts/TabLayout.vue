@@ -47,14 +47,14 @@ const goPublish = () => {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #40a9ff 0%, #1687e0 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26px;
   box-shadow:
-    0 4px 12px rgba(64, 169, 255, 0.45),
+    0 4px 12px rgba(37, 99, 235, 0.45),
     0 0 0 4px var(--bg-page);
   z-index: 1001;
   cursor: pointer;

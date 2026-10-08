@@ -192,9 +192,11 @@ const doEditPicture = (picture: API.PictureVO) => {
   min-height: 100vh;
 }
 
-/* 顶部：简洁白底，标题 + 搜索入口 */
+/* 顶部：毛玻璃白底，标题 + 搜索入口 */
 .home-header {
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
   padding: calc(var(--safe-top) + 12px) 16px 4px;
   position: sticky;
   top: 0;

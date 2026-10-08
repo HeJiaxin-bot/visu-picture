@@ -274,14 +274,14 @@ const goBack = () => {
     <van-notice-bar
       v-if="quotaWarning"
       :text="quotaWarning"
-      :color="quotaWarning.includes('已用完') ? '#f53f3f' : '#ff7d00'"
+      :color="quotaWarning.includes('已用完') ? '#ef4444' : '#f59e0b'"
       background="#fff7e8"
       left-icon="info-o"
     />
 
     <!-- 选择图片 -->
     <div class="pick-card" @click="doPickFiles">
-      <van-icon name="photograph" size="28" color="#40a9ff" />
+      <van-icon name="photograph" size="28" color="#2563eb" />
       <span>点击选择图片（最多 {{ MAX_COUNT }} 张）</span>
       <span class="pick-count">{{ items.length }}/{{ MAX_COUNT }}</span>
     </div>
@@ -307,7 +307,7 @@ const goBack = () => {
         <van-icon
           v-if="item.status !== 'uploading' && !uploading"
           name="cross"
-          color="#c9cdd4"
+          color="#94a3b8"
           class="queue-remove"
           @click="removeItem(index)"
         />

@@ -125,7 +125,7 @@
                   </div>
                   <div class="team-panel-item user-panel-item" @click="router.push('/user/invite')">
                     <GiftOutlined class="item-icon" />
-                    <span>邀请好友</span>
+                    <span>会员中心</span>
                   </div>
                   <div class="team-panel-divider"></div>
                   <div class="team-panel-item user-panel-item" @click="doLogout">
@@ -203,7 +203,7 @@
           </div>
           <div class="drawer-item" @click="go('/user/invite')">
             <GiftOutlined class="drawer-icon" />
-            <span>邀请好友</span>
+            <span>会员中心</span>
           </div>
           <div class="drawer-item" @click="doLogout">
             <LogoutOutlined class="drawer-icon" />

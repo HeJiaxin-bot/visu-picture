@@ -155,8 +155,8 @@
           </div>
           <div class="entry-item" @click="router.push('/user/invite')">
             <CrownOutlined class="entry-icon" style="color: #faad14" />
-            <div class="entry-title">邀请好友</div>
-            <div class="entry-desc">邀请 3 人得永久会员</div>
+            <div class="entry-title">会员中心</div>
+            <div class="entry-desc">激活码兑换与邀请计划</div>
           </div>
           <!-- 编辑资料：弹出弹窗修改昵称与个性签名 -->
           <div class="entry-item" @click="openEditModal">

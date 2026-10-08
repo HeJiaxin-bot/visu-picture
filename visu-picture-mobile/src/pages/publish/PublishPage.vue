@@ -95,7 +95,7 @@ const goBack = () => {
     <div class="space-bar" @click="showSpacePicker = true">
       <span class="space-label">发布到</span>
       <span class="space-value">{{ spaceName }}</span>
-      <van-icon name="arrow-down" color="#86909c" />
+      <van-icon name="arrow-down" color="#64748b" />
     </div>
 
     <!-- 发布入口 -->
@@ -108,7 +108,7 @@ const goBack = () => {
           <div class="entry-title">上传图片</div>
           <div class="entry-desc">拍摄或从相册选择，支持 AI 智能配文</div>
         </div>
-        <van-icon name="arrow" color="#c9cdd4" />
+        <van-icon name="arrow" color="#94a3b8" />
       </div>
 
       <div class="entry-card" @click="goAddUrl">
@@ -119,7 +119,7 @@ const goBack = () => {
           <div class="entry-title">URL 导入</div>
           <div class="entry-desc">粘贴图片链接，一键抓取到图库</div>
         </div>
-        <van-icon name="arrow" color="#c9cdd4" />
+        <van-icon name="arrow" color="#94a3b8" />
       </div>
 
       <div class="entry-card" @click="goAddBatch">
@@ -130,7 +130,7 @@ const goBack = () => {
           <div class="entry-title">批量上传</div>
           <div class="entry-desc">一次选择多张图片，并发快速上传</div>
         </div>
-        <van-icon name="arrow" color="#c9cdd4" />
+        <van-icon name="arrow" color="#94a3b8" />
       </div>
     </div>
 
@@ -141,7 +141,7 @@ const goBack = () => {
         <div class="picker-item" :class="{ active: !spaceId }" @click="doPickSpace()">
           <van-icon name="public" />
           <span>公共图库</span>
-          <van-icon v-if="!spaceId" name="success" color="#40a9ff" />
+          <van-icon v-if="!spaceId" name="success" color="#2563eb" />
         </div>
         <div
           v-for="space in spaceList"
@@ -152,7 +152,7 @@ const goBack = () => {
         >
           <van-icon name="apps-o" />
           <span class="ellipsis">{{ space.spaceName }}</span>
-          <van-icon v-if="String(space.id) === spaceId" name="success" color="#40a9ff" />
+          <van-icon v-if="String(space.id) === spaceId" name="success" color="#2563eb" />
         </div>
       </div>
     </van-popup>

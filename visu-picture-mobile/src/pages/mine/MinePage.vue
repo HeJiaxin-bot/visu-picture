@@ -80,7 +80,7 @@ const goMySpace = () => {
           </div>
           <div class="user-account">账号：{{ loginUserStore.loginUser.userAccount ?? '-' }}</div>
         </div>
-        <van-icon name="arrow" color="#c9cdd4" />
+        <van-icon name="arrow" color="#94a3b8" />
       </template>
       <template v-else>
         <div class="unlogin-area">

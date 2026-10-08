@@ -118,7 +118,7 @@ const goBack = () => {
           <template #right-icon>
             <van-icon
               :name="formData.spaceLevel === level.value ? 'checked' : 'circle'"
-              :color="formData.spaceLevel === level.value ? '#40a9ff' : '#c9cdd4'"
+              :color="formData.spaceLevel === level.value ? '#2563eb' : '#94a3b8'"
               size="20"
             />
           </template>

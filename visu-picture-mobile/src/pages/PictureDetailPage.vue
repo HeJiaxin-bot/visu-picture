@@ -205,7 +205,7 @@ const formatSize = (size?: number) => {
             <div class="author-name">{{ picture.user?.userName ?? '未知用户' }}</div>
             <div class="author-desc ellipsis">{{ picture.user?.userProfile ?? '查看TA的主页' }}</div>
           </div>
-          <van-icon name="arrow" color="#c9cdd4" />
+          <van-icon name="arrow" color="#94a3b8" />
         </div>
       </div>
 

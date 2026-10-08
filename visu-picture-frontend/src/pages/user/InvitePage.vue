@@ -1,6 +1,41 @@
 <template>
   <div id="invitePage">
-    <h2 class="page-title">邀请计划</h2>
+    <h2 class="page-title">会员中心</h2>
+
+    <!-- 激活码兑换：默认收起，点击展开 -->
+    <div class="exchange-toggle">
+      <a-button type="link" class="toggle-btn" @click="showExchange = !showExchange">
+        <GiftOutlined class="toggle-icon" />
+        激活码兑换会员
+        <DownOutlined class="toggle-arrow" :class="{ open: showExchange }" />
+      </a-button>
+    </div>
+    <div class="exchange-wrap" :class="{ open: showExchange }">
+      <div class="exchange-inner">
+        <div class="invite-card exchange-card">
+          <div class="card-label">激活码兑换会员</div>
+          <div class="code-row exchange-row">
+            <a-input
+              v-model:value="vipCode"
+              class="exchange-input"
+              placeholder="请输入激活码"
+              :maxlength="32"
+              allow-clear
+              @pressEnter="handleExchange"
+            />
+            <a-button
+              type="primary"
+              class="copy-btn"
+              :loading="exchanging"
+              @click="handleExchange"
+            >
+              立即兑换
+            </a-button>
+          </div>
+          <div class="card-hint">兑换成功即开通 12 个月会员；激活码由平台发放，每个仅可使用一次。</div>
+        </div>
+      </div>
+    </div>
 
     <!-- 我的专属邀请码 -->
     <div class="invite-card">
@@ -82,11 +117,17 @@ import { message } from 'ant-design-vue'
 import {
   CheckCircleOutlined,
   CreditCardOutlined,
+  DownOutlined,
+  GiftOutlined,
   TrophyOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
 import { copyText, getInviteInfo, getInviteRank } from '@/api/invite.ts'
 import type { InviteInfoVO, InviteRankVO, InviteRecordVO } from '@/api/invite.ts'
+import { exchangeVipUsingPost } from '@/api/userController.ts'
+import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
+
+const loginUserStore = useLoginUserStore()
 
 const info = reactive<InviteInfoVO>({})
 const records = ref<InviteRecordVO[]>([])
@@ -94,6 +135,35 @@ const ranks = ref<InviteRankVO[]>([])
 const activeTab = ref<'list' | 'rank'>('list')
 
 const copying = ref(false)
+
+// ----- 激活码兑换 -----
+const showExchange = ref(false)
+const vipCode = ref('')
+const exchanging = ref(false)
+
+const handleExchange = async () => {
+  const code = vipCode.value.trim()
+  if (!code) {
+    message.warning('请先输入激活码')
+    return
+  }
+  exchanging.value = true
+  try {
+    const res = await exchangeVipUsingPost({ vipCode: code })
+    if (res.data.code === 0 && res.data.data) {
+      message.success('兑换成功，会员已开通 12 个月')
+      vipCode.value = ''
+      // 刷新登录态，同步导航栏与个人主页的会员标识
+      await loginUserStore.fetchLoginUser()
+    } else {
+      message.error(res.data.message ?? '兑换失败，请核对激活码')
+    }
+  } catch (e: any) {
+    message.error('兑换失败，' + (e?.message ?? '请稍后重试'))
+  } finally {
+    exchanging.value = false
+  }
+}
 
 const formatDate = (value?: string) => {
   if (!value) return '-'
@@ -174,6 +244,72 @@ onMounted(() => {
   color: var(--text-secondary);
   font-size: 15px;
   margin-bottom: 16px;
+}
+
+/* 激活码兑换：隐藏式入口 + 平滑展开 */
+.exchange-toggle {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.toggle-btn {
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.toggle-icon {
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.toggle-arrow {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: transform 0.25s ease;
+}
+
+.toggle-arrow.open {
+  transform: rotate(180deg);
+}
+
+.exchange-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    grid-template-rows 0.3s ease,
+    opacity 0.25s ease,
+    margin-bottom 0.3s ease;
+  margin-bottom: 0;
+}
+
+.exchange-wrap.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 20px;
+}
+
+.exchange-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 激活码兑换卡片 */
+.exchange-card {
+  margin-bottom: 0;
+}
+
+.exchange-row {
+  gap: 12px;
+}
+
+.exchange-input {
+  flex: 1;
+  height: 44px;
+  font-size: 16px;
+  letter-spacing: 1px;
 }
 
 .code-row {
@@ -338,6 +474,10 @@ html.dark .card-hint {
 html.dark .code-row {
   background: rgba(64, 169, 255, 0.12);
   border-color: rgba(64, 169, 255, 0.45);
+}
+
+html.dark .exchange-input {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 html.dark .invite-code {

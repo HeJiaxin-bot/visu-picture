@@ -2,6 +2,9 @@
 
 HELP.md
 target/
+
+# Logo design workspace (local only)
+logo-work/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

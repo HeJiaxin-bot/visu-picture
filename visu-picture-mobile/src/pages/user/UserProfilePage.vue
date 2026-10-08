@@ -111,7 +111,7 @@ const goBack = () => {
             <van-loading v-if="avatarUploading" size="20" />
           </template>
         </van-image>
-        <van-icon name="arrow" color="#c9cdd4" />
+        <van-icon name="arrow" color="#94a3b8" />
       </div>
       <input
         ref="avatarInputRef"

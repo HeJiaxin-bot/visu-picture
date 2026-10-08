@@ -3,27 +3,33 @@
    ============================================ */
 
 :root {
-  /* 品牌色 */
-  --brand: #40a9ff;
-  --brand-weak: #e8f4ff;
+  /* 品牌色（参考悦目图库的深稳蓝） */
+  --brand: #2563eb;
+  --brand-hover: #3b82f6;
+  --brand-deep: #1d4ed8;
+  --brand-weak: #e8eefc;
 
   /* 文字 */
-  --text-1: #1f2329;
-  --text-2: #86909c;
-  --text-3: #c9cdd4;
+  --text-1: #3e3f3f;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
 
   /* 背景 / 卡片 */
-  --bg-page: #f7f8fa;
+  --bg-page: #fcfcfd;
   --bg-card: #ffffff;
+  /* 暖调半透明描边（卡片质感关键） */
+  --border-soft: rgba(200, 190, 180, 0.22);
+  --bg-input: #f3f3f6;
 
   /* 语义色 */
-  --danger: #f53f3f;
-  --success: #00b42a;
-  --warning: #ff7d00;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
 
-  /* 圆角 */
-  --radius-card: 12px;
-  --radius-btn: 8px;
+  /* 圆角（大圆角卡片语言） */
+  --radius-card: 14px;
+  --radius-lg: 20px;
+  --radius-btn: 10px;
   --radius-chip: 999px;
 
   /* 间距 */
@@ -42,26 +48,26 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* ===== Vant 主题变量覆盖 ===== */
-  --van-primary-color: #40a9ff;
-  --van-text-color: #1f2329;
-  --van-text-color-2: #86909c;
-  --van-text-color-3: #c9cdd4;
-  --van-background: #f7f8fa;
+  --van-primary-color: #2563eb;
+  --van-text-color: #3e3f3f;
+  --van-text-color-2: #64748b;
+  --van-text-color-3: #94a3b8;
+  --van-background: #fcfcfd;
   --van-background-2: #ffffff;
-  --van-danger-color: #f53f3f;
-  --van-success-color: #00b42a;
-  --van-warning-color: #ff7d00;
-  --van-border-color: #e5e6eb;
-  --van-radius-md: 12px;
-  --van-radius-lg: 12px;
+  --van-danger-color: #ef4444;
+  --van-success-color: #22c55e;
+  --van-warning-color: #f59e0b;
+  --van-border-color: #e8e6e3;
+  --van-radius-md: 14px;
+  --van-radius-lg: 18px;
   --van-nav-bar-height: 46px;
   --van-nav-bar-background: #ffffff;
   --van-nav-bar-title-font-size: 17px;
-  --van-nav-bar-title-text-color: #1f2329;
+  --van-nav-bar-title-text-color: #3e3f3f;
   --van-tabbar-background: #ffffff;
   --van-tabbar-item-font-size: 11px;
   --van-cell-vertical-padding: 14px;
-  --van-field-label-color: #86909c;
+  --van-field-label-color: #64748b;
 }
 
 /* ---------- Reset ---------- */
@@ -107,9 +113,17 @@ img {
 
 .card {
   background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-card);
   padding: var(--sp-4);
   box-sizing: border-box;
+}
+
+/* 毛玻璃吸顶头部：配合 sticky 定位使用 */
+.glass-header {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
 }
 
 .text-secondary {
