@@ -29,6 +29,11 @@ logo-work/
 /nbbuild/
 /dist/
 /nbdist/
+
+### 前端构建产物与依赖（各子项目 vite build 输出，不进版本库） ###
+visu-picture-frontend/dist/
+visu-picture-mobile/dist/
+node_modules/
 /.nb-gradle/
 build/
 !**/src/main/**/build/
