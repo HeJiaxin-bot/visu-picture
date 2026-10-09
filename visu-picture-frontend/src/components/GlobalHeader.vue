@@ -101,7 +101,13 @@
                 <div class="team-panel user-panel">
                   <!-- 顶部：用户名 + 身份 -->
                   <div class="user-panel-head">
-                    <div class="item-title">{{ loginUserStore.loginUser.userAccount ?? '视界用户' }}</div>
+                    <div class="item-title">
+                      {{ loginUserStore.loginUser.userAccount ?? '视界用户' }}
+                      <span v-if="isVip" class="vip-chip">
+                        <CrownFilled class="vip-chip-icon" />
+                        会员
+                      </span>
+                    </div>
                     <div class="item-desc">
                       {{ loginUserStore.loginUser.userRole === 'admin' ? '管理员' : '普通用户' }}
                     </div>
@@ -259,6 +265,7 @@ import {
   AppstoreOutlined,
   LoginOutlined,
   UserAddOutlined,
+  CrownFilled,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -268,6 +275,16 @@ import { SPACE_TYPE_ENUM } from '@/constants/space.ts'
 import { listMyTeamSpaceUsingPost } from '@/api/spaceUserController.ts'
 
 const loginUserStore = useLoginUserStore()
+
+// 会员状态：以 isVip 字段为准；无该字段时回退按到期时间判断（与用户中心一致）
+const isVip = computed(() => {
+  const user = loginUserStore.loginUser
+  if (user.isVip != null) {
+    return user.isVip === 1
+  }
+  const expire = user.vipExpireTime
+  return !!expire && new Date(expire).getTime() > Date.now()
+})
 
 // ----- 我的团队下拉面板 -----
 // 角色文案
@@ -680,6 +697,33 @@ html.dark #globalHeader .points-badge:hover {
 
 .user-panel .user-panel-head {
   padding: 8px 12px 10px;
+}
+
+/* 用户名旁的会员小徽章 */
+.vip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+  color: #d48806;
+  background: linear-gradient(135deg, #fffbe6, #fff1b8);
+  border: 1px solid #ffe58f;
+}
+
+.vip-chip-icon {
+  font-size: 10px;
+}
+
+html.dark .vip-chip {
+  color: #ffd666;
+  background: rgba(250, 173, 20, 0.14);
+  border-color: rgba(250, 173, 20, 0.4);
 }
 
 .user-panel .user-panel-head .item-title {

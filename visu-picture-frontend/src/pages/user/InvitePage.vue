@@ -14,12 +14,12 @@
       <div class="exchange-inner">
         <div class="invite-card exchange-card">
           <div class="card-label">激活码兑换会员</div>
-          <div class="code-row exchange-row">
+          <div class="code-row exchange-row" :class="{ shake }" @animationend="shake = false">
             <a-input
               v-model:value="vipCode"
               class="exchange-input"
-              placeholder="请输入激活码"
-              :maxlength="32"
+              placeholder="请输入 8 位激活码"
+              :maxlength="8"
               allow-clear
               @pressEnter="handleExchange"
             />
@@ -36,6 +36,40 @@
         </div>
       </div>
     </div>
+
+    <!-- 兑换成功权益弹窗 -->
+    <a-modal
+      v-model:open="successVisible"
+      :footer="null"
+      :width="400"
+      class="vip-success-modal"
+      centered
+    >
+      <div class="success-body">
+        <div class="success-crown">
+          <CrownFilled />
+        </div>
+        <div class="success-title">兑换成功！</div>
+        <div class="success-desc">会员已开通 12 个月，以下权益立即生效</div>
+        <ul class="success-perks">
+          <li>
+            <CheckCircleOutlined class="perk-icon" />
+            <span>专业版团队空间自助创建</span>
+          </li>
+          <li>
+            <CheckCircleOutlined class="perk-icon" />
+            <span>空间容量与批量管理额度提升</span>
+          </li>
+          <li>
+            <CheckCircleOutlined class="perk-icon" />
+            <span>会员专属标识与邀请积分加持</span>
+          </li>
+        </ul>
+        <a-button type="primary" block size="large" class="success-btn" @click="successVisible = false">
+          开心收下
+        </a-button>
+      </div>
+    </a-modal>
 
     <!-- 我的专属邀请码 -->
     <div class="invite-card">
@@ -117,6 +151,7 @@ import { message } from 'ant-design-vue'
 import {
   CheckCircleOutlined,
   CreditCardOutlined,
+  CrownFilled,
   DownOutlined,
   GiftOutlined,
   TrophyOutlined,
@@ -140,26 +175,50 @@ const copying = ref(false)
 const showExchange = ref(false)
 const vipCode = ref('')
 const exchanging = ref(false)
+// 校验失败时触发输入框抖动动画
+const shake = ref(false)
+// 兑换成功后的权益确认弹窗
+const successVisible = ref(false)
+
+// 激活码格式：8 位字母数字（与平台发放规则一致）
+const CODE_PATTERN = /^[A-Za-z0-9]{8}$/
+
+const triggerShake = () => {
+  shake.value = false
+  // 下一帧重置以便重复触发动画
+  requestAnimationFrame(() => {
+    shake.value = true
+  })
+}
 
 const handleExchange = async () => {
   const code = vipCode.value.trim()
   if (!code) {
     message.warning('请先输入激活码')
+    triggerShake()
+    return
+  }
+  if (!CODE_PATTERN.test(code)) {
+    message.error('激活码格式不正确，应为 8 位字母数字组合')
+    triggerShake()
     return
   }
   exchanging.value = true
   try {
     const res = await exchangeVipUsingPost({ vipCode: code })
     if (res.data.code === 0 && res.data.data) {
-      message.success('兑换成功，会员已开通 12 个月')
       vipCode.value = ''
       // 刷新登录态，同步导航栏与个人主页的会员标识
       await loginUserStore.fetchLoginUser()
+      // 弹出权益确认弹窗，比纯 message 提示更有仪式感
+      successVisible.value = true
     } else {
       message.error(res.data.message ?? '兑换失败，请核对激活码')
+      triggerShake()
     }
   } catch (e: any) {
     message.error('兑换失败，' + (e?.message ?? '请稍后重试'))
+    triggerShake()
   } finally {
     exchanging.value = false
   }
@@ -310,6 +369,21 @@ onMounted(() => {
   height: 44px;
   font-size: 16px;
   letter-spacing: 1px;
+}
+
+/* 校验失败抖动动画 */
+@keyframes code-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-9px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(2px); }
+}
+
+.exchange-row.shake {
+  animation: code-shake 0.5s ease;
 }
 
 .code-row {
@@ -522,5 +596,102 @@ html.dark .empty-text {
 
 html.dark .list-footer {
   color: rgba(179, 179, 179, 0.35);
+}
+</style>
+
+<!-- 兑换成功弹窗：Modal 渲染在 body 下，scoped 不生效，需全局块 -->
+<style>
+.vip-success-modal .success-body {
+  text-align: center;
+  padding: 12px 8px 4px;
+}
+
+.vip-success-modal .success-crown {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 34px;
+  color: #d48806;
+  background: linear-gradient(135deg, #fffbe6, #ffe58f);
+  box-shadow: 0 8px 24px rgba(250, 173, 20, 0.35);
+  animation: crown-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes crown-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-20deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.vip-success-modal .success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #212121;
+}
+
+.vip-success-modal .success-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6b6b6b;
+}
+
+.vip-success-modal .success-perks {
+  list-style: none;
+  margin: 20px 0 24px;
+  padding: 16px 18px;
+  text-align: left;
+  background: #fafafa;
+  border-radius: 12px;
+}
+
+.vip-success-modal .success-perks li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.vip-success-modal .perk-icon {
+  color: #52c41a;
+}
+
+.vip-success-modal .success-btn {
+  border: none;
+  background: linear-gradient(135deg, #40a9ff, #1677ff);
+  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.35);
+}
+
+/* 深色模式 */
+html.dark .vip-success-modal .success-crown {
+  color: #ffd666;
+  background: linear-gradient(135deg, rgba(250, 173, 20, 0.2), rgba(250, 173, 20, 0.35));
+  box-shadow: 0 8px 24px rgba(250, 173, 20, 0.25);
+}
+
+html.dark .vip-success-modal .success-title {
+  color: #f0f0f0;
+}
+
+html.dark .vip-success-modal .success-desc {
+  color: #b3b3b3;
+}
+
+html.dark .vip-success-modal .success-perks {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .vip-success-modal .success-perks li {
+  color: #e0e0e0;
 }
 </style>
