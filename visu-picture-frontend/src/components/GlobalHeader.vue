@@ -14,6 +14,10 @@
         <div class="nav-main">
           <!-- 一级入口：首页（内容发现主入口） -->
           <router-link to="/" class="nav-link" aria-label="回到首页">首页</router-link>
+          <!-- 技术栈全景图：ECharts 力导向技术矩阵 -->
+          <router-link to="/tech-stack" class="nav-link" aria-label="查看技术栈全景图">
+            技术栈
+          </router-link>
           <!-- 我的团队：深色下拉面板（含团队列表与创建入口） -->
           <a-dropdown
             v-if="loginUserStore.loginUser.id"
@@ -258,6 +262,10 @@
           <HomeOutlined class="drawer-icon" />
           <span>首页</span>
         </div>
+        <div class="drawer-item" @click="go('/tech-stack')">
+          <DeploymentUnitOutlined class="drawer-icon" />
+          <span>技术栈全景图</span>
+        </div>
       </div>
       <template v-if="loginUserStore.loginUser.id">
         <div class="drawer-group">
@@ -359,6 +367,7 @@ import {
   UserAddOutlined,
   CrownFilled,
   BellOutlined,
+  DeploymentUnitOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter, useRoute } from 'vue-router'

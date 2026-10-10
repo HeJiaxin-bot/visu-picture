@@ -24,6 +24,7 @@ const InvitePage = () => import('@/pages/user/InvitePage.vue')
 const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
 const UserProfilePage = () => import('@/pages/user/UserProfilePage.vue')
 const NotificationPage = () => import('@/pages/user/NotificationPage.vue')
+const TechStackPage = () => import('@/pages/TechStackPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -135,6 +136,11 @@ const router = createRouter({
       path: '/user/notifications',
       name: '消息中心',
       component: NotificationPage,
+    },
+    {
+      path: '/tech-stack',
+      name: '技术栈全景图',
+      component: TechStackPage,
     },
     {
       path: '/user/:id',

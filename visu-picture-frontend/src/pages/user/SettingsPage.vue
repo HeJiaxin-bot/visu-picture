@@ -89,6 +89,16 @@
               </div>
             </div>
           </div>
+
+          <!-- 技术栈全景图：ECharts 力导向可视化 -->
+          <div class="settings-item" @click="router.push('/tech-stack')">
+            <DeploymentUnitOutlined class="item-icon" style="background: #f0f5ff; color: #2f54eb" />
+            <div class="item-body">
+              <div class="item-title">技术栈全景图</div>
+              <div class="item-desc">查看本项目的全栈技术矩阵可视化</div>
+            </div>
+            <RightOutlined class="item-arrow" />
+          </div>
         </div>
       </div>
 
@@ -126,6 +136,7 @@ import {
   BulbOutlined,
   CaretRightOutlined,
   CheckOutlined,
+  DeploymentUnitOutlined,
   LockOutlined,
   LogoutOutlined,
   RightOutlined,

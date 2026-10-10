@@ -170,6 +170,12 @@
             <div class="entry-title">设置</div>
             <div class="entry-desc">常用功能与账号安全</div>
           </div>
+          <!-- 技术栈全景图：全栈技术矩阵可视化 -->
+          <div class="entry-item" @click="router.push('/tech-stack')">
+            <DeploymentUnitOutlined class="entry-icon" style="color: #2f54eb" />
+            <div class="entry-title">技术栈全景图</div>
+            <div class="entry-desc">看看这个项目用了哪些技术</div>
+          </div>
           <!-- 注销账号：危险操作，二次确认 -->
           <div class="entry-item" @click="deregisterVisible = true">
             <UserDeleteOutlined class="entry-icon" style="color: #ff4d4f" />
@@ -264,6 +270,7 @@ import {
   CloudDownloadOutlined,
   CopyOutlined,
   CrownOutlined,
+  DeploymentUnitOutlined,
   EditOutlined,
   FolderOutlined,
   LoadingOutlined,

@@ -10,8 +10,10 @@
       <a-layout-content class="content">
         <router-view />
       </a-layout-content>
-      <!-- 底部备案号：链接指向工信部备案系统 -->
+      <!-- 底部：技术栈入口 + 备案号 -->
       <footer class="footer">
+        <router-link class="footer-link" to="/tech-stack">技术栈全景图</router-link>
+        <span class="footer-sep">·</span>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">赣ICP备2026022464号-1</a>
       </footer>
     </a-layout>
@@ -124,13 +126,21 @@ const backToTop = () => {
   font-size: 12px;
 }
 
-#basicLayout .footer a {
+#basicLayout .footer a,
+#basicLayout .footer .footer-link {
   color: var(--text-disabled);
   text-decoration: none;
 }
 
-#basicLayout .footer a:hover {
+#basicLayout .footer a:hover,
+#basicLayout .footer .footer-link:hover {
   color: var(--accent);
+}
+
+#basicLayout .footer .footer-sep {
+  margin: 0 8px;
+  color: var(--text-disabled);
+  opacity: 0.6;
 }
 
 /* 右下角悬浮按钮组 */
