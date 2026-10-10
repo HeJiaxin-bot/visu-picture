@@ -100,12 +100,12 @@ const categoryMap = Object.fromEntries(
 ) as Record<string, (typeof TECH_CATEGORIES)[number]>
 
 /** 底部统计 */
-const stats = [
-  { value: '37', label: '技术栈节点' },
-  { value: '5', label: '技术领域' },
+const stats = computed(() => [
+  { value: String(TECH_NODES.length), label: '技术栈节点' },
+  { value: String(TECH_CATEGORIES.length), label: '技术领域' },
   { value: '28+', label: '数据表与接口' },
   { value: '2', label: '明暗主题 / 四季配色' },
-]
+])
 
 /**
  * 图表配置：ECharts 原生力导向图
