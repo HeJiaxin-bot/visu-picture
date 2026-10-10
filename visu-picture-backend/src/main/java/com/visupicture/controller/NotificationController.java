@@ -1,0 +1,80 @@
+package com.visupicture.controller;
+
+import com.visupicture.common.BaseResponse;
+import com.visupicture.common.ResultUtils;
+import com.visupicture.exception.ErrorCode;
+import com.visupicture.exception.ThrowUtils;
+import com.visupicture.model.entity.User;
+import com.visupicture.model.vo.NotificationVO;
+import com.visupicture.service.NotificationService;
+import com.visupicture.service.UserService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 站内通知接口
+ */
+@RestController
+@RequestMapping("/notification")
+public class NotificationController {
+
+    @Resource
+    private NotificationService notificationService;
+
+    @Resource
+    private UserService userService;
+
+    /**
+     * 分页获取我的通知（onlyUnread=true 时只看未读）
+     */
+    @GetMapping("/list")
+    public BaseResponse<List<NotificationVO>> listMyNotifications(
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(defaultValue = "false") boolean onlyUnread,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        List<NotificationVO> list = notificationService.listMyNotifications(
+                loginUser.getId(), current, pageSize, onlyUnread);
+        return ResultUtils.success(list);
+    }
+
+    /**
+     * 我的未读通知数量（导航栏角标轮询用）
+     */
+    @GetMapping("/unread/count")
+    public BaseResponse<Long> countMyUnread(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(notificationService.countMyUnread(loginUser.getId()));
+    }
+
+    /**
+     * 标记单条通知为已读
+     */
+    @PostMapping("/read")
+    public BaseResponse<Boolean> markRead(@RequestBody Map<String, Long> body, HttpServletRequest request) {
+        ThrowUtils.throwIf(body == null || body.get("id") == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = notificationService.markRead(loginUser.getId(), body.get("id"));
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 全部标记已读
+     */
+    @PostMapping("/read/all")
+    public BaseResponse<Boolean> markAllRead(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(notificationService.markAllRead(loginUser.getId()));
+    }
+}

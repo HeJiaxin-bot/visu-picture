@@ -34,6 +34,7 @@ import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.PictureReviewStatusEnum;
 import com.visupicture.model.vo.PictureVO;
 import com.visupicture.model.vo.UserVO;
+import com.visupicture.service.NotificationService;
 import com.visupicture.service.PictureService;
 import com.visupicture.service.SpaceService;
 import com.visupicture.service.UserService;
@@ -77,6 +78,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private NotificationService notificationService;
 
     @Resource
     private SpaceService spaceService;
@@ -390,6 +394,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         updatePicture.setReviewTime(new Date());
         boolean result = this.updateById(updatePicture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        // 5. 站内通知图片作者审核结果（审核拒绝时必须给出理由；发送失败不影响审核流程）
+        boolean pass = PictureReviewStatusEnum.PASS.equals(reviewStatusEnum);
+        notificationService.sendReviewResultNotification(
+                oldPicture.getUserId(), pass, oldPicture.getId(),
+                oldPicture.getName(), oldPicture.getThumbnailUrl(), reviewMessage);
     }
 
     /**

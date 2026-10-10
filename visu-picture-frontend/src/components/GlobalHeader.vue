@@ -8,145 +8,208 @@
           <div class="title">视界云图库</div>
         </div>
       </router-link>
-      <!-- 右侧：首页 + 我的团队 + 系统管理 + 发布 + 用户信息 -->
+      <!-- 右侧：主导航组（页面入口） + 工具操作组（积分/发布/用户） -->
       <nav class="nav-wrap" aria-label="主导航">
-        <!-- 一级入口：首页（内容发现主入口） -->
-        <router-link to="/" class="nav-link" aria-label="回到首页">首页</router-link>
-        <!-- 我的团队：深色下拉面板（含团队列表与创建入口） -->
-        <a-dropdown
-          v-if="loginUserStore.loginUser.id"
-          trigger="['hover', 'click']"
-          @open-change="(v: boolean) => (teamDropdownOpen = v)"
-        >
-          <div class="team-trigger">
-            <TeamOutlined class="team-icon" />
-            <span>我的团队</span>
-            <DownOutlined class="team-trigger-arrow" :class="{ open: teamDropdownOpen }" />
-          </div>
-          <template #overlay>
-            <div class="team-panel">
-              <div
-                v-for="spaceUser in teamSpaceList"
-                :key="spaceUser.spaceId"
-                class="team-panel-item"
-                @click="goTeamSpace(spaceUser.spaceId)"
-              >
-                <div class="item-title">{{ spaceUser.space?.spaceName ?? '未命名团队' }}</div>
-                <div class="item-desc">团队空间 · {{ roleText(spaceUser.spaceRole) }}</div>
-              </div>
-              <div v-if="teamSpaceList.length > 0" class="team-panel-divider"></div>
-              <div class="team-panel-item" @click="goCreateTeam">
-                <div class="item-title">＋ 创建团队</div>
-                <div class="item-desc">发起多人协作</div>
-              </div>
+        <!-- 主导航组：低频展示、页面级入口 -->
+        <div class="nav-main">
+          <!-- 一级入口：首页（内容发现主入口） -->
+          <router-link to="/" class="nav-link" aria-label="回到首页">首页</router-link>
+          <!-- 我的团队：深色下拉面板（含团队列表与创建入口） -->
+          <a-dropdown
+            v-if="loginUserStore.loginUser.id"
+            trigger="['hover', 'click']"
+            @open-change="(v: boolean) => (teamDropdownOpen = v)"
+          >
+            <div class="team-trigger">
+              <TeamOutlined class="team-icon" />
+              <span>我的团队</span>
+              <DownOutlined class="team-trigger-arrow" :class="{ open: teamDropdownOpen }" />
             </div>
-          </template>
-        </a-dropdown>
+            <template #overlay>
+              <div class="team-panel">
+                <div
+                  v-for="spaceUser in teamSpaceList"
+                  :key="spaceUser.spaceId"
+                  class="team-panel-item"
+                  @click="goTeamSpace(spaceUser.spaceId)"
+                >
+                  <div class="item-title">{{ spaceUser.space?.spaceName ?? '未命名团队' }}</div>
+                  <div class="item-desc">团队空间 · {{ roleText(spaceUser.spaceRole) }}</div>
+                </div>
+                <div v-if="teamSpaceList.length > 0" class="team-panel-divider"></div>
+                <div class="team-panel-item" @click="goCreateTeam">
+                  <div class="item-title">＋ 创建团队</div>
+                  <div class="item-desc">发起多人协作</div>
+                </div>
+              </div>
+            </template>
+          </a-dropdown>
 
-        <!-- 系统管理下拉：仅平台管理员可见（低频管理功能收纳） -->
-        <a-dropdown
-          v-if="isAdmin"
-          trigger="['hover', 'click']"
-          @open-change="(v: boolean) => (adminDropdownOpen = v)"
-        >
-          <div class="team-trigger">
-            <SettingOutlined class="team-icon" />
-            <span>系统管理</span>
-            <DownOutlined class="team-trigger-arrow" :class="{ open: adminDropdownOpen }" />
-          </div>
-          <template #overlay>
-            <div class="team-panel">
-              <div class="team-panel-item" @click="router.push('/admin/userManage')">
-                <div class="item-title">用户管理</div>
-                <div class="item-desc">账号与角色维护</div>
-              </div>
-              <div class="team-panel-item" @click="router.push('/admin/pictureManage')">
-                <div class="item-title">图片管理</div>
-                <div class="item-desc">图片审核与清理</div>
-              </div>
-              <div class="team-panel-item" @click="router.push('/admin/spaceManage')">
-                <div class="item-title">空间管理</div>
-                <div class="item-desc">全部空间治理</div>
-              </div>
+          <!-- 系统管理下拉：仅平台管理员可见（低频管理功能收纳） -->
+          <a-dropdown
+            v-if="isAdmin"
+            trigger="['hover', 'click']"
+            @open-change="(v: boolean) => (adminDropdownOpen = v)"
+          >
+            <div class="team-trigger">
+              <SettingOutlined class="team-icon" />
+              <span>系统管理</span>
+              <DownOutlined class="team-trigger-arrow" :class="{ open: adminDropdownOpen }" />
             </div>
-          </template>
-        </a-dropdown>
-
-        <!-- 剩余积分徽章（点击去用户中心签到） -->
-        <a-tooltip v-if="loginUserStore.loginUser.id" title="点击签到获取积分">
-          <div class="points-badge" @click="router.push('/user/center')">
-            <svg class="points-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
-              <path d="M19 3l.6 1.6L21 5.2l-1.4.6L19 7.4l-.6-1.6L17 5.2l1.4-.6z" />
-            </svg>
-            <span class="points-num">{{ loginUserStore.loginUser.points ?? 0 }}</span>
-          </div>
-        </a-tooltip>
-
-        <!-- 发布按钮（原"创建图片"入口） -->
-        <div class="publish-btn" @click="router.push('/add_picture')">
-          <PlusOutlined class="publish-icon" />
-          <span>发布</span>
+            <template #overlay>
+              <div class="team-panel">
+                <div class="team-panel-item" @click="router.push('/admin/userManage')">
+                  <div class="item-title">用户管理</div>
+                  <div class="item-desc">账号与角色维护</div>
+                </div>
+                <div class="team-panel-item" @click="router.push('/admin/pictureManage')">
+                  <div class="item-title">图片管理</div>
+                  <div class="item-desc">图片审核与清理</div>
+                </div>
+                <div class="team-panel-item" @click="router.push('/admin/spaceManage')">
+                  <div class="item-title">空间管理</div>
+                  <div class="item-desc">全部空间治理</div>
+                </div>
+              </div>
+            </template>
+          </a-dropdown>
         </div>
 
-        <!-- 用户信息展示栏 -->
-        <div class="user-login-status">
-          <div v-if="loginUserStore.loginUser.id">
-            <a-dropdown trigger="['hover', 'click']">
-              <a-space class="user-info">
-                <a-avatar :src="loginUserStore.loginUser.userAvatar" />
-                {{ loginUserStore.loginUser.userName ?? '视界用户' }}
-              </a-space>
-              <template #overlay>
-                <div class="team-panel user-panel">
-                  <!-- 顶部：用户名 + 身份 -->
-                  <div class="user-panel-head">
-                    <div class="item-title">
-                      {{ loginUserStore.loginUser.userAccount ?? '视界用户' }}
-                      <span v-if="isVip" class="vip-chip">
-                        <CrownFilled class="vip-chip-icon" />
-                        会员
-                      </span>
-                    </div>
-                    <div class="item-desc">
-                      {{ loginUserStore.loginUser.userRole === 'admin' ? '管理员' : '普通用户' }}
-                    </div>
-                  </div>
-                  <div class="team-panel-divider"></div>
-                  <!-- 菜单项 -->
-                  <div class="team-panel-item user-panel-item" @click="router.push('/user/center')">
-                    <IdcardOutlined class="item-icon" />
-                    <span>用户中心</span>
-                  </div>
-                  <div class="team-panel-item user-panel-item" @click="router.push('/my_space')">
-                    <FolderOutlined class="item-icon" />
-                    <span>我的空间</span>
-                  </div>
-                  <div
-                    class="team-panel-item user-panel-item"
-                    @click="router.push('/user/settings')"
+        <!-- 工具操作组：高频、个性化元素靠右聚集 -->
+        <div class="nav-actions">
+          <!-- 消息通知铃铛：未读角标 + 悬停预览面板 -->
+          <a-dropdown
+            v-if="loginUserStore.loginUser.id"
+            trigger="['hover', 'click']"
+            @open-change="(v: boolean) => (notifyOpen = v)"
+          >
+            <div class="notify-trigger">
+              <BellOutlined class="notify-icon" />
+              <span v-if="unreadCount > 0" class="notify-badge">{{ badgeText }}</span>
+            </div>
+            <template #overlay>
+              <div class="team-panel notify-panel">
+                <div class="notify-head">
+                  <span class="notify-head-title">消息通知</span>
+                  <a-button
+                    v-if="unreadCount > 0"
+                    type="link"
+                    size="small"
+                    class="notify-readall"
+                    @click="handleReadAll"
                   >
-                    <SettingOutlined class="item-icon" />
-                    <span>设置</span>
-                  </div>
-                  <div class="team-panel-item user-panel-item" @click="router.push('/user/invite')">
-                    <GiftOutlined class="item-icon" />
-                    <span>会员中心</span>
-                  </div>
-                  <div class="team-panel-divider"></div>
-                  <div class="team-panel-item user-panel-item" @click="doLogout">
-                    <LogoutOutlined class="item-icon" />
-                    <span>退出登录</span>
-                  </div>
+                    全部已读
+                  </a-button>
                 </div>
-              </template>
-            </a-dropdown>
+                <template v-if="notifyList.length > 0">
+                  <div
+                    v-for="item in notifyList"
+                    :key="item.id"
+                    class="notify-item"
+                    :class="{ unread: item.isRead === 0 }"
+                    @click="handleNotifyClick(item)"
+                  >
+                    <img
+                      v-if="item.picThumbnail"
+                      :src="item.picThumbnail"
+                      class="notify-thumb"
+                      alt=""
+                    />
+                    <div v-else class="notify-thumb notify-thumb--icon">
+                      <PictureOutlined />
+                    </div>
+                    <div class="notify-body">
+                      <div class="notify-item-title">{{ item.title }}</div>
+                      <div class="notify-item-desc">{{ item.content }}</div>
+                      <div class="notify-item-time">{{ formatNotifyTime(item.createTime) }}</div>
+                    </div>
+                    <span v-if="item.isRead === 0" class="notify-dot"></span>
+                  </div>
+                </template>
+                <div v-else class="notify-empty">暂无消息，快去发布图片吧～</div>
+                <div class="notify-foot" @click="router.push('/user/notifications')">
+                  查看全部消息
+                </div>
+              </div>
+            </template>
+          </a-dropdown>
+
+          <!-- 剩余积分徽章（点击去用户中心签到） -->
+          <a-tooltip v-if="loginUserStore.loginUser.id" title="点击签到获取积分">
+            <div class="points-badge" @click="router.push('/user/center')">
+              <svg class="points-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+                <path d="M19 3l.6 1.6L21 5.2l-1.4.6L19 7.4l-.6-1.6L17 5.2l1.4-.6z" />
+              </svg>
+              <span class="points-num">{{ loginUserStore.loginUser.points ?? 0 }}</span>
+            </div>
+          </a-tooltip>
+
+          <!-- 发布按钮（原"创建图片"入口） -->
+          <div class="publish-btn" @click="router.push('/add_picture')">
+            <PlusOutlined class="publish-icon" />
+            <span>发布</span>
           </div>
-          <div v-else>
-            <a-space>
-              <a-button href="/user/login">登录</a-button>
-              <a-button type="primary" href="/user/register">注册</a-button>
-            </a-space>
+
+          <!-- 用户信息展示栏 -->
+          <div class="user-login-status">
+            <div v-if="loginUserStore.loginUser.id">
+              <a-dropdown trigger="['hover', 'click']">
+                <a-space class="user-info">
+                  <a-avatar :src="loginUserStore.loginUser.userAvatar" :size="30" />
+                  {{ loginUserStore.loginUser.userName ?? '视界用户' }}
+                </a-space>
+                <template #overlay>
+                  <div class="team-panel user-panel">
+                    <!-- 顶部：用户名 + 身份 -->
+                    <div class="user-panel-head">
+                      <div class="item-title">
+                        {{ loginUserStore.loginUser.userAccount ?? '视界用户' }}
+                        <span v-if="isVip" class="vip-chip">
+                          <CrownFilled class="vip-chip-icon" />
+                          会员
+                        </span>
+                      </div>
+                      <div class="item-desc">
+                        {{ loginUserStore.loginUser.userRole === 'admin' ? '管理员' : '普通用户' }}
+                      </div>
+                    </div>
+                    <div class="team-panel-divider"></div>
+                    <!-- 菜单项 -->
+                    <div class="team-panel-item user-panel-item" @click="router.push('/user/center')">
+                      <IdcardOutlined class="item-icon" />
+                      <span>用户中心</span>
+                    </div>
+                    <div class="team-panel-item user-panel-item" @click="router.push('/my_space')">
+                      <FolderOutlined class="item-icon" />
+                      <span>我的空间</span>
+                    </div>
+                    <div
+                      class="team-panel-item user-panel-item"
+                      @click="router.push('/user/settings')"
+                    >
+                      <SettingOutlined class="item-icon" />
+                      <span>设置</span>
+                    </div>
+                    <div class="team-panel-item user-panel-item" @click="router.push('/user/invite')">
+                      <GiftOutlined class="item-icon" />
+                      <span>会员中心</span>
+                    </div>
+                    <div class="team-panel-divider"></div>
+                    <div class="team-panel-item user-panel-item" @click="doLogout">
+                      <LogoutOutlined class="item-icon" />
+                      <span>退出登录</span>
+                    </div>
+                  </div>
+                </template>
+              </a-dropdown>
+            </div>
+            <div v-else>
+              <a-space>
+                <a-button href="/user/login">登录</a-button>
+                <a-button type="primary" href="/user/register">注册</a-button>
+              </a-space>
+            </div>
           </div>
         </div>
       </nav>
@@ -248,7 +311,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, watchEffect, onUnmounted } from 'vue'
 import {
   LogoutOutlined,
   TeamOutlined,
@@ -266,6 +329,7 @@ import {
   LoginOutlined,
   UserAddOutlined,
   CrownFilled,
+  BellOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -273,8 +337,115 @@ import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 import { userLogoutUsingPost } from '@/api/userController.ts'
 import { SPACE_TYPE_ENUM } from '@/constants/space.ts'
 import { listMyTeamSpaceUsingPost } from '@/api/spaceUserController.ts'
+import {
+  listMyNotifications,
+  countMyUnread,
+  markNotificationRead,
+  markAllNotificationRead,
+} from '@/api/notification.ts'
+import type { NotificationVO } from '@/api/notification.ts'
 
 const loginUserStore = useLoginUserStore()
+
+// ----- 消息通知（铃铛 + 未读角标 + 预览面板） -----
+const notifyOpen = ref(false)
+const notifyList = ref<NotificationVO[]>([])
+const unreadCount = ref(0)
+let unreadTimer: number | undefined
+
+// 角标文案：99+ 封顶
+const badgeText = computed(() => (unreadCount.value > 99 ? '99+' : String(unreadCount.value)))
+
+const refreshUnreadCount = async () => {
+  if (!loginUserStore.loginUser.id) return
+  try {
+    const res = await countMyUnread()
+    if (res.code === 0 && res.data != null) {
+      unreadCount.value = res.data
+    }
+  } catch {
+    // 静默失败，不打扰用户
+  }
+}
+
+// 悬停/点开铃铛时加载最近 5 条预览
+const fetchNotifyPreview = async () => {
+  try {
+    const res = await listMyNotifications({ current: 1, pageSize: 5 })
+    if (res.code === 0 && res.data) {
+      notifyList.value = res.data
+    }
+  } catch {
+    // 静默失败
+  }
+}
+
+// 相对时间文案
+const formatNotifyTime = (value?: string) => {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return ''
+  const diff = Date.now() - d.getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return '刚刚'
+  if (min < 60) return `${min} 分钟前`
+  const hour = Math.floor(min / 60)
+  if (hour < 24) return `${hour} 小时前`
+  const day = Math.floor(hour / 24)
+  if (day < 7) return `${day} 天前`
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// 点击消息：跳图片详情（有 picId）或用户中心；同时标记已读
+const handleNotifyClick = async (item: NotificationVO) => {
+  if (item.isRead === 0 && item.id != null) {
+    await markNotificationRead(item.id)
+    refreshUnreadCount()
+  }
+  if (item.picId) {
+    // 带 from=notify：详情页只保留「编辑」操作
+    router.push({ path: `/picture/${item.picId}`, query: { from: 'notify' } })
+  } else {
+    router.push('/user/center')
+  }
+}
+
+// 全部已读
+const handleReadAll = async () => {
+  const res = await markAllNotificationRead()
+  if (res.code === 0) {
+    message.success('已全部标记为已读')
+    unreadCount.value = 0
+    fetchNotifyPreview()
+  } else {
+    message.error(res.message ?? '操作失败')
+  }
+}
+
+// 登录后轮询未读数（60s 一次，路由变化时也即时刷新）
+watchEffect(() => {
+  if (loginUserStore.loginUser.id) {
+    refreshUnreadCount()
+    route.path
+  }
+})
+
+const startUnreadPolling = () => {
+  unreadTimer = window.setInterval(refreshUnreadCount, 60_000)
+}
+
+startUnreadPolling()
+onUnmounted(() => {
+  if (unreadTimer) window.clearInterval(unreadTimer)
+})
+
+// 铃铛面板展开时才拉预览列表
+watchEffect(() => {
+  if (notifyOpen.value) {
+    fetchNotifyPreview()
+  }
+})
 
 // 会员状态：以 isVip 字段为准；无该字段时回退按到期时间判断（与用户中心一致）
 const isVip = computed(() => {
@@ -384,7 +555,26 @@ const doLogout = async () => {
 #globalHeader .nav-wrap {
   display: flex;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 16px;
+}
+
+/* 主导航组：紧跟品牌区，页面级入口 */
+#globalHeader .nav-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 工具操作组：靠右聚集，与主导航之间用弹性空隙隔开 */
+#globalHeader .nav-actions {
+  display: flex;
+  align-items: center;
   gap: 14px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* 一级导航链接：与下拉触发器风格一致 */
@@ -426,9 +616,9 @@ const doLogout = async () => {
   color: var(--accent);
 }
 
-/* 中屏：隐藏下拉类入口与积分徽章，仅保留首页/发布/用户 + 汉堡 */
+/* 中屏：主导航组（下拉入口）与积分徽章收进抽屉，仅保留发布/用户 + 汉堡 */
 @media (max-width: 992px) {
-  #globalHeader .team-trigger,
+  #globalHeader .nav-main,
   #globalHeader .points-badge {
     display: none;
   }
@@ -438,9 +628,9 @@ const doLogout = async () => {
   }
 }
 
-/* 小屏：发布按钮只留图标，首页链接隐藏 */
+/* 小屏：发布按钮只留图标，导航组隐藏（组内首页链接一并隐藏） */
 @media (max-width: 640px) {
-  #globalHeader .nav-link {
+  #globalHeader .nav-main {
     display: none;
   }
 
@@ -453,12 +643,52 @@ const doLogout = async () => {
   }
 }
 
-/* 剩余积分徽章：药丸样式跟随主题（亮蓝光晕） */
+/* ===== 消息通知铃铛 ===== */
+#globalHeader .notify-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--text-primary-light);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#globalHeader .notify-trigger:hover {
+  background: rgba(64, 169, 255, 0.1);
+  color: var(--accent);
+}
+
+#globalHeader .notify-icon {
+  font-size: 18px;
+}
+
+#globalHeader .notify-badge {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  text-align: center;
+  color: #fff;
+  background: #ff4d4f;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.4);
+}
+
+/* 剩余积分徽章：药丸样式跟随主题（亮蓝光晕），高度与发布按钮对齐 */
 #globalHeader .points-badge {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 34px;
+  height: 38px;
   padding: 0 14px;
   border-radius: 999px;
   color: var(--accent);
@@ -634,6 +864,25 @@ html.dark #globalHeader .points-badge:hover {
 #globalHeader .user-info {
   cursor: pointer;
   color: var(--text-primary-light);
+  padding: 5px 10px 5px 5px;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+/* 头像触发区悬停底色，与其他触发器可点击感一致 */
+#globalHeader .user-info:hover {
+  background: rgba(64, 169, 255, 0.08);
+}
+
+/* 窄屏：用户名隐藏只留头像（头像即识别符） */
+@media (max-width: 768px) {
+  #globalHeader .user-info {
+    padding: 3px;
+  }
+
+  #globalHeader .user-info > span:last-child {
+    display: none;
+  }
 }
 </style>
 
@@ -693,6 +942,172 @@ html.dark #globalHeader .points-badge:hover {
 /* 头像用户面板：顶部用户名区 + 图标菜单项 */
 .user-panel {
   min-width: 200px;
+}
+
+/* ===== 消息通知面板 ===== */
+.notify-panel {
+  width: 340px;
+}
+
+.notify-panel .notify-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.notify-panel .notify-head-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #212121;
+}
+
+.notify-panel .notify-readall {
+  padding: 0;
+  font-size: 12px;
+}
+
+.notify-panel .notify-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.notify-panel .notify-item:hover {
+  background: rgba(64, 169, 255, 0.1);
+}
+
+.notify-panel .notify-item.unread {
+  background: rgba(64, 169, 255, 0.05);
+}
+
+.notify-panel .notify-thumb {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f0f2f5;
+}
+
+.notify-panel .notify-thumb--icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: rgba(107, 107, 107, 0.4);
+}
+
+.notify-panel .notify-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notify-panel .notify-item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #212121;
+  line-height: 19px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notify-panel .notify-item.unread .notify-item-title {
+  color: #1677ff;
+}
+
+.notify-panel .notify-item-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(107, 107, 107, 0.8);
+  line-height: 17px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notify-panel .notify-item-time {
+  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(107, 107, 107, 0.5);
+}
+
+.notify-panel .notify-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #ff4d4f;
+}
+
+.notify-panel .notify-empty {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(107, 107, 107, 0.6);
+}
+
+.notify-panel .notify-foot {
+  padding: 9px 0;
+  margin-top: 4px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--accent);
+  border-top: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.notify-panel .notify-foot:hover {
+  opacity: 0.8;
+}
+
+/* 深色模式：通知面板 */
+html.dark .notify-panel .notify-head {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .notify-panel .notify-head-title {
+  color: var(--text-primary);
+}
+
+html.dark .notify-panel .notify-item.unread {
+  background: rgba(64, 169, 255, 0.1);
+}
+
+html.dark .notify-panel .notify-item-title {
+  color: var(--text-primary);
+}
+
+html.dark .notify-panel .notify-item.unread .notify-item-title {
+  color: #69b9ff;
+}
+
+html.dark .notify-panel .notify-item-desc {
+  color: rgba(179, 179, 179, 0.8);
+}
+
+html.dark .notify-panel .notify-item-time {
+  color: rgba(179, 179, 179, 0.5);
+}
+
+html.dark .notify-panel .notify-thumb {
+  background: #3a3a3e;
+}
+
+html.dark .notify-panel .notify-thumb--icon {
+  color: rgba(179, 179, 179, 0.4);
+}
+
+html.dark .notify-panel .notify-empty {
+  color: rgba(179, 179, 179, 0.55);
 }
 
 .user-panel .user-panel-head {

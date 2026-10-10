@@ -22,6 +22,7 @@ const SpaceUserManagePage = () => import('@/pages/admin/SpaceUserManagePage.vue'
 const InvitePage = () => import('@/pages/user/InvitePage.vue')
 const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
 const UserProfilePage = () => import('@/pages/user/UserProfilePage.vue')
+const NotificationPage = () => import('@/pages/user/NotificationPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -123,6 +124,11 @@ const router = createRouter({
       path: '/user/invite',
       name: '会员中心',
       component: InvitePage,
+    },
+    {
+      path: '/user/notifications',
+      name: '消息中心',
+      component: NotificationPage,
     },
     {
       path: '/user/:id',

@@ -77,6 +77,23 @@ create table if not exists picture
     INDEX idx_spaceId (spaceId)            -- 提升基于空间的查询性能
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
+-- 站内通知表（图片审核结果、系统公告等）
+create table if not exists notification
+(
+    id          bigint auto_increment comment 'id' primary key,
+    userId      bigint                             not null comment '接收通知的用户 id',
+    type        varchar(32)  default 'system'      not null comment '通知类型：review-审核结果/system-系统公告/interact-互动',
+    title       varchar(128)                       not null comment '通知标题',
+    content     varchar(512)                       null comment '通知内容（如拒绝理由）',
+    picId       bigint                             null comment '关联图片 id（可跳转图片详情）',
+    picThumbnail varchar(512)                      null comment '关联图片缩略图',
+    isRead      tinyint      default 0             not null comment '是否已读：0-未读 1-已读',
+    createTime  datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
+    INDEX idx_userId (userId),
+    INDEX idx_isRead (isRead),
+    INDEX idx_createTime (createTime)
+) comment '站内通知' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
+
 -- 空间表（含空间类型、封面字段）
 create table if not exists space
 (
