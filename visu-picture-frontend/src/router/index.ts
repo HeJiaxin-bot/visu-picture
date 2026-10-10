@@ -13,6 +13,7 @@ const PictureDetailPage = () => import('@/pages/PictureDetailPage.vue')
 const AddPictureBatchPage = () => import('@/pages/AddPictureBatchPage.vue')
 const AddPictureBatchUploadPage = () => import('@/pages/AddPictureBatchUploadPage.vue')
 const SpaceManagePage = () => import('@/pages/admin/SpaceManagePage.vue')
+const NotificationManagePage = () => import('@/pages/admin/NotificationManagePage.vue')
 const AddSpacePage = () => import('@/pages/AddSpacePage.vue')
 const MySpacePage = () => import('@/pages/MySpacePage.vue')
 const SpaceDetailPage = () => import('@/pages/SpaceDetailPage.vue')
@@ -66,6 +67,11 @@ const router = createRouter({
       path: '/admin/spaceManage',
       name: '空间管理',
       component: SpaceManagePage,
+    },
+    {
+      path: '/admin/notification',
+      name: '发布消息',
+      component: NotificationManagePage,
     },
     {
       path: '/spaceUserManage/:id',

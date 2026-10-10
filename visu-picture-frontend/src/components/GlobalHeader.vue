@@ -70,6 +70,11 @@
                   <div class="item-title">空间管理</div>
                   <div class="item-desc">全部空间治理</div>
                 </div>
+                <div class="team-panel-divider"></div>
+                <div class="team-panel-item" @click="router.push('/admin/notification')">
+                  <div class="item-title">发布消息</div>
+                  <div class="item-desc">向用户推送站内通知</div>
+                </div>
               </div>
             </template>
           </a-dropdown>
@@ -119,7 +124,17 @@
                       <PictureOutlined />
                     </div>
                     <div class="notify-body">
-                      <div class="notify-item-title">{{ item.title }}</div>
+                      <div class="notify-item-title">
+                        {{ item.title }}
+                        <span
+                          v-if="item.type === 'audit'"
+                          class="notify-type-tag notify-type-tag--audit"
+                        >待审核</span>
+                        <span
+                          v-else-if="item.type === 'system'"
+                          class="notify-type-tag notify-type-tag--system"
+                        >系统</span>
+                      </div>
                       <div class="notify-item-desc">{{ item.content }}</div>
                       <div class="notify-item-time">{{ formatNotifyTime(item.createTime) }}</div>
                     </div>
@@ -293,6 +308,10 @@
             <AppstoreOutlined class="drawer-icon" />
             <span>空间管理</span>
           </div>
+          <div class="drawer-item" @click="go('/admin/notification')">
+            <BellOutlined class="drawer-icon" />
+            <span>发布消息</span>
+          </div>
         </div>
       </template>
       <template v-else>
@@ -397,14 +416,16 @@ const formatNotifyTime = (value?: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-// 点击消息：跳图片详情（有 picId）或用户中心；同时标记已读
+// 点击消息：跳转目标随类型而定，同时标记已读
+// audit（待审核提醒）→ 图片管理页；其余 → 图片详情页（from=notify 时仅保留编辑）
 const handleNotifyClick = async (item: NotificationVO) => {
   if (item.isRead === 0 && item.id != null) {
     await markNotificationRead(item.id)
     refreshUnreadCount()
   }
-  if (item.picId) {
-    // 带 from=notify：详情页只保留「编辑」操作
+  if (item.type === 'audit') {
+    router.push('/admin/pictureManage')
+  } else if (item.picId) {
     router.push({ path: `/picture/${item.picId}`, query: { from: 'notify' } })
   } else {
     router.push('/user/center')
@@ -1031,6 +1052,28 @@ html.dark #globalHeader .points-badge:hover {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 面板内类型标签：待审核 / 系统 */
+.notify-panel .notify-type-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  vertical-align: 1px;
+}
+
+.notify-panel .notify-type-tag--audit {
+  color: #fa8c16;
+  background: rgba(250, 140, 22, 0.12);
+}
+
+.notify-panel .notify-type-tag--system {
+  color: #722ed1;
+  background: rgba(114, 46, 209, 0.1);
 }
 
 .notify-panel .notify-item-time {

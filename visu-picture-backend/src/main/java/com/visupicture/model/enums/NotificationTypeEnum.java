@@ -10,6 +10,7 @@ import lombok.Getter;
 public enum NotificationTypeEnum {
 
     REVIEW("审核结果", "review"),
+    AUDIT("待审核提醒", "audit"),
     SYSTEM("系统公告", "system"),
     INTERACT("互动消息", "interact");
 

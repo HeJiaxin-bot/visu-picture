@@ -25,6 +25,34 @@ public interface NotificationService extends IService<Notification> {
                                       String picName, String picThumbnail, String reviewMessage);
 
     /**
+     * 通知全部管理员有新的图片待审核（用户上传后调用；失败不影响上传）
+     *
+     * @param picId        图片 id
+     * @param picName      图片名称
+     * @param picThumbnail 图片缩略图
+     * @param uploaderName 上传者昵称
+     */
+    void sendAuditTaskNotification(Long picId, String picName, String picThumbnail, String uploaderName);
+
+    /**
+     * 批量上传场景：图片较多时只发一条汇总提醒，避免刷屏
+     *
+     * @param count        待审核图片数量
+     * @param uploaderName 上传者昵称
+     */
+    void sendAuditTaskBatchNotification(int count, String uploaderName);
+
+    /**
+     * 管理员发布系统消息
+     *
+     * @param title        标题
+     * @param content      内容
+     * @param targetUserId 接收用户 id；为空表示发给全部用户
+     * @return 实际接收人数
+     */
+    int sendSystemNotification(String title, String content, Long targetUserId);
+
+    /**
      * 分页查询我的通知（按时间倒序）
      *
      * @param userId   用户 id

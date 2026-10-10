@@ -111,6 +111,26 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      */
     private static final String BATCH_UPLOAD_PROGRESS_KEY = "visupicture:batch:upload:progress:";
 
+    /**
+     * 批量上传中待通知管理员的图片计数（ThreadLocal，仅当前请求线程可见）
+     * 为 null 表示非批量场景，逐张实时通知；非 null 时累计，由批量任务结束时汇总成一条通知
+     */
+    private static final ThreadLocal<int[]> BATCH_AUDIT_COUNTER = new ThreadLocal<>();
+
+    /**
+     * 新图片待审核时通知管理员：批量场景累计计数，单张上传实时通知
+     */
+    private void notifyAdminsForAudit(Picture picture, User loginUser) {
+        int[] counter = BATCH_AUDIT_COUNTER.get();
+        if (counter != null) {
+            counter[0]++;
+            return;
+        }
+        String uploaderName = loginUser != null ? loginUser.getUserName() : null;
+        notificationService.sendAuditTaskNotification(
+                picture.getId(), picture.getName(), picture.getThumbnailUrl(), uploaderName);
+    }
+
     @Override
     public void validPicture(Picture picture) {
         ThrowUtils.throwIf(picture == null, ErrorCode.PARAMS_ERROR);
@@ -246,6 +266,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 如果是更新且图片 URL 发生变化，异步清理旧的图片资源（URL 未变时不能清理，否则会误删在用文件）
         if (oldPicture != null && ObjUtil.notEqual(oldPicture.getUrl(), picture.getUrl())) {
             this.clearPictureFile(oldPicture);
+        }
+        // 新增的待审核图片：通知管理员处理（批量上传场景下聚合为一条，避免刷屏）
+        if (pictureId == null && picture.getReviewStatus() != null
+                && picture.getReviewStatus() == PictureReviewStatusEnum.REVIEWING.getValue()) {
+            this.notifyAdminsForAudit(picture, loginUser);
         }
         return PictureVO.objToVo(picture);
     }
@@ -444,43 +469,53 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 遍历图片直链，依次处理上传
         int uploadCount = 0;
         int failCount = 0;
-        for (String fileUrl : fileUrlList) {
-            if (uploadCount >= count) {
-                break;
-            }
-            // 上传图片
-            PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
-            pictureUploadRequest.setFileUrl(fileUrl);
-            pictureUploadRequest.setPicName(namePrefix + (uploadCount + 1));
-            try {
-                PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
-                log.info("图片上传成功，id = {}", pictureVO.getId());
-                uploadCount++;
-                // AI 配文：自动生成名称、简介、分类、标签并直接落库（失败不影响整体抓取）
-                if (ObjUtil.defaultIfNull(pictureUploadByBatchRequest.getAiEdit(), true)) {
-                    try {
-                        Picture aiPicture = new Picture();
-                        aiPicture.setId(pictureVO.getId());
-                        aiPicture.setUrl(pictureVO.getUrl());
-                        aiPicture.setThumbnailUrl(pictureVO.getThumbnailUrl());
-                        PictureAiEditResult aiResult = this.generateAiEditResult(aiPicture);
-                        this.lambdaUpdate()
-                                .eq(Picture::getId, pictureVO.getId())
-                                .set(StrUtil.isNotBlank(aiResult.getName()), Picture::getName, aiResult.getName())
-                                .set(StrUtil.isNotBlank(aiResult.getIntroduction()), Picture::getIntroduction, aiResult.getIntroduction())
-                                .set(StrUtil.isNotBlank(aiResult.getCategory()), Picture::getCategory, aiResult.getCategory())
-                                .set(CollUtil.isNotEmpty(aiResult.getTags()), Picture::getTags, JSONUtil.toJsonStr(aiResult.getTags()))
-                                .update();
-                    } catch (Exception e) {
-                        log.warn("AI 配文失败，保留默认信息，pictureId = {}", pictureVO.getId(), e);
-                    }
+        // 开启批量通知聚合：任务内不逐张通知管理员，结束时汇总为一条
+        BATCH_AUDIT_COUNTER.set(new int[]{0});
+        try {
+            for (String fileUrl : fileUrlList) {
+                if (uploadCount >= count) {
+                    break;
                 }
-                // 更新任务进度
-                stringRedisTemplate.opsForValue().set(progressKey, uploadCount + "/" + count, 10, TimeUnit.MINUTES);
-            } catch (Exception e) {
-                failCount++;
-                log.error("图片上传失败，url = {}", fileUrl, e);
-                continue;
+                // 上传图片
+                PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+                pictureUploadRequest.setFileUrl(fileUrl);
+                pictureUploadRequest.setPicName(namePrefix + (uploadCount + 1));
+                try {
+                    PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+                    log.info("图片上传成功，id = {}", pictureVO.getId());
+                    uploadCount++;
+                    // AI 配文：自动生成名称、简介、分类、标签并直接落库（失败不影响整体抓取）
+                    if (ObjUtil.defaultIfNull(pictureUploadByBatchRequest.getAiEdit(), true)) {
+                        try {
+                            Picture aiPicture = new Picture();
+                            aiPicture.setId(pictureVO.getId());
+                            aiPicture.setUrl(pictureVO.getUrl());
+                            aiPicture.setThumbnailUrl(pictureVO.getThumbnailUrl());
+                            PictureAiEditResult aiResult = this.generateAiEditResult(aiPicture);
+                            this.lambdaUpdate()
+                                    .eq(Picture::getId, pictureVO.getId())
+                                    .set(StrUtil.isNotBlank(aiResult.getName()), Picture::getName, aiResult.getName())
+                                    .set(StrUtil.isNotBlank(aiResult.getIntroduction()), Picture::getIntroduction, aiResult.getIntroduction())
+                                    .set(StrUtil.isNotBlank(aiResult.getCategory()), Picture::getCategory, aiResult.getCategory())
+                                    .set(CollUtil.isNotEmpty(aiResult.getTags()), Picture::getTags, JSONUtil.toJsonStr(aiResult.getTags()))
+                                    .update();
+                        } catch (Exception e) {
+                            log.warn("AI 配文失败，保留默认信息，pictureId = {}", pictureVO.getId(), e);
+                        }
+                    }
+                    // 更新任务进度
+                    stringRedisTemplate.opsForValue().set(progressKey, uploadCount + "/" + count, 10, TimeUnit.MINUTES);
+                } catch (Exception e) {
+                    failCount++;
+                    log.error("图片上传失败，url = {}", fileUrl, e);
+                }
+            }
+        } finally {
+            // 清理聚合计数并汇总通知（无论成功失败都要清理，避免线程复用污染）
+            int[] counter = BATCH_AUDIT_COUNTER.get();
+            BATCH_AUDIT_COUNTER.remove();
+            if (counter != null && counter[0] > 0) {
+                notificationService.sendAuditTaskBatchNotification(counter[0], loginUser.getUserName());
             }
         }
         log.info("批量抓取完成，关键词 = {}，抓取源 = {}，成功 = {}，失败 = {}", searchText, searchSource, uploadCount, failCount);

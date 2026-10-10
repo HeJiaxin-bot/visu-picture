@@ -204,6 +204,12 @@
             <div class="entry-title">批量创建图片</div>
             <div class="entry-desc">按关键词批量抓取并入库</div>
           </div>
+          <!-- 发布消息：向用户推送站内通知 -->
+          <div class="entry-item" @click="router.push('/admin/notification')">
+            <NotificationOutlined class="entry-icon" style="color: #eb2f96" />
+            <div class="entry-title">发布消息</div>
+            <div class="entry-desc">向用户推送站内通知</div>
+          </div>
         </div>
       </a-card>
 
@@ -261,6 +267,7 @@ import {
   EditOutlined,
   FolderOutlined,
   LoadingOutlined,
+  NotificationOutlined,
   PictureOutlined,
   SettingOutlined,
   TeamOutlined,

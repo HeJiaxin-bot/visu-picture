@@ -86,6 +86,7 @@
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
+  AuditOutlined,
   BellOutlined,
   CheckOutlined,
   GiftOutlined,
@@ -115,6 +116,7 @@ const unreadCount = ref(0)
 // 类型映射：图标 + 颜色 + 文案
 const typeMeta: Record<string, { icon: any; cls: string; text: string }> = {
   review: { icon: PictureOutlined, cls: 'type-review', text: '审核' },
+  audit: { icon: AuditOutlined, cls: 'type-audit', text: '待审核' },
   system: { icon: BellOutlined, cls: 'type-system', text: '系统' },
   interact: { icon: HeartOutlined, cls: 'type-interact', text: '互动' },
 }
@@ -175,14 +177,18 @@ const loadMore = () => {
   fetchList()
 }
 
-// 点击消息：标记已读并跳转（带 from=notify，详情页据此只保留「编辑」操作）
+// 点击消息：标记已读并跳转
+// - audit（待审核提醒，发给管理员）→ 图片管理页处理审核
+// - review（审核结果，发给作者）→ 图片详情页（带 from=notify，仅保留编辑）
 const handleClick = async (item: NotificationVO) => {
   if (item.isRead === 0 && item.id != null) {
     await markNotificationRead(item.id)
     item.isRead = 1
     unreadCount.value = Math.max(unreadCount.value - 1, 0)
   }
-  if (item.picId) {
+  if (item.type === 'audit') {
+    router.push('/admin/pictureManage')
+  } else if (item.picId) {
     router.push({ path: `/picture/${item.picId}`, query: { from: 'notify' } })
   }
 }
@@ -386,6 +392,11 @@ onMounted(() => {
   background: linear-gradient(135deg, rgba(114, 46, 209, 0.12), rgba(114, 46, 209, 0.18));
 }
 
+.row-icon.type-audit {
+  color: #fa8c16;
+  background: linear-gradient(135deg, rgba(250, 140, 22, 0.14), rgba(250, 140, 22, 0.2));
+}
+
 .row-icon.type-interact {
   color: #eb2f96;
   background: linear-gradient(135deg, rgba(235, 47, 150, 0.12), rgba(235, 47, 150, 0.18));
@@ -433,6 +444,11 @@ onMounted(() => {
 .type-tag.type-system {
   color: #722ed1;
   background: rgba(114, 46, 209, 0.1);
+}
+
+.type-tag.type-audit {
+  color: #fa8c16;
+  background: rgba(250, 140, 22, 0.12);
 }
 
 .type-tag.type-interact {

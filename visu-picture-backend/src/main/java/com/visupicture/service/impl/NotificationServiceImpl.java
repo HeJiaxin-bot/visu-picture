@@ -1,19 +1,28 @@
 package com.visupicture.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
+import com.visupicture.exception.ThrowUtils;
 import com.visupicture.mapper.NotificationMapper;
 import com.visupicture.model.entity.Notification;
+import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.NotificationTypeEnum;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
+import com.visupicture.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,6 +33,9 @@ import java.util.stream.Collectors;
 @Service
 public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Notification>
         implements NotificationService {
+
+    @Resource
+    private UserService userService;
 
     @Override
     public void sendReviewResultNotification(Long userId, boolean pass, Long picId,
@@ -53,6 +65,111 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
             // 通知失败不影响审核主流程
             log.error("发送审核通知失败, userId={}, picId={}", userId, picId, e);
         }
+    }
+
+    @Override
+    public void sendAuditTaskNotification(Long picId, String picName, String picThumbnail, String uploaderName) {
+        try {
+            List<Long> adminIds = listAdminUserIds();
+            if (CollUtil.isEmpty(adminIds)) {
+                return;
+            }
+            String shortName = picName != null && picName.length() > 20
+                    ? picName.substring(0, 20) + "…" : picName;
+            String who = StrUtil.blankToDefault(uploaderName, "用户");
+            List<Notification> list = new ArrayList<>();
+            for (Long adminId : adminIds) {
+                Notification notification = new Notification();
+                notification.setUserId(adminId);
+                notification.setType(NotificationTypeEnum.AUDIT.getValue());
+                notification.setTitle("有新的图片待审核");
+                notification.setContent(who + " 上传了「" + shortName + "」，请及时审核");
+                notification.setPicId(picId);
+                notification.setPicThumbnail(picThumbnail);
+                notification.setIsRead(0);
+                list.add(notification);
+            }
+            this.saveBatch(list);
+        } catch (Exception e) {
+            // 通知失败不影响上传主流程
+            log.error("发送待审核通知失败, picId={}", picId, e);
+        }
+    }
+
+    @Override
+    public void sendAuditTaskBatchNotification(int count, String uploaderName) {
+        if (count <= 0) {
+            return;
+        }
+        try {
+            List<Long> adminIds = listAdminUserIds();
+            if (CollUtil.isEmpty(adminIds)) {
+                return;
+            }
+            String who = StrUtil.blankToDefault(uploaderName, "用户");
+            List<Notification> list = new ArrayList<>();
+            for (Long adminId : adminIds) {
+                Notification notification = new Notification();
+                notification.setUserId(adminId);
+                notification.setType(NotificationTypeEnum.AUDIT.getValue());
+                notification.setTitle("有 " + count + " 张图片待审核");
+                notification.setContent(who + " 批量上传了 " + count + " 张图片，请及时审核");
+                notification.setIsRead(0);
+                list.add(notification);
+            }
+            this.saveBatch(list);
+        } catch (Exception e) {
+            log.error("发送批量待审核通知失败, count={}", count, e);
+        }
+    }
+
+    @Override
+    public int sendSystemNotification(String title, String content, Long targetUserId) {
+        ThrowUtils.throwIf(StrUtil.isBlank(title), ErrorCode.PARAMS_ERROR, "标题不能为空");
+        ThrowUtils.throwIf(title.length() > 128, ErrorCode.PARAMS_ERROR, "标题不能超过 128 字");
+        ThrowUtils.throwIf(content != null && content.length() > 512, ErrorCode.PARAMS_ERROR, "内容不能超过 512 字");
+        // 接收人：指定用户或全部用户
+        List<Long> receiverIds;
+        if (targetUserId != null) {
+            ThrowUtils.throwIf(userService.getById(targetUserId) == null,
+                    ErrorCode.NOT_FOUND_ERROR, "接收用户不存在");
+            receiverIds = Collections.singletonList(targetUserId);
+        } else {
+            receiverIds = userService.list(new QueryWrapper<User>().select("id"))
+                    .stream().map(User::getId).collect(Collectors.toList());
+        }
+        if (CollUtil.isEmpty(receiverIds)) {
+            return 0;
+        }
+        List<Notification> list = new ArrayList<>();
+        for (Long receiverId : receiverIds) {
+            Notification notification = new Notification();
+            notification.setUserId(receiverId);
+            notification.setType(NotificationTypeEnum.SYSTEM.getValue());
+            notification.setTitle(title);
+            notification.setContent(content);
+            notification.setIsRead(0);
+            list.add(notification);
+        }
+        // 分批入库，避免一次插入过多
+        final int chunk = 500;
+        for (int i = 0; i < list.size(); i += chunk) {
+            this.saveBatch(list.subList(i, Math.min(i + chunk, list.size())));
+        }
+        log.info("管理员发布系统消息「{}」，接收人数 {}", title, receiverIds.size());
+        return receiverIds.size();
+    }
+
+    /**
+     * 查询全部管理员用户 id
+     */
+    private List<Long> listAdminUserIds() {
+        return userService.list(new QueryWrapper<User>()
+                        .select("id")
+                        .eq("userRole", UserConstant.ADMIN_ROLE))
+                .stream()
+                .map(User::getId)
+                .collect(Collectors.toList());
     }
 
     @Override

@@ -46,6 +46,17 @@ export async function markAllNotificationRead(): Promise<API.BaseResponseBoolean
   return (await myAxios.post('/api/notification/read/all')).data
 }
 
+/**
+ * 管理员发布系统消息（targetUserId 为空表示全员）
+ */
+export async function sendSystemNotification(body: {
+  title: string
+  content?: string
+  targetUserId?: number
+}): Promise<API.BaseResponseInteger> {
+  return (await myAxios.post('/api/notification/send', body)).data
+}
+
 // 与后端 BaseResponse 结构对齐
 declare global {
   namespace API {
@@ -55,6 +66,11 @@ declare global {
       message?: string
     }
     type BaseResponseLong = {
+      code: number
+      data?: number
+      message?: string
+    }
+    type BaseResponseInteger = {
       code: number
       data?: number
       message?: string

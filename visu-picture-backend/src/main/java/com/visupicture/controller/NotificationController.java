@@ -1,9 +1,12 @@
 package com.visupicture.controller;
 
+import com.visupicture.annotation.AuthCheck;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.ResultUtils;
+import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
+import com.visupicture.model.dto.notification.NotificationSendRequest;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
@@ -76,5 +79,17 @@ public class NotificationController {
     public BaseResponse<Boolean> markAllRead(HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         return ResultUtils.success(notificationService.markAllRead(loginUser.getId()));
+    }
+
+    /**
+     * 管理员发布系统消息（全员或指定用户）
+     */
+    @PostMapping("/send")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Integer> sendSystemNotification(@RequestBody NotificationSendRequest sendRequest) {
+        ThrowUtils.throwIf(sendRequest == null, ErrorCode.PARAMS_ERROR);
+        int receiverCount = notificationService.sendSystemNotification(
+                sendRequest.getTitle(), sendRequest.getContent(), sendRequest.getTargetUserId());
+        return ResultUtils.success(receiverCount);
     }
 }
