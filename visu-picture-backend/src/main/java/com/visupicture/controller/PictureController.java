@@ -292,8 +292,17 @@ public class PictureController {
         long size = pictureQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        // 普通用户默认只能看到审核通过的数据
-        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 【安全修复】补齐与非缓存版本一致的空间权限校验：
+        // 原实现缺此校验，且无需登录，任何人传 spaceId 即可越权遍历他人私有/团队空间的图片。
+        Long spaceId = pictureQueryRequest.getSpaceId();
+        if (spaceId == null) {
+            // 公开图库：仅能看审核通过的图片
+            pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+            pictureQueryRequest.setNullSpaceId(true);
+        } else {
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
+        }
         // 查询缓存，缓存中没有，再查询数据库
         // 构建缓存的 key
         String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
@@ -408,14 +417,21 @@ public class PictureController {
 
     /**
      * 以图搜图
+     *
+     * 【安全修复】原实现无登录校验、无归属校验：未登录即可传任意 pictureId，
+     * 服务端会拿该图片 URL 去百度搜图并返回结果，等于泄露他人私有空间图片的视觉内容。
      */
     @PostMapping("/search/picture")
-    public BaseResponse<List<ImageSearchResult>> searchPictureByPicture(@RequestBody SearchPictureByPictureRequest searchPictureByPictureRequest) {
+    public BaseResponse<List<ImageSearchResult>> searchPictureByPicture(@RequestBody SearchPictureByPictureRequest searchPictureByPictureRequest,
+                                                                       HttpServletRequest request) {
         ThrowUtils.throwIf(searchPictureByPictureRequest == null, ErrorCode.PARAMS_ERROR);
         Long pictureId = searchPictureByPictureRequest.getPictureId();
         ThrowUtils.throwIf(pictureId == null || pictureId <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
         Picture picture = pictureService.getById(pictureId);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
+        // 私有空间仅本人或管理员可用作搜图输入
+        pictureService.checkPictureAuth(loginUser, picture);
         BaiduResponse response = BaiduImageSearch.search(picture.getUrl());
         // 合并相同图片与相似图片，映射为统一的 ImageSearchResult
         List<ImageSearchResult> resultList = new ArrayList<>();

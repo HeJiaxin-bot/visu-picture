@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.visupicture.config.CosClientConfig;
+import com.visupicture.constant.SortFieldConstant;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
@@ -236,6 +237,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         queryWrapper.eq(ObjUtil.isNotEmpty(spaceLevel), "spaceLevel", spaceLevel);
         queryWrapper.eq(ObjUtil.isNotEmpty(spaceType), "spaceType", spaceType);
         // 排序
+        // 【安全修复】sortField 会被字面量拼进 SQL，必须先经白名单校验，否则构成 SQL 注入
+        ThrowUtils.throwIf(!SortFieldConstant.isValid(sortField, SortFieldConstant.SPACE_SORT_FIELDS),
+                ErrorCode.PARAMS_ERROR, "排序字段不合法");
         queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
         return queryWrapper;
     }
@@ -244,14 +248,11 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     public void fillSpaceBySpaceLevel(Space space) {
         SpaceLevelEnum spaceLevelEnum = SpaceLevelEnum.getEnumByValue(space.getSpaceLevel());
         if (spaceLevelEnum != null) {
-            long maxSize = spaceLevelEnum.getMaxSize();
-            if (space.getMaxSize() == null) {
-                space.setMaxSize(maxSize);
-            }
-            long maxCount = spaceLevelEnum.getMaxCount();
-            if (space.getMaxCount() == null) {
-                space.setMaxCount(maxCount);
-            }
+            // 【安全修复】强制按等级覆盖配额，而非仅在 null 时填充。
+            // 原实现 `if (space.getMaxSize() == null)` 使得前端传入的 maxSize/maxCount 被保留，
+            // 普通用户可提交极大值绕过付费等级限制。
+            space.setMaxSize(spaceLevelEnum.getMaxSize());
+            space.setMaxCount(spaceLevelEnum.getMaxCount());
         }
     }
 

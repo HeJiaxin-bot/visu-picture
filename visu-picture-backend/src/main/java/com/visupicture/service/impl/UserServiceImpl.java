@@ -13,6 +13,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.visupicture.constant.SortFieldConstant;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.config.CosClientConfig;
 import com.visupicture.exception.BusinessException;
@@ -351,6 +352,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         // 移除登录态
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        // 【安全修复】同时终止 Sa-Token 会话：
+        // 登录时写入了 HttpSession 与 Sa-Token 两套登录态，原实现登出只清前者，
+        // 导致 satoken Cookie 仍然有效 —— 仅由 @SaSpaceCheckPermission 保护、
+        // 方法体内不取登录用户的端点（如 SpaceUserController 全部端点）登出后依然可访问。
+        try {
+            StpKit.SPACE.logout();
+            StpKit.SPACE.getSession().clear();
+        } catch (Exception e) {
+            log.warn("登出时清理 Sa-Token 会话失败", e);
+        }
+        // 使 HttpSession 失效
+        try {
+            request.getSession().invalidate();
+        } catch (Exception e) {
+            log.warn("登出时失效 HttpSession 失败", e);
+        }
         return true;
     }
 
@@ -366,6 +383,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         ThrowUtils.throwIf(!removed, ErrorCode.OPERATION_ERROR, "账号注销失败，请稍后重试");
         // 移除登录态
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        // 【安全修复】注销同样需终止 Sa-Token 会话，否则 token 仍可访问注解保护的端点
+        try {
+            StpKit.SPACE.logout();
+            StpKit.SPACE.getSession().clear();
+        } catch (Exception e) {
+            log.warn("注销时清理 Sa-Token 会话失败", e);
+        }
+        try {
+            request.getSession().invalidate();
+        } catch (Exception e) {
+            log.warn("注销时失效 HttpSession 失败", e);
+        }
         log.info("用户 {} 已注销账号", userId);
         return true;
     }
@@ -388,6 +417,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         queryWrapper.like(StrUtil.isNotBlank(userAccount), "userAccount", userAccount);
         queryWrapper.like(StrUtil.isNotBlank(userName), "userName", userName);
         queryWrapper.like(StrUtil.isNotBlank(userProfile), "userProfile", userProfile);
+        // 【安全修复】sortField 会被字面量拼进 SQL，必须先经白名单校验，否则构成 SQL 注入
+        ThrowUtils.throwIf(!SortFieldConstant.isValid(sortField, SortFieldConstant.USER_SORT_FIELDS),
+                ErrorCode.PARAMS_ERROR, "排序字段不合法");
         queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
         return queryWrapper;
     }

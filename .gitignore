@@ -176,3 +176,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+#custom
+docs/thesis/
+preview-final

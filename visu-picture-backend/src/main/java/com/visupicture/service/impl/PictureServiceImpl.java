@@ -16,6 +16,7 @@ import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.visupicture.api.pexels.PexelsApi;
 import com.visupicture.constant.PictureTagCategoryConstant;
+import com.visupicture.constant.SortFieldConstant;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
@@ -389,6 +390,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         // 排序（附加以 id 为次级排序：点赞数等排序值相同时保证分页结果稳定，避免重复/遗漏）
+        // 【安全修复】sortField 会被字面量拼进 SQL，必须先经白名单校验，否则构成 SQL 注入
+        ThrowUtils.throwIf(!SortFieldConstant.isValid(sortField, SortFieldConstant.PICTURE_SORT_FIELDS),
+                ErrorCode.PARAMS_ERROR, "排序字段不合法");
         queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), "ascend".equals(sortOrder), sortField);
         queryWrapper.orderByDesc("id");
         return queryWrapper;
@@ -673,8 +677,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 判断是否存在
         Picture oldPicture = this.getById(pictureId);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 校验权限，已经改为使用注解鉴权
-//        checkPictureAuth(loginUser, oldPicture);
+        // 【安全修复】恢复归属校验：仅注解鉴权不够 ——
+        // 鉴权上下文中的 spaceId 由请求体提供，攻击者可用自己的 spaceId 通过注解校验，
+        // 却传入他人 pictureId 执行删除。此处按图片真实归属兜底校验。
+        checkPictureAuth(loginUser, oldPicture);
         // 开启事务
         transactionTemplate.execute(status -> {
             // 操作数据库
@@ -710,8 +716,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         long id = pictureEditRequest.getId();
         Picture oldPicture = this.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 校验权限，已经改为使用注解鉴权
-//        checkPictureAuth(loginUser, oldPicture);
+        // 【安全修复】恢复归属校验：仅注解鉴权不够 ——
+        // 鉴权上下文中的 spaceId 由请求体提供，攻击者可用自己的 spaceId 通过注解校验，
+        // 却操作他人 pictureId。此处按图片真实归属再做一次兜底校验。
+        checkPictureAuth(loginUser, oldPicture);
         // 补充审核参数
         this.fillReviewParams(picture, loginUser);
         // 操作数据库
@@ -841,8 +849,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Long pictureId = createPictureOutPaintingTaskRequest.getPictureId();
         Picture picture = Optional.ofNullable(this.getById(pictureId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ERROR, "图片不存在"));
-        // 校验权限，已经改为使用注解鉴权
-//        checkPictureAuth(loginUser, picture);
+        // 【安全修复】恢复归属校验：防止用自己的 spaceId 通过注解校验、却对他人私有图片发起扩图（内容泄露）
+        checkPictureAuth(loginUser, picture);
         // 校验图片分辨率，阿里云扩图类模型要求输入图片宽高均在 [512, 4096] 像素范围内
         final int MIN_RESOLUTION = 512;
         Integer picWidth = picture.getPicWidth();

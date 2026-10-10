@@ -90,6 +90,16 @@ sa-token:
   cookie:
     same-site: None
     secure: true
+# 跨域与 WebSocket 来源白名单（逗号分隔）。
+# 因上方 SameSite=None 会让 Cookie 随跨站请求携带，必须显式限定来源，
+# 否则任意站点都能以受害者身份读写接口。
+#
+# 各环境域名不同，具体值见对应 profile：
+#   本地开发 -> application-local.yml
+#   线上部署 -> application-prod.yml
+# 此处仅保留「本地开发」作为兜底默认值，避免未指定 profile 时跨域全被拦。
+cors:
+  allowed-origins: http://localhost:5173,http://localhost:8123,http://127.0.0.1:5173,https://localhost,capacitor://localhost
 ## 对象存储配置（需要从腾讯云获取）
 #cos:
 #  client:

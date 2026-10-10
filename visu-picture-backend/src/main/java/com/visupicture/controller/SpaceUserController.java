@@ -112,12 +112,20 @@ public class SpaceUserController {
 
     /**
      * 查询成员信息列表
+     *
+     * 【安全修复】必须指定 spaceId：
+     * 原实现未要求 spaceId，而鉴权上下文对「所有字段为空」的请求会 fail-open 放行全部权限，
+     * 导致任意登录用户提交 {} 即可 dump 全站 space_user 表（含所有团队的空间名、成员与角色）。
      */
     @PostMapping("/list")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.SPACE_USER_MANAGE)
     public BaseResponse<List<SpaceUserVO>> listSpaceUser(@RequestBody SpaceUserQueryRequest spaceUserQueryRequest,
                                                          HttpServletRequest request) {
         ThrowUtils.throwIf(spaceUserQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        // 强制限定查询范围：必须按空间查询，禁止无范围全表查询
+        ThrowUtils.throwIf(spaceUserQueryRequest.getSpaceId() == null
+                        && spaceUserQueryRequest.getId() == null,
+                ErrorCode.PARAMS_ERROR, "必须指定空间 id");
         List<SpaceUser> spaceUserList = spaceUserService.list(
                 spaceUserService.getQueryWrapper(spaceUserQueryRequest)
         );

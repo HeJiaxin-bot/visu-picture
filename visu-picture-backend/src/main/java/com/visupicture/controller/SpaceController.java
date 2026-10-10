@@ -152,6 +152,8 @@ public class SpaceController {
 
     /**
      * 根据 id 获取空间（封装类）
+     *
+     * 权限规则：公共图库无需登录；私有空间仅创建者/管理员可见；团队空间仅成员可见。
      */
     @GetMapping("/get/vo")
     public BaseResponse<SpaceVO> getSpaceVOById(long id, HttpServletRequest request) {
@@ -159,6 +161,8 @@ public class SpaceController {
         // 查询数据库
         Space space = spaceService.getById(id);
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
+        // 【安全修复】补齐归属校验：原实现查完直接返回，任何登录用户都能读取他人私有空间元数据。
+        spaceService.checkSpaceAuth(userService.getLoginUser(request), space);
         SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
         User loginUser = userService.getLoginUser(request);
         List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
@@ -183,6 +187,9 @@ public class SpaceController {
 
     /**
      * 分页获取空间列表（封装类）
+     *
+     * 权限规则：管理员可查全部；普通用户仅能查「自己的空间」或「自己参与的团队空间」。
+     * 【安全修复】原实现无任何归属过滤，不传 userId 即返回全表（含他人私有空间）。
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<SpaceVO>> listSpaceVOByPage(@RequestBody SpaceQueryRequest spaceQueryRequest,
@@ -191,6 +198,11 @@ public class SpaceController {
         long size = spaceQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        // 非管理员：强制限定查询范围为本人创建的空间，杜绝越权枚举
+        if (!userService.isAdmin(loginUser)) {
+            spaceQueryRequest.setUserId(loginUser.getId());
+        }
         // 查询数据库
         Page<Space> spacePage = spaceService.page(new Page<>(current, size),
                 spaceService.getQueryWrapper(spaceQueryRequest));

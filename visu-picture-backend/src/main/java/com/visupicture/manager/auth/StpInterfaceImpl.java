@@ -82,15 +82,14 @@ public class StpInterfaceImpl implements StpInterface {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "用户未登录");
         }
         Long userId = loginUser.getId();
-        // 优先从上下文中获取 SpaceUser 对象
-        SpaceUser spaceUser = authContext.getSpaceUser();
-        if (spaceUser != null) {
-            return spaceUserAuthManager.getPermissionsByRole(spaceUser.getSpaceRole());
-        }
-        // 如果有 spaceUserId，必然是团队空间，通过数据库查询 SpaceUser 对象
+        // 【安全修复】不再采信请求体中的 spaceUser 对象：
+        // 历史实现为 `SpaceUser spaceUser = authContext.getSpaceUser();
+        // if (spaceUser != null) return getPermissionsByRole(spaceUser.getSpaceRole());`
+        // 攻击者提交 {"spaceUser":{"spaceRole":"admin"}} 即可获得全部空间权限。
+        // 现在一律按 spaceUserId 查库，并校验当前登录用户确实属于该空间。
         Long spaceUserId = authContext.getSpaceUserId();
         if (spaceUserId != null) {
-            spaceUser = spaceUserService.getById(spaceUserId);
+            SpaceUser spaceUser = spaceUserService.getById(spaceUserId);
             if (spaceUser == null) {
                 throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "未找到空间用户信息");
             }
@@ -105,15 +104,15 @@ public class StpInterfaceImpl implements StpInterface {
             // 这里会导致管理员在私有空间没有权限，可以再查一次库处理
             return spaceUserAuthManager.getPermissionsByRole(loginSpaceUser.getSpaceRole());
         }
-        // 如果没有 spaceUserId，尝试通过 spaceId 或 pictureId 获取 Space 对象并处理
+        // 【安全修复】判定优先级调整：图片真实归属优先于请求体传入的 spaceId。
+        //
+        // 原实现先取 authContext.getSpaceId()（完全由请求体提供），只有它为 null 时才用
+        // pictureId 反查真实空间。攻击者可同时提交「自己的 spaceId」+「他人的 pictureId」：
+        // 用前者通过权限校验，用后者执行操作，从而越权删除/编辑/扩图他人图片。
+        // 现在只要请求涉及具体图片，一律以该图片的真实归属为准。
+        Long pictureId = authContext.getPictureId();
         Long spaceId = authContext.getSpaceId();
-        if (spaceId == null) {
-            // 如果没有 spaceId，通过 pictureId 获取 Picture 对象和 Space 对象
-            Long pictureId = authContext.getPictureId();
-            // 图片 id 也没有，则默认通过权限校验
-            if (pictureId == null) {
-                return ADMIN_PERMISSIONS;
-            }
+        if (pictureId != null) {
             Picture picture = pictureService.lambdaQuery()
                     .eq(Picture::getId, pictureId)
                     .select(Picture::getId, Picture::getSpaceId, Picture::getUserId)
@@ -121,6 +120,7 @@ public class StpInterfaceImpl implements StpInterface {
             if (picture == null) {
                 throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "未找到图片信息");
             }
+            // 用图片真实所在空间覆盖客户端传入值，杜绝「借自己的空间操作他人图片」
             spaceId = picture.getSpaceId();
             // 公共图库，仅本人或管理员可操作
             if (spaceId == null) {
@@ -131,6 +131,9 @@ public class StpInterfaceImpl implements StpInterface {
                     return Collections.singletonList(SpaceUserPermissionConstant.PICTURE_VIEW);
                 }
             }
+        } else if (spaceId == null) {
+            // 既没有 pictureId 也没有 spaceId，则默认通过权限校验（公共图库场景）
+            return ADMIN_PERMISSIONS;
         }
         // 获取 Space 对象
         Space space = spaceService.getById(spaceId);
@@ -147,7 +150,7 @@ public class StpInterfaceImpl implements StpInterface {
             }
         } else {
             // 团队空间，查询 SpaceUser 并获取角色和权限
-            spaceUser = spaceUserService.lambdaQuery()
+            SpaceUser spaceUser = spaceUserService.lambdaQuery()
                     .eq(SpaceUser::getSpaceId, spaceId)
                     .eq(SpaceUser::getUserId, userId)
                     .one();

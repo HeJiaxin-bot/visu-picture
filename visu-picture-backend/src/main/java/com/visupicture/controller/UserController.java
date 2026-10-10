@@ -149,11 +149,22 @@ public class UserController {
 
     /**
      * 根据 id 获取包装类
+     *
+     * 【安全修复】原实现内部调用 {@code getUserById(id)}，而 Spring AOP 基于代理，
+     * 同类内部自调用不经过代理，导致该方法上的 @AuthCheck(mustRole = ADMIN_ROLE) 完全失效，
+     * 且本端点自身无注解、无登录校验 → 匿名即可读取任意用户信息（含邮箱、会员兑换码）。
+     * 现在：必须登录，且仅本人或管理员可查。
      */
     @GetMapping("/get/vo")
-    public BaseResponse<UserVO> getUserVOById(long id) {
-        BaseResponse<User> response = getUserById(id);
-        User user = response.getData();
+    public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        User user = userService.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
+        // 仅本人或管理员可查看他人用户信息
+        if (!loginUser.getId().equals(id) && !userService.isAdmin(loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
         return ResultUtils.success(userService.getUserVO(user));
     }
 
