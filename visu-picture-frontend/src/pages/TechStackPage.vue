@@ -167,38 +167,28 @@ const options = computed(() => {
         shadowColor: cat?.color ?? '#3b82f6',
         opacity,
       },
+      // 标签使用「直接属性」而不是 rich：
+      // rich 内的样式会覆盖 blur 状态的 label.opacity，导致悬停时标签不变暗。
+      // 每个节点是独立数据项，直接按节点类型生成样式即可。
       label: {
         show: true,
         position: 'bottom',
         distance: node.hub ? 14 : 8,
-        formatter: node.hub ? `{hub|${node.name}}` : `{n|${node.name}}`,
-        rich: {
-          hub: {
-            color: '#ffffff',
-            fontSize: 15,
-            lineHeight: 24,
-            padding: [6, 14],
-            backgroundColor: 'rgba(9,16,34,0.92)',
-            borderColor: '#69b9ff',
-            borderWidth: 1.5,
-            borderRadius: 8,
-            fontWeight: 'bold',
-            shadowBlur: 18,
-            shadowColor: 'rgba(22,119,255,0.8)',
-            opacity,
-          },
-          n: {
-            color: '#e8f1ff',
-            fontSize: 12,
-            lineHeight: 19,
-            padding: [4, 9],
-            backgroundColor: 'rgba(9,16,34,0.88)',
-            borderColor: cat?.color ?? '#3b82f6',
-            borderWidth: 1,
-            borderRadius: 6,
-            opacity,
-          },
-        },
+        formatter: node.name,
+        // 分类筛选的淡出；悬停变暗由 blur 状态接管
+        opacity,
+        color: node.hub ? '#ffffff' : '#e8f1ff',
+        fontSize: node.hub ? 15 : 12,
+        fontWeight: node.hub ? 'bold' : 'normal',
+        lineHeight: node.hub ? 24 : 19,
+        padding: node.hub ? [6, 14] : [4, 9],
+        backgroundColor: 'rgba(9,16,34,0.92)',
+        borderColor: node.hub ? '#69b9ff' : (cat?.color ?? '#3b82f6'),
+        borderWidth: node.hub ? 1.5 : 1,
+        borderRadius: node.hub ? 8 : 6,
+        ...(node.hub
+          ? { shadowBlur: 18, shadowColor: 'rgba(22,119,255,0.8)' }
+          : {}),
       },
     }
   })
