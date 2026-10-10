@@ -173,11 +173,12 @@
           <!-- 用户信息展示栏 -->
           <div class="user-login-status">
             <div v-if="loginUserStore.loginUser.id">
-              <a-dropdown trigger="['hover', 'click']">
-                <a-space class="user-info">
+              <!-- 悬停展开菜单，点击头像直接进入用户中心 -->
+              <a-dropdown trigger="['hover']">
+                <div class="user-info" title="进入用户中心" @click="router.push('/user/center')">
                   <a-avatar :src="loginUserStore.loginUser.userAvatar" :size="30" />
-                  {{ loginUserStore.loginUser.userName ?? '视界用户' }}
-                </a-space>
+                  <span class="user-name">{{ loginUserStore.loginUser.userName ?? '视界用户' }}</span>
+                </div>
                 <template #overlay>
                   <div class="team-panel user-panel">
                     <!-- 顶部：用户名 + 身份 -->
@@ -898,25 +899,34 @@ html.dark #globalHeader .points-badge:hover {
 }
 
 #globalHeader .user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   color: var(--text-primary-light);
-  padding: 5px 10px 5px 5px;
-  border-radius: 999px;
-  transition: background 0.2s ease;
+  /* 无边框、无底色：悬停只做轻微变色，不出现浅蓝框 */
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
-/* 头像触发区悬停底色，与其他触发器可点击感一致 */
 #globalHeader .user-info:hover {
-  background: rgba(64, 169, 255, 0.08);
+  color: var(--accent);
+}
+
+#globalHeader .user-info:hover .ant-avatar {
+  opacity: 0.88;
+}
+
+#globalHeader .user-name {
+  font-size: 14px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 窄屏：用户名隐藏只留头像（头像即识别符） */
 @media (max-width: 768px) {
-  #globalHeader .user-info {
-    padding: 3px;
-  }
-
-  #globalHeader .user-info > span:last-child {
+  #globalHeader .user-name {
     display: none;
   }
 }
