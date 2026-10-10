@@ -46,7 +46,7 @@ export const TECH_NODES: TechNode[] = [
   // ---------- 中枢 ----------
   {
     id: HUB_ID,
-    name: 'VisU 全栈引擎',
+    name: 'Visu 全栈引擎',
     category: 'frontend',
     desc: '视界云图库 · 一站式图片管理与协作平台',
     size: 76,
