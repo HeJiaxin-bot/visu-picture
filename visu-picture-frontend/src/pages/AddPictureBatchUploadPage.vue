@@ -360,6 +360,10 @@ const retryOne = async (item: BatchItem) => {
 
 /** 提交：按并发数逐张上传，单张失败不影响其他图片 */
 const handleSubmit = async () => {
+  // 防重复提交：同步兜底，避免 DOM 禁用生效前的连点触发第二轮上传
+  if (uploading.value) {
+    return
+  }
   const pending = fileList.value.filter((item) => item.status !== 'done')
   if (!pending.length) {
     message.warning('请先选择要上传的图片')

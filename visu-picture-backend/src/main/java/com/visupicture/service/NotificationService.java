@@ -1,5 +1,6 @@
 package com.visupicture.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.visupicture.model.entity.Notification;
 import com.visupicture.model.vo.NotificationVO;
@@ -61,6 +62,16 @@ public interface NotificationService extends IService<Notification> {
      * @param onlyUnread 是否只看未读
      */
     List<NotificationVO> listMyNotifications(long userId, long current, long pageSize, boolean onlyUnread);
+
+    /**
+     * 分页查询我的通知（带总数，供消息中心分页器使用）
+     *
+     * @param userId   用户 id
+     * @param current  页码
+     * @param pageSize 每页条数
+     * @param category 分类：all-全部 / review-审核通知 / system-系统通知 / unread-未读
+     */
+    Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category);
 
     /**
      * 我的未读通知数量

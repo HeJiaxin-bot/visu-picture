@@ -1,35 +1,33 @@
 <template>
   <div id="notificationPage">
-    <!-- 顶部页头 -->
+    <!-- 顶部页头：去掉大图标，标题 + 计数更清爽 -->
     <div class="page-header">
-      <div class="header-badge">
-        <BellOutlined />
+      <div class="title-line">
+        <h2 class="page-title">消息中心</h2>
+        <span v-if="unreadCount > 0" class="title-badge">{{ unreadCount }} 条未读</span>
       </div>
-      <h2 class="page-title">消息中心</h2>
       <p class="page-sub">你的创作动态与审核结果都在这里</p>
     </div>
 
-    <!-- 全部/未读切换：药丸组 -->
+    <!-- 分类标签：全部 / 审核通知 / 系统通知 / 未读 -->
     <div class="tab-bar">
       <div
+        v-for="item in categories"
+        :key="item.key"
         class="tab-pill"
-        :class="{ active: tab === 'all' }"
-        @click="switchTab('all')"
+        :class="{ active: category === item.key }"
+        @click="switchCategory(item.key)"
       >
-        全部
-      </div>
-      <div
-        class="tab-pill"
-        :class="{ active: tab === 'unread' }"
-        @click="switchTab('unread')"
-      >
-        未读
-        <span v-if="unreadCount > 0" class="tab-count">{{ unreadCount }}</span>
+        <component :is="item.icon" class="tab-icon" />
+        {{ item.label }}
+        <span v-if="item.key === 'unread' && unreadCount > 0" class="tab-count">
+          {{ unreadCount }}
+        </span>
       </div>
       <a-button
         v-if="unreadCount > 0"
         class="read-all-btn"
-        type="link"
+        type="text"
         @click="handleReadAll"
       >
         <CheckOutlined />
@@ -74,10 +72,16 @@
       </a-spin>
 
       <!-- 加载更多 -->
-      <div v-if="hasMore" class="more-box">
-        <a-button :loading="loading" @click="loadMore">加载更多</a-button>
+      <div v-if="total > PAGE_SIZE" class="pager-box">
+        <a-pagination
+          :current="current"
+          :page-size="PAGE_SIZE"
+          :total="total"
+          :show-size-changer="false"
+          :show-total="(t: number) => `共 ${t} 条`"
+          @change="handlePageChange"
+        />
       </div>
-      <div v-else-if="list.length > 0" class="all-loaded">- 已经到底啦 -</div>
     </div>
   </div>
 </template>
@@ -86,31 +90,43 @@
 import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
+  AppstoreOutlined,
   AuditOutlined,
   BellOutlined,
   CheckOutlined,
   GiftOutlined,
   HeartOutlined,
+  MailOutlined,
   PictureOutlined,
   RightOutlined,
 } from '@ant-design/icons-vue'
 import { useRouter } from 'vue-router'
 import {
-  listMyNotifications,
+  pageMyNotifications,
   countMyUnread,
   markNotificationRead,
   markAllNotificationRead,
 } from '@/api/notification.ts'
 import type { NotificationVO } from '@/api/notification.ts'
 
-const PAGE_SIZE = 15
+/** 每页条数 */
+const PAGE_SIZE = 10
+
+/** 分类标签定义（与后端 NotificationCategoryEnum 对应） */
+type CategoryKey = 'all' | 'review' | 'system' | 'unread'
+const categories: { key: CategoryKey; label: string; icon: any }[] = [
+  { key: 'all', label: '全部', icon: AppstoreOutlined },
+  { key: 'review', label: '审核通知', icon: AuditOutlined },
+  { key: 'system', label: '系统通知', icon: BellOutlined },
+  { key: 'unread', label: '未读', icon: MailOutlined },
+]
 
 const router = useRouter()
-const tab = ref<'all' | 'unread'>('all')
+const category = ref<CategoryKey>('all')
 const list = ref<NotificationVO[]>([])
 const loading = ref(false)
 const current = ref(1)
-const hasMore = ref(false)
+const total = ref(0)
 const unreadCount = ref(0)
 
 // 类型映射：图标 + 颜色 + 文案
@@ -138,17 +154,23 @@ const refreshUnread = async () => {
   }
 }
 
-const fetchList = async () => {
+/** 拉取当前页数据（服务端分页，每页 PAGE_SIZE 条） */
+const fetchList = async (page = current.value) => {
   loading.value = true
   try {
-    const res = await listMyNotifications({
-      current: current.value,
+    const res = await pageMyNotifications({
+      current: page,
       pageSize: PAGE_SIZE,
-      onlyUnread: tab.value === 'unread',
+      category: category.value,
     })
     if (res.code === 0 && res.data) {
-      list.value.push(...res.data)
-      hasMore.value = res.data.length >= PAGE_SIZE
+      list.value = res.data.records ?? []
+      total.value = Number(res.data.total ?? 0)
+      current.value = page
+      // 当前页被清空（如标记已读后）时回退到上一页
+      if (list.value.length === 0 && page > 1) {
+        await fetchList(page - 1)
+      }
     } else {
       message.error(res.message ?? '加载消息失败')
     }
@@ -159,22 +181,20 @@ const fetchList = async () => {
   }
 }
 
-const reload = () => {
+/** 分页器切换 */
+const handlePageChange = (page: number) => {
+  fetchList(page)
+}
+
+/** 切换分类标签：回到第一页重新查询 */
+const switchCategory = (key: CategoryKey) => {
+  if (category.value === key) {
+    return
+  }
+  category.value = key
   list.value = []
-  current.value = 1
-  hasMore.value = false
-  fetchList()
-}
-
-const switchTab = (t: 'all' | 'unread') => {
-  if (tab.value === t) return
-  tab.value = t
-  reload()
-}
-
-const loadMore = () => {
-  current.value += 1
-  fetchList()
+  total.value = 0
+  fetchList(1)
 }
 
 // 点击消息：标记已读并跳转
@@ -198,7 +218,10 @@ const handleReadAll = async () => {
   if (res.code === 0) {
     message.success('已全部标记为已读')
     unreadCount.value = 0
-    reload()
+    // 当前分类下刷新列表（未读分类会随之清空）
+    list.value = []
+    total.value = 0
+    fetchList(1)
   } else {
     message.error(res.message ?? '操作失败')
   }
@@ -239,32 +262,37 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
-.header-badge {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 12px;
+/* ===== 页头：标题 + 未读数徽标（无大图标） ===== */
+.title-line {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  font-size: 26px;
-  color: #fff;
-  background: linear-gradient(135deg, #40a9ff, #1677ff);
-  box-shadow: 0 10px 26px rgba(22, 119, 255, 0.35);
+  gap: 10px;
 }
 
 .page-title {
-  margin: 0 0 6px;
-  font-size: 26px;
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.5px;
+}
+
+.title-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1677ff;
+  background: rgba(22, 119, 255, 0.1);
+  border: 1px solid rgba(22, 119, 255, 0.2);
 }
 
 .page-sub {
-  margin: 0;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
-/* ===== 全部/未读切换 ===== */
+/* ===== 分类标签：全部 / 审核通知 / 系统通知 / 未读 ===== */
 .tab-bar {
   display: flex;
   align-items: center;
@@ -276,7 +304,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 18px;
+  padding: 7px 16px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 500;
@@ -286,11 +314,22 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+  white-space: nowrap;
+}
+
+.tab-icon {
+  font-size: 14px;
+  opacity: 0.75;
 }
 
 .tab-pill:hover {
   border-color: var(--accent);
   color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.tab-pill:hover .tab-icon {
+  opacity: 1;
 }
 
 .tab-pill.active {
@@ -298,6 +337,10 @@ onMounted(() => {
   background: linear-gradient(135deg, #40a9ff, #1677ff);
   border-color: transparent;
   box-shadow: 0 4px 14px rgba(22, 119, 255, 0.35);
+}
+
+.tab-pill.active .tab-icon {
+  opacity: 1;
 }
 
 .tab-count {
@@ -321,6 +364,11 @@ onMounted(() => {
 .read-all-btn {
   margin-left: auto;
   font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.read-all-btn:hover {
+  color: var(--accent);
 }
 
 /* ===== 通知卡片 ===== */
@@ -329,7 +377,7 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: var(--card-shadow);
-  padding: 10px 18px;
+  padding: 6px 18px;
   min-height: 300px;
 }
 
@@ -339,10 +387,11 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 15px 10px;
+  padding: 16px 12px;
   border-bottom: 1px solid var(--border-color);
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition: background 0.18s ease;
 }
 
 .notify-row:last-of-type {
@@ -350,11 +399,23 @@ onMounted(() => {
 }
 
 .notify-row:hover {
-  background: rgba(64, 169, 255, 0.06);
+  background: rgba(64, 169, 255, 0.07);
 }
 
+/* 未读行：左侧蓝色竖条 + 淡蓝底，一眼可辨 */
 .notify-row.unread {
-  background: rgba(64, 169, 255, 0.04);
+  background: rgba(64, 169, 255, 0.045);
+}
+
+.notify-row.unread::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #40a9ff, #1677ff);
 }
 
 /* 左侧类型图标 / 缩略图 */
@@ -425,6 +486,7 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .type-tag {
@@ -470,6 +532,9 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* 长串无空格文本（如连续数字）也能强制换行，避免撑破卡片 */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .row-meta {
@@ -503,17 +568,13 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.15);
 }
 
-.more-box {
+/* 分页器：右对齐，与卡片底部留白 */
+.pager-box {
   display: flex;
-  justify-content: center;
-  padding-top: 16px;
-}
-
-.all-loaded {
-  text-align: center;
-  color: var(--text-disabled);
-  font-size: 12px;
-  padding: 16px 0 6px;
+  justify-content: flex-end;
+  padding: 16px 6px 6px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
 }
 
 /* ===== 深色模式 ===== */

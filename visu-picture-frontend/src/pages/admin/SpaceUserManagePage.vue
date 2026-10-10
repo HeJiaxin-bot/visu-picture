@@ -10,7 +10,9 @@
         <a-input v-model:value="formData.userId" placeholder="请输入用户 id" allow-clear />
       </a-form-item>
       <a-form-item>
-        <a-button type="primary" html-type="submit">添加用户</a-button>
+        <a-button type="primary" html-type="submit" :loading="adding" :disabled="adding">
+          添加用户
+        </a-button>
       </a-form-item>
     </a-form>
     <div style="margin-bottom: 16px" />
@@ -106,22 +108,33 @@ onMounted(() => {
 // 添加成员表单
 const formData = reactive<API.SpaceUserAddRequest>({})
 
+/** 提交中标记：同步置位，防止连点重复添加同一成员 */
+const adding = ref(false)
+
 // 创建成员
 const handleSubmit = async () => {
+  if (adding.value) {
+    return
+  }
   const spaceId = props.id
   if (!spaceId) {
     return
   }
-  const res = await addSpaceUserUsingPost({
-    spaceId,
-    ...formData,
-  })
-  if (res.data.code === 0) {
-    message.success('添加成功')
-    // 刷新数据
-    fetchData()
-  } else {
-    message.error('添加失败，' + res.data.message)
+  adding.value = true
+  try {
+    const res = await addSpaceUserUsingPost({
+      spaceId,
+      ...formData,
+    })
+    if (res.data.code === 0) {
+      message.success('添加成功')
+      // 刷新数据
+      fetchData()
+    } else {
+      message.error('添加失败，' + res.data.message)
+    }
+  } finally {
+    adding.value = false
   }
 }
 

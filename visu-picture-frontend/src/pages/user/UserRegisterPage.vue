@@ -82,7 +82,14 @@
           </a-checkbox>
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit" size="large" style="width: 100%">
+          <a-button
+            type="primary"
+            html-type="submit"
+            size="large"
+            style="width: 100%"
+            :loading="registering"
+            :disabled="registering"
+          >
             注册
           </a-button>
         </a-form-item>
@@ -164,11 +171,17 @@ onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
 
+/** 提交中标记：同步置位，防止连点触发多次注册请求 */
+const registering = ref(false)
+
 /**
  * 提交表单
  * @param values
  */
 const handleSubmit = async (values: any) => {
+  if (registering.value) {
+    return
+  }
   // 校验协议勾选
   if (!agree.value) {
     message.warning('请先阅读并同意《用户协议》和《隐私政策》')
@@ -179,22 +192,29 @@ const handleSubmit = async (values: any) => {
     message.error('两次输入的密码不一致')
     return
   }
-  const res = await userRegisterUsingPost({
-    email: values.email?.trim(),
-    captcha: values.captcha?.trim(),
-    userPassword: values.userPassword,
-    checkPassword: values.checkPassword,
-    inviteCode: formState.inviteCode?.trim() || undefined,
-  })
-  // 注册成功，跳转到登录页面
-  if (res.data.code === 0 && res.data.data) {
-    message.success('注册成功')
-    router.push({
-      path: '/user/login',
-      replace: true,
+  registering.value = true
+  try {
+    const res = await userRegisterUsingPost({
+      email: values.email?.trim(),
+      captcha: values.captcha?.trim(),
+      userPassword: values.userPassword,
+      checkPassword: values.checkPassword,
+      inviteCode: formState.inviteCode?.trim() || undefined,
     })
-  } else {
-    message.error('注册失败，' + res.data.message)
+    // 注册成功，跳转到登录页面
+    if (res.data.code === 0 && res.data.data) {
+      message.success('注册成功')
+      router.push({
+        path: '/user/login',
+        replace: true,
+      })
+    } else {
+      message.error('注册失败，' + res.data.message)
+      registering.value = false
+    }
+  } catch (e: any) {
+    message.error('注册失败，' + (e?.message ?? '请稍后重试'))
+    registering.value = false
   }
 }
 </script>

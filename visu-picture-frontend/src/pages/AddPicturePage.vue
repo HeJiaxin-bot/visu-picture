@@ -55,13 +55,19 @@
 
         <!-- 图片编辑 -->
         <div v-if="picture" class="edit-bar">
-          <a-button class="tool-btn" :icon="h(EditOutlined)" @click="doEditPicture">
+          <a-button
+            class="tool-btn"
+            :icon="h(EditOutlined)"
+            :disabled="submitting"
+            @click="doEditPicture"
+          >
             编辑图片
           </a-button>
           <a-button
             class="tool-btn tool-btn-primary"
             type="primary"
             :icon="h(FullscreenOutlined)"
+            :disabled="submitting"
             @click="doImagePainting"
           >
             AI 扩图
@@ -133,7 +139,13 @@
             />
 
             <div class="submit-row">
-              <a-button type="primary" html-type="submit" class="submit-btn" :disabled="aiEditLoading">
+              <a-button
+                type="primary"
+                html-type="submit"
+                class="submit-btn"
+                :loading="submitting"
+                :disabled="aiEditLoading || submitting"
+              >
                 {{ isEditMode ? '保存修改' : '创建' }}
               </a-button>
             </div>
@@ -241,22 +253,35 @@ const onSuccess = (newPicture: API.PictureVO) => {
 
 /**
  * 确保图片已上传：延迟上传模式下，点提交或使用 AI 功能前才真正上传
+ * 用共享 Promise 做并发去重：连点/多个入口同时触发时只上传一次，避免生成重复图片进入多条审核
  */
+let uploadInFlight: Promise<boolean> | null = null
+
 const ensureUploaded = async (): Promise<boolean> => {
-  // 本地文件优先，其次是通过链接导入的图片
-  if (pictureUploadRef.value?.hasPendingFile?.()) {
-    const uploaded = await pictureUploadRef.value.upload()
-    return !!uploaded?.id
+  if (uploadInFlight) {
+    return uploadInFlight
   }
-  if (urlPictureUploadRef.value?.hasPendingUrl?.()) {
-    const uploaded = await urlPictureUploadRef.value.upload()
-    return !!uploaded?.id
+  uploadInFlight = (async () => {
+    // 本地文件优先，其次是通过链接导入的图片
+    if (pictureUploadRef.value?.hasPendingFile?.()) {
+      const uploaded = await pictureUploadRef.value.upload()
+      return !!uploaded?.id
+    }
+    if (urlPictureUploadRef.value?.hasPendingUrl?.()) {
+      const uploaded = await urlPictureUploadRef.value.upload()
+      return !!uploaded?.id
+    }
+    if (!picture.value?.id) {
+      message.warning('请先选择图片，或粘贴图片链接后点击抓取')
+      return false
+    }
+    return true
+  })()
+  try {
+    return await uploadInFlight
+  } finally {
+    uploadInFlight = null
   }
-  if (!picture.value?.id) {
-    message.warning('请先选择图片，或粘贴图片链接后点击抓取')
-    return false
-  }
-  return true
 }
 
 /**
@@ -307,57 +332,70 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', onBeforeUnload)
 })
 
+/** 提交中标记：同步置位，阻断连点造成的重复创建（避免生成多条待审核记录） */
+const submitting = ref(false)
+
 /** 提交表单 */
 const handleSubmit = async () => {
-  // AI 配文进行中不允许提交，避免拿到旧的配文内容或并发冲突
-  if (aiEditLoading.value) {
+  // 防重复提交：同步判断 + 立即置位，await 之前就锁住
+  if (submitting.value || aiEditLoading.value) {
     return
   }
-  // 延迟上传：点击创建/保存时才真正上传图片
-  if (!(await ensureUploaded())) {
-    return
-  }
-  const pictureId = picture.value?.id
-  if (!pictureId) {
-    return
-  }
-  // 表单未使用 a-form-item，@finish 回传的 values 为空，直接取 pictureForm 的当前值
-  const res = await editPictureUsingPost({
-    id: pictureId,
-    spaceId: spaceId.value,
-    name: pictureForm.name,
-    introduction: pictureForm.introduction,
-    category: pictureForm.category,
-    tags: pictureForm.tags,
-  })
-  // 操作成功
-  if (res.data.code === 0 && res.data.data) {
-    // 已提交成功，无需再清理
-    uploadedPictureId.value = undefined
-    const isAdmin = useLoginUserStore().loginUser.userRole === 'admin'
-    if (isAdmin) {
-      // 管理员上传直接过审
-      message.success('创建成功')
-    } else {
-      // 普通用户上传（公共图库 / 空间）都进入待审核状态
-      Modal.success({
-        title: '上传完成',
-        content: spaceId.value
-          ? '待管理员审核通过后在空间展示'
-          : '待管理员审核通过后在首页展示',
-        centered: true,
-        okText: '知道了',
-      })
-    }
-    if (spaceId.value) {
-      // 上传到空间（私人/团队空间）：返回对应空间详情页
-      router.push(`/space/${spaceId.value}`)
+  submitting.value = true
+  let success = false
+  try {
+    // 延迟上传：点击创建/保存时才真正上传图片
+    if (!(await ensureUploaded())) {
       return
     }
-    // 跳转到公共图库首页
-    router.push('/')
-  } else {
-    message.error('创建失败，' + res.data.message)
+    const pictureId = picture.value?.id
+    if (!pictureId) {
+      return
+    }
+    // 表单未使用 a-form-item，@finish 回传的 values 为空，直接取 pictureForm 的当前值
+    const res = await editPictureUsingPost({
+      id: pictureId,
+      spaceId: spaceId.value,
+      name: pictureForm.name,
+      introduction: pictureForm.introduction,
+      category: pictureForm.category,
+      tags: pictureForm.tags,
+    })
+    // 操作成功
+    if (res.data.code === 0 && res.data.data) {
+      success = true
+      // 已提交成功，无需再清理
+      uploadedPictureId.value = undefined
+      const isAdmin = useLoginUserStore().loginUser.userRole === 'admin'
+      if (isAdmin) {
+        // 管理员上传直接过审
+        message.success('创建成功')
+      } else {
+        // 普通用户上传（公共图库 / 空间）都进入待审核状态
+        Modal.success({
+          title: '上传完成',
+          content: spaceId.value
+            ? '待管理员审核通过后在空间展示'
+            : '待管理员审核通过后在首页展示',
+          centered: true,
+          okText: '知道了',
+        })
+      }
+      if (spaceId.value) {
+        // 上传到空间（私人/团队空间）：返回对应空间详情页
+        router.push(`/space/${spaceId.value}`)
+        return
+      }
+      // 跳转到公共图库首页
+      router.push('/')
+    } else {
+      message.error('创建失败，' + res.data.message)
+    }
+  } finally {
+    // 成功后保持禁用（页面即将跳转）；失败或中途返回时解锁，允许用户修正后重试
+    if (!success) {
+      submitting.value = false
+    }
   }
 }
 

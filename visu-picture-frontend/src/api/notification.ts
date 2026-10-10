@@ -26,6 +26,19 @@ export async function listMyNotifications(params: {
 }
 
 /**
+ * 分页获取我的通知（带总数，供消息中心分页器使用）
+ *
+ * @param category all-全部 / review-审核通知 / system-系统通知 / unread-未读
+ */
+export async function pageMyNotifications(params: {
+  current?: number
+  pageSize?: number
+  category?: 'all' | 'review' | 'system' | 'unread'
+}): Promise<API.BaseResponseNotificationPage> {
+  return (await myAxios.get('/api/notification/list/page', { params })).data
+}
+
+/**
  * 我的未读通知数量
  */
 export async function countMyUnread(): Promise<API.BaseResponseLong> {
@@ -63,6 +76,18 @@ declare global {
     type BaseResponseNotificationList = {
       code: number
       data?: NotificationVO[]
+      message?: string
+    }
+    /** MyBatis-Plus 分页对象：records + total */
+    type NotificationPage = {
+      records?: NotificationVO[]
+      total?: number
+      current?: number
+      size?: number
+    }
+    type BaseResponseNotificationPage = {
+      code: number
+      data?: NotificationPage
       message?: string
     }
     type BaseResponseLong = {

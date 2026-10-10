@@ -176,6 +176,10 @@ onUnmounted(() => {
  * @param values
  */
 const handleSubmit = async (values: any) => {
+  // 防重复提交：同步兜底，避免 DOM 禁用生效前的连点触发两个抓取任务
+  if (loading.value) {
+    return
+  }
   loading.value = true
   progress.value = null
   // 开始轮询进度

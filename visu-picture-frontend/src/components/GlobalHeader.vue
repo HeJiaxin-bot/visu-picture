@@ -82,13 +82,17 @@
 
         <!-- 工具操作组：高频、个性化元素靠右聚集 -->
         <div class="nav-actions">
-          <!-- 消息通知铃铛：未读角标 + 悬停预览面板 -->
+          <!-- 消息通知铃铛：悬停看预览，点击直接进入消息中心 -->
           <a-dropdown
             v-if="loginUserStore.loginUser.id"
-            trigger="['hover', 'click']"
+            trigger="['hover']"
             @open-change="(v: boolean) => (notifyOpen = v)"
           >
-            <div class="notify-trigger">
+            <div
+              class="notify-trigger"
+              title="打开消息中心"
+              @click="goNotificationCenter"
+            >
               <BellOutlined class="notify-icon" />
               <span v-if="unreadCount > 0" class="notify-badge">{{ badgeText }}</span>
             </div>
@@ -285,6 +289,11 @@
             <IdcardOutlined class="drawer-icon" />
             <span>用户中心</span>
           </div>
+          <div class="drawer-item" @click="go('/user/notifications')">
+            <BellOutlined class="drawer-icon" />
+            <span>消息中心</span>
+            <span v-if="unreadCount > 0" class="drawer-badge">{{ badgeText }}</span>
+          </div>
           <div class="drawer-item" @click="go('/user/invite')">
             <GiftOutlined class="drawer-icon" />
             <span>会员中心</span>
@@ -414,6 +423,12 @@ const formatNotifyTime = (value?: string) => {
   if (day < 7) return `${day} 天前`
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// 点击铃铛：进入消息中心（悬停仍可看最近消息预览）
+const goNotificationCenter = () => {
+  notifyOpen.value = false
+  router.push('/user/notifications')
 }
 
 // 点击消息：跳转目标随类型而定，同时标记已读
@@ -1037,6 +1052,7 @@ html.dark #globalHeader .points-badge:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  word-break: break-word;
 }
 
 .notify-panel .notify-item.unread .notify-item-title {
@@ -1052,6 +1068,9 @@ html.dark #globalHeader .points-badge:hover {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* 长串无空格文本也能换行，避免撑破面板 */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* 面板内类型标签：待审核 / 系统 */
@@ -1244,6 +1263,21 @@ html.dark .vip-chip {
 .mobile-drawer .drawer-icon {
   font-size: 15px;
   color: rgba(107, 107, 107, 0.6);
+}
+
+/* 抽屉内未读角标：靠右显示 */
+.mobile-drawer .drawer-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: #ff4d4f;
 }
 
 .mobile-drawer .drawer-item:hover .drawer-icon {

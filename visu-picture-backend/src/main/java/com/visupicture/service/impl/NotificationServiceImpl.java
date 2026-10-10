@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.visupicture.constant.UserConstant;
 import com.visupicture.exception.BusinessException;
@@ -13,6 +14,7 @@ import com.visupicture.exception.ThrowUtils;
 import com.visupicture.mapper.NotificationMapper;
 import com.visupicture.model.entity.Notification;
 import com.visupicture.model.entity.User;
+import com.visupicture.model.enums.NotificationCategoryEnum;
 import com.visupicture.model.enums.NotificationTypeEnum;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
@@ -170,6 +172,28 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
                 .stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category) {
+        long page = Math.max(current, 1);
+        long size = Math.min(Math.max(pageSize, 1), 50);
+        QueryWrapper<Notification> wrapper = new QueryWrapper<>();
+        wrapper.eq("userId", userId);
+        // 分类筛选：审核通知 = 审核结果(review) + 待审核提醒(audit)；系统通知 = 其余类型；未读 = isRead=0
+        if (NotificationCategoryEnum.REVIEW.getValue().equals(category)) {
+            wrapper.in("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
+        } else if (NotificationCategoryEnum.SYSTEM.getValue().equals(category)) {
+            wrapper.notIn("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
+        } else if (NotificationCategoryEnum.UNREAD.getValue().equals(category)) {
+            wrapper.eq("isRead", 0);
+        }
+        wrapper.orderByDesc("createTime").orderByDesc("id");
+        Page<Notification> entityPage = this.page(new Page<>(page, size), wrapper);
+        // 转 VO 分页对象（保留 total，供前端分页器计算页数）
+        Page<NotificationVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+        voPage.setRecords(entityPage.getRecords().stream().map(this::toVO).collect(Collectors.toList()));
+        return voPage;
     }
 
     @Override

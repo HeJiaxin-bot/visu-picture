@@ -32,7 +32,14 @@
           </a-checkbox>
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit" size="large" style="width: 100%">
+          <a-button
+            type="primary"
+            html-type="submit"
+            size="large"
+            style="width: 100%"
+            :loading="loggingIn"
+            :disabled="loggingIn"
+          >
             登录
           </a-button>
         </a-form-item>
@@ -62,27 +69,40 @@ const agree = ref(false)
 
 const loginUserStore = useLoginUserStore()
 
+/** 登录中标记：同步置位，避免连点触发多次登录请求 */
+const loggingIn = ref(false)
+
 /**
  * 提交表单
  * @param values
  */
 const handleSubmit = async (values: any) => {
+  if (loggingIn.value) {
+    return
+  }
   // 校验协议勾选
   if (!agree.value) {
     message.warning('请先阅读并同意《用户协议》和《隐私政策》')
     return
   }
-  const res = await userLoginUsingPost(values)
-  // 登录成功，把登录态保存到全局状态中
-  if (res.data.code === 0 && res.data.data) {
-    await loginUserStore.fetchLoginUser()
-    message.success('登录成功')
-    router.push({
-      path: '/',
-      replace: true,
-    })
-  } else {
-    message.error('登录失败，' + res.data.message)
+  loggingIn.value = true
+  try {
+    const res = await userLoginUsingPost(values)
+    // 登录成功，把登录态保存到全局状态中
+    if (res.data.code === 0 && res.data.data) {
+      await loginUserStore.fetchLoginUser()
+      message.success('登录成功')
+      router.push({
+        path: '/',
+        replace: true,
+      })
+    } else {
+      message.error('登录失败，' + res.data.message)
+      loggingIn.value = false
+    }
+  } catch (e: any) {
+    message.error('登录失败，' + (e?.message ?? '请稍后重试'))
+    loggingIn.value = false
   }
 }
 </script>

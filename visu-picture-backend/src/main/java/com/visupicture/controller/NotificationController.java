@@ -1,5 +1,6 @@
 package com.visupicture.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.visupicture.annotation.AuthCheck;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.ResultUtils;
@@ -8,6 +9,7 @@ import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
 import com.visupicture.model.dto.notification.NotificationSendRequest;
 import com.visupicture.model.entity.User;
+import com.visupicture.model.enums.NotificationCategoryEnum;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
 import com.visupicture.service.UserService;
@@ -50,6 +52,26 @@ public class NotificationController {
         List<NotificationVO> list = notificationService.listMyNotifications(
                 loginUser.getId(), current, pageSize, onlyUnread);
         return ResultUtils.success(list);
+    }
+
+    /**
+     * 分页获取我的通知（带总数，供消息中心分页器使用）
+     *
+     * @param category 分类：all-全部 / review-审核通知 / system-系统通知 / unread-未读
+     */
+    @GetMapping("/list/page")
+    public BaseResponse<Page<NotificationVO>> pageMyNotifications(
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(defaultValue = "all") String category,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(NotificationCategoryEnum.getEnumByValue(category) == null,
+                ErrorCode.PARAMS_ERROR, "不支持的消息分类");
+        User loginUser = userService.getLoginUser(request);
+        Page<NotificationVO> page = notificationService.pageMyNotifications(
+                loginUser.getId(), current, pageSize, category);
+        return ResultUtils.success(page);
     }
 
     /**
