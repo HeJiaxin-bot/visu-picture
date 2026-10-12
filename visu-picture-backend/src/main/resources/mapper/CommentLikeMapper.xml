@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.visupicture.mapper.CommentLikeMapper">
+
+    <resultMap id="BaseResultMap" type="com.visupicture.model.entity.CommentLike">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="commentId" column="commentId" jdbcType="BIGINT"/>
+            <result property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,commentId,userId,
+        createTime
+    </sql>
+
+    <!--
+      幂等插入评论点赞：唯一索引 uk_commentId_userId + INSERT IGNORE。
+      已赞返回 0，首次点赞返回 1，调用方据此决定是否对 comment.likeCount 计数。
+    -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO comment_like (commentId, userId)
+        VALUES (#{commentId}, #{userId})
+    </insert>
+</mapper>

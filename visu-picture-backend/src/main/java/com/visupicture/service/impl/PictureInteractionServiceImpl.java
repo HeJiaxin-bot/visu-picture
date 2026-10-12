@@ -10,12 +10,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
+import com.visupicture.mapper.CommentLikeMapper;
 import com.visupicture.mapper.PictureCommentMapper;
 import com.visupicture.mapper.PictureFavoriteMapper;
 import com.visupicture.mapper.PictureLikeMapper;
 import com.visupicture.mapper.PictureMapper;
 import com.visupicture.mapper.PictureShareMapper;
 import com.visupicture.mapper.PictureViewHistoryMapper;
+import com.visupicture.model.entity.CommentLike;
 import com.visupicture.model.entity.Picture;
 import com.visupicture.model.entity.PictureComment;
 import com.visupicture.model.entity.PictureFavorite;
@@ -74,6 +76,9 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
 
     @Resource
     private PictureCommentMapper pictureCommentMapper;
+
+    @Resource
+    private CommentLikeMapper commentLikeMapper;
 
     @Resource
     private PictureViewHistoryMapper pictureViewHistoryMapper;
@@ -281,12 +286,20 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
     }
 
     @Override
-    public Page<PictureCommentVO> pageComments(long pictureId, long current, long pageSize, User loginUser) {
+    public Page<PictureCommentVO> pageComments(long pictureId, long current, long pageSize, User loginUser,
+                                               String sortField) {
         long page = Math.max(current, 1);
         long size = Math.min(Math.max(pageSize, 1), 50);
         QueryWrapper<PictureComment> wrapper = new QueryWrapper<>();
         wrapper.eq("pictureId", pictureId);
-        wrapper.orderByDesc("createTime").orderByDesc("id");
+        // 排序方式：hot-按点赞数（相同赞数按时间倒序，保证分页稳定）；new-按时间倒序。
+        // sortField 是白名单内的枚举值而非自由列名，不存在注入风险。
+        if ("new".equals(sortField)) {
+            wrapper.orderByDesc("createTime").orderByDesc("id");
+        } else {
+            // 默认 hot：热门优先
+            wrapper.orderByDesc("likeCount").orderByDesc("createTime").orderByDesc("id");
+        }
         Page<PictureComment> entityPage = pictureCommentMapper.selectPage(new Page<>(page, size), wrapper);
 
         Page<PictureCommentVO> voPage = new Page<>(
@@ -302,6 +315,19 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
         Long loginUserId = loginUser == null ? null : loginUser.getId();
         boolean isAdmin = loginUser != null && userService.isAdmin(loginUser);
+
+        // 批量取当前用户对本页评论的点赞集合（两个 IN 查询完成整页，避免 N+1）
+        Set<Long> likedCommentIds = Collections.emptySet();
+        if (loginUserId != null) {
+            List<Long> commentIds = entityPage.getRecords().stream()
+                    .map(PictureComment::getId).collect(Collectors.toList());
+            likedCommentIds = commentLikeMapper.selectList(new QueryWrapper<CommentLike>()
+                            .select("commentId")
+                            .eq("userId", loginUserId)
+                            .in("commentId", commentIds))
+                    .stream().map(CommentLike::getCommentId).collect(Collectors.toSet());
+        }
+
         List<PictureCommentVO> voList = new ArrayList<>();
         for (PictureComment comment : entityPage.getRecords()) {
             PictureCommentVO vo = new PictureCommentVO();
@@ -309,6 +335,8 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
             vo.setPictureId(comment.getPictureId());
             vo.setUserId(comment.getUserId());
             vo.setContent(comment.getContent());
+            vo.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
+            vo.setIsLiked(loginUserId != null && likedCommentIds.contains(comment.getId()));
             vo.setCreateTime(comment.getCreateTime());
             vo.setUser(userService.getUserVO(userMap.get(comment.getUserId())));
             vo.setCanDelete(isAdmin || (loginUserId != null && loginUserId.equals(comment.getUserId())));
@@ -316,6 +344,42 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         }
         voPage.setRecords(voList);
         return voPage;
+    }
+
+    /**
+     * 评论点赞 / 取消点赞
+     *
+     * <p>与图片点赞完全同构：计数是否变更由 comment_like 记录表的写入结果决定，
+     * 唯一索引 uk_commentId_userId + INSERT IGNORE 保证幂等，
+     * 记录与计数在同一事务内提交。</p>
+     */
+    @Override
+    public int likeComment(long commentId, long userId, boolean isLike) {
+        PictureComment comment = pictureCommentMapper.selectById(commentId);
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR, "评论不存在");
+        Integer result = transactionTemplate.execute(status -> {
+            if (isLike) {
+                int inserted = commentLikeMapper.insertIgnore(commentId, userId);
+                if (inserted == 1) {
+                    pictureCommentMapper.update(null, new UpdateWrapper<PictureComment>()
+                            .eq("id", commentId)
+                            .setSql("likeCount = likeCount + 1"));
+                }
+            } else {
+                int deleted = commentLikeMapper.delete(new QueryWrapper<CommentLike>()
+                        .eq("commentId", commentId)
+                        .eq("userId", userId));
+                if (deleted > 0) {
+                    // GREATEST 兜底：即使历史数据不一致也不会出现负数
+                    pictureCommentMapper.update(null, new UpdateWrapper<PictureComment>()
+                            .eq("id", commentId)
+                            .setSql("likeCount = GREATEST(likeCount - 1, 0)"));
+                }
+            }
+            PictureComment after = pictureCommentMapper.selectById(commentId);
+            return after == null || after.getLikeCount() == null ? 0 : after.getLikeCount();
+        });
+        return result == null ? 0 : result;
     }
 
     @Override

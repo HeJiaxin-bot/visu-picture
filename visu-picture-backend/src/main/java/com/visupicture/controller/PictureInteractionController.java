@@ -5,6 +5,7 @@ import com.visupicture.annotation.AuditLog;
 import com.visupicture.annotation.RateLimit;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.ResultUtils;
+import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
 import com.visupicture.model.dto.picture.PictureCommentAddRequest;
@@ -138,18 +139,47 @@ public class PictureInteractionController {
     }
 
     /**
+     * 评论点赞 / 取消点赞（需登录，与图片点赞同构的幂等设计）
+     */
+    @PostMapping("/comment/like")
+    @RateLimit(count = 30, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "操作过于频繁，请稍后再试")
+    public BaseResponse<Integer> likeComment(@RequestBody Map<String, Object> body,
+                                             HttpServletRequest request) {
+        ThrowUtils.throwIf(body == null || body.get("commentId") == null, ErrorCode.PARAMS_ERROR);
+        long commentId;
+        try {
+            commentId = Long.parseLong(String.valueOf(body.get("commentId")));
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "评论 id 不合法");
+        }
+        ThrowUtils.throwIf(commentId <= 0, ErrorCode.PARAMS_ERROR);
+        Object isLikeObj = body.get("isLike");
+        boolean isLike = isLikeObj == null || Boolean.parseBoolean(String.valueOf(isLikeObj));
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(pictureInteractionService.likeComment(
+                commentId, loginUser.getId(), isLike));
+    }
+
+    /**
      * 分页查询某张图片的评论（无需登录，允许匿名浏览）
+     *
+     * @param sort 排序方式：hot-最热（按点赞数，默认）；new-最新（按时间倒序）
      */
     @GetMapping("/comment/list")
     public BaseResponse<Page<PictureCommentVO>> pageComments(
             @RequestParam long pictureId,
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(defaultValue = "hot") String sort,
             HttpServletRequest request) {
         ThrowUtils.throwIf(pictureId <= 0 || current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        // 排序方式白名单：防随意列名透传
+        ThrowUtils.throwIf(!"hot".equals(sort) && !"new".equals(sort),
+                ErrorCode.PARAMS_ERROR, "不支持的排序方式");
         // 匿名可看评论，但不能删除，故 loginUser 允许为 null
         return ResultUtils.success(pictureInteractionService.pageComments(
-                pictureId, current, pageSize, tryGetLoginUser(request)));
+                pictureId, current, pageSize, tryGetLoginUser(request), sort));
     }
 
     /**

@@ -62,8 +62,20 @@ public interface PictureInteractionService {
      * 分页查询某张图片的评论
      *
      * @param loginUser 当前登录用户（用于计算 canDelete；可为 null）
+     * @param sortField 排序方式：hot-按点赞数（默认）；new-按时间倒序
      */
-    Page<PictureCommentVO> pageComments(long pictureId, long current, long pageSize, User loginUser);
+    Page<PictureCommentVO> pageComments(long pictureId, long current, long pageSize, User loginUser,
+                                        String sortField);
+
+    /**
+     * 评论点赞 / 取消点赞（幂等，与图片点赞同构）
+     *
+     * @param commentId 评论 id
+     * @param userId    用户 id
+     * @param isLike    true-点赞；false-取消
+     * @return 操作后的点赞数
+     */
+    int likeComment(long commentId, long userId, boolean isLike);
 
     /**
      * 删除评论（仅本人或管理员）

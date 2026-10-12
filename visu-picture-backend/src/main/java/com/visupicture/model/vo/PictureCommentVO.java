@@ -32,6 +32,16 @@ public class PictureCommentVO implements Serializable {
     private String content;
 
     /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
+     * 当前登录用户是否已赞该评论（未登录时为 false）
+     */
+    private Boolean isLiked;
+
+    /**
      * 创建时间
      */
     private Date createTime;

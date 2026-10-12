@@ -144,14 +144,12 @@
           </div>
           <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
 
-          <!-- 评论（需先登录才能发表；匿名可读）
-               标题由上方分隔线承担，故关闭面板自带头部避免重复 -->
-          <a-divider class="comment-divider">
-            <span class="comment-divider-text">
-              <MessageOutlined /> 评论
-            </span>
-          </a-divider>
-          <PictureCommentPanel :picture-id="picture.id" :show-header="false" />
+          <!-- 评论（匿名可读；登录后可发表/点赞/回复）
+               面板头部含排序切换，必须保留；标题本身由头部承担 -->
+          <PictureCommentPanel
+            :picture-id="picture.id"
+            :author-id="picture.userId"
+          />
         </div>
       </div>
     </a-spin>
@@ -172,7 +170,6 @@ import {
   ExclamationCircleOutlined,
   HeartFilled,
   HeartOutlined,
-  MessageOutlined,
   SearchOutlined,
   ShareAltOutlined,
   StarFilled,
@@ -486,20 +483,6 @@ const formatDate = (time?: string) => {
   color: #faad14;
   border-color: rgba(250, 173, 20, 0.55);
   background: rgba(250, 173, 20, 0.1);
-}
-
-/* 评论区标题分隔线 */
-.comment-divider {
-  margin: 14px 0 10px;
-}
-
-.comment-divider-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
 }
 
 /* 主体布局：左大图 + 右信息栏 */

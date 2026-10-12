@@ -141,9 +141,9 @@
       </a-col>
     </a-row>
 
-    <!-- 评论区（独立整行；标题交由面板自带的「共 N 条评论」承担） -->
+    <!-- 评论区（独立整行；标题与排序由面板头部承担） -->
     <div class="comment-card">
-      <PictureCommentPanel :picture-id="picture.id" />
+      <PictureCommentPanel :picture-id="picture.id" :author-id="picture.userId" />
     </div>
 
     <ShareModal ref="shareModalRef" :picture-id="picture.id" />
@@ -577,7 +577,7 @@ const doShare = () => {
   把正文行宽控制在约 70 个字符（≈760px）以内，符合可读性经验值。
   左对齐而非居中：与上方图片预览的左边界保持视觉一致。
 */
-.comment-card :deep(.comment-panel) {
+.comment-card :deep(.cmt) {
   max-width: 760px;
 }
 

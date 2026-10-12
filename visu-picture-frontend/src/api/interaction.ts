@@ -16,6 +16,10 @@ export interface PictureCommentVO {
   pictureId?: EntityId
   userId?: EntityId
   content?: string
+  /** 点赞数 */
+  likeCount?: number
+  /** 当前登录用户是否已赞该评论（服务端下发） */
+  isLiked?: boolean
   createTime?: string
   user?: API.UserVO
   /** 当前登录用户是否有权删除该评论（本人或管理员） */
@@ -87,12 +91,22 @@ export async function pageComments(params: {
   pictureId: EntityId
   current?: number
   pageSize?: number
+  /** 排序：hot-最热（默认）；new-最新 */
+  sort?: 'hot' | 'new'
 }) {
   return (await myAxios.get('/api/picture/comment/list', { params })).data as {
     code: number
     data?: { records?: PictureCommentVO[]; total?: number; current?: number; size?: number }
     message?: string
   }
+}
+
+/**
+ * 评论点赞 / 取消点赞（幂等）
+ * @returns 操作后的点赞数
+ */
+export async function likeComment(commentId: EntityId, isLike: boolean) {
+  return (await myAxios.post('/api/picture/comment/like', { commentId, isLike })).data as API.BaseResponseInt_
 }
 
 /** 删除评论（仅本人或管理员） */

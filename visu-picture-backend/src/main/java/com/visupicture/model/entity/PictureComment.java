@@ -40,6 +40,11 @@ public class PictureComment implements Serializable {
     private String content;
 
     /**
+     * 点赞数
+     */
+    private Integer likeCount;
+
+    /**
      * 创建时间
      */
     private Date createTime;
