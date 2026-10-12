@@ -144,13 +144,14 @@
           </div>
           <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
 
-          <!-- 评论（需先登录才能发表；匿名可读） -->
+          <!-- 评论（需先登录才能发表；匿名可读）
+               标题由上方分隔线承担，故关闭面板自带头部避免重复 -->
           <a-divider class="comment-divider">
             <span class="comment-divider-text">
               <MessageOutlined /> 评论
             </span>
           </a-divider>
-          <PictureCommentPanel :picture-id="picture.id" />
+          <PictureCommentPanel :picture-id="picture.id" :show-header="false" />
         </div>
       </div>
     </a-spin>

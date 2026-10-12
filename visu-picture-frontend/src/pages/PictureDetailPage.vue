@@ -141,12 +141,8 @@
       </a-col>
     </a-row>
 
-    <!-- 评论区（独立整行，宽度足够展示长评论） -->
+    <!-- 评论区（独立整行；标题交由面板自带的「共 N 条评论」承担） -->
     <div class="comment-card">
-      <div class="comment-card-head">
-        <MessageOutlined />
-        <span>评论</span>
-      </div>
       <PictureCommentPanel :picture-id="picture.id" />
     </div>
 
@@ -165,7 +161,6 @@ import {
   EditOutlined,
   HeartFilled,
   HeartOutlined,
-  MessageOutlined,
   RightOutlined,
   ShareAltOutlined,
   StarFilled,
@@ -576,16 +571,14 @@ const doShare = () => {
   box-shadow: var(--card-shadow);
 }
 
-.comment-card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary-light);
+/*
+  限制评论内容的最大宽度：
+  卡片占满整行时，长评论会横跨约 1400px，行长过宽极难阅读。
+  把正文行宽控制在约 70 个字符（≈760px）以内，符合可读性经验值。
+  左对齐而非居中：与上方图片预览的左边界保持视觉一致。
+*/
+.comment-card :deep(.comment-panel) {
+  max-width: 760px;
 }
 
 /* ===== 深色模式 ===== */
@@ -607,8 +600,7 @@ html.dark .info-author:hover {
 
 html.dark .info-name,
 html.dark .author-name,
-html.dark .param-value,
-html.dark .comment-card-head {
+html.dark .param-value {
   color: var(--text-primary);
 }
 
