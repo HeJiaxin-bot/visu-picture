@@ -1,14 +1,18 @@
 <template>
   <div id="notificationManagePage">
-    <h2 class="page-title">发布消息</h2>
-    <p class="page-sub">向全部用户或指定用户推送站内消息，用户会在导航栏铃铛处收到提醒</p>
+    <!-- 页头：左对齐，与其他管理页一致 -->
+    <div class="page-head">
+      <h2 class="page-title">发布消息</h2>
+      <p class="page-sub">
+        向全部用户或指定用户推送站内消息，用户会在导航栏铃铛处收到提醒
+      </p>
+    </div>
 
     <div class="publish-layout">
       <!-- 左侧：编辑表单 -->
-      <div class="form-card">
-        <div class="card-head">
-          <BellOutlined class="head-icon" />
-          <span>消息内容</span>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">消息内容</span>
         </div>
 
         <a-form :model="form" layout="vertical" class="publish-form">
@@ -18,7 +22,6 @@
               :maxlength="40"
               show-count
               placeholder="例如：会员权益升级公告"
-              size="large"
             />
           </a-form-item>
 
@@ -37,82 +40,95 @@
               <a-radio-button value="all">全部用户</a-radio-button>
               <a-radio-button value="one">指定用户</a-radio-button>
             </a-radio-group>
+            <span class="target-hint">
+              {{ targetType === 'all' ? '推送给平台所有注册用户' : '仅推送给一个指定用户' }}
+            </span>
           </a-form-item>
 
-          <a-form-item v-if="targetType === 'one'" label="用户 ID（视界号）">
+          <a-form-item v-if="targetType === 'one'" label="用户视界号">
             <a-input
               v-model:value="form.targetUserId"
-              placeholder="请输入接收用户的视界号，例如：2095099727417675778"
+              placeholder="例如：2095099727417675778"
               allow-clear
             />
-            <div class="field-hint">用户可在「用户中心」复制自己的视界号</div>
+            <div class="field-hint">
+              用户可在「用户中心」复制自己的视界号
+            </div>
           </a-form-item>
 
-          <a-form-item>
+          <div class="form-actions">
             <a-button
               type="primary"
-              size="large"
-              block
               class="send-btn"
               :loading="sending"
+              :disabled="!canSend"
               @click="handleSend"
             >
               <SendOutlined />
               发布消息
             </a-button>
-          </a-form-item>
+            <span class="send-hint" v-if="!form.title.trim()">填写标题后可发布</span>
+          </div>
         </a-form>
       </div>
 
-      <!-- 右侧：实时预览 -->
-      <div class="preview-card">
-        <div class="card-head">
-          <EyeOutlined class="head-icon" />
-          <span>用户端预览</span>
+      <!-- 右侧：真实铃铛面板结构预览 -->
+      <div class="panel panel--preview">
+        <div class="panel-head">
+          <span class="panel-title">用户端效果</span>
+          <span class="panel-note">发布后即时生效</span>
         </div>
-        <div class="preview-body">
-          <!-- 铃铛面板预览 -->
-          <div class="bell-preview">
-            <div class="bell-head">
-              <span class="bell-title">消息通知</span>
-              <span class="bell-readall">全部已读</span>
-            </div>
-            <div class="bell-item unread">
-              <div class="bell-thumb">
-                <BellOutlined />
-              </div>
-              <div class="bell-body">
-                <div class="bell-item-title">
-                  {{ form.title || '消息标题' }}
-                  <span class="bell-tag">系统</span>
-                </div>
-                <div class="bell-item-desc">{{ form.content || '消息内容将显示在这里' }}</div>
-                <div class="bell-item-time">刚刚</div>
-              </div>
-              <span class="bell-dot"></span>
-            </div>
-            <div class="bell-foot">查看全部消息</div>
+
+        <!-- 与 GlobalHeader 铃铛面板同构：浅底 + 描边，不叠加阴影 -->
+        <div class="bell">
+          <div class="bell-head">
+            <span class="bell-head-title">消息通知</span>
+            <span class="bell-readall">全部已读</span>
           </div>
 
-          <div class="preview-hint">
-            <InfoCircleOutlined />
-            发布后将在接收用户的铃铛角标 +1，并在消息中心显示为「系统」类型
+          <div class="bell-item">
+            <div class="bell-thumb">
+              <BellOutlined />
+            </div>
+            <div class="bell-body">
+              <div class="bell-title-row">
+                <span class="bell-item-title">{{ form.title || '消息标题' }}</span>
+                <span class="bell-tag">系统</span>
+              </div>
+              <div class="bell-desc" :class="{ 'is-placeholder': !form.content }">
+                {{ form.content || '消息内容将显示在这里' }}
+              </div>
+              <div class="bell-time">刚刚</div>
+            </div>
+            <span class="bell-dot" />
           </div>
+
+          <div class="bell-foot">查看全部消息</div>
         </div>
+
+        <dl class="effect-list">
+          <div class="effect-row">
+            <dt>铃铛角标</dt>
+            <dd>未读数 +1</dd>
+          </div>
+          <div class="effect-row">
+            <dt>消息中心</dt>
+            <dd>归类为「系统通知」</dd>
+          </div>
+          <div class="effect-row">
+            <dt>送达范围</dt>
+            <dd>{{ targetType === 'all' ? '全部注册用户' : '指定用户' }}</dd>
+          </div>
+        </dl>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import {
-  BellOutlined,
-  EyeOutlined,
-  InfoCircleOutlined,
-  SendOutlined,
-} from '@ant-design/icons-vue'
+import { BellOutlined, SendOutlined } from '@ant-design/icons-vue'
 import { sendSystemNotification } from '@/api/notification.ts'
 
 const form = reactive<{ title: string; content: string; targetUserId?: string }>({
@@ -123,6 +139,13 @@ const form = reactive<{ title: string; content: string; targetUserId?: string }>
 
 const targetType = ref<'all' | 'one'>('all')
 const sending = ref(false)
+
+/** 标题必填：用它控制按钮可用态，比点击后弹警告更早反馈 */
+const canSend = computed(() => {
+  if (!form.title.trim()) return false
+  if (targetType.value === 'one' && !(form.targetUserId ?? '').trim()) return false
+  return true
+})
 
 const handleSend = async () => {
   const title = form.title.trim()
@@ -168,54 +191,92 @@ const handleSend = async () => {
 
 <style scoped>
 #notificationManagePage {
-  max-width: 1100px;
-  margin: 0 auto;
+  max-width: 1200px;
+  margin: 0 auto 24px;
+  padding: 0 16px;
+}
+
+/* ===== 页头：左对齐（与审计日志等管理页一致） ===== */
+.page-head {
+  margin: 8px 0 20px;
 }
 
 .page-title {
-  text-align: center;
-  margin: 8px 0 6px;
-  font-size: 26px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary-light);
 }
 
 .page-sub {
-  text-align: center;
-  margin: 0 0 24px;
+  margin: 6px 0 0;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
+/* ===== 布局：表单为主，预览为辅 ===== */
 .publish-layout {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
-/* 卡片通用 */
-.form-card,
-.preview-card {
+/* ===== 面板：无阴影，靠描边与留白分隔 ===== */
+.panel {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: var(--card-shadow);
-  padding: 20px 24px;
+  border-radius: 14px;
+  padding: 20px 24px 24px;
+  /* 两栏等高：右栏内容较少，拉伸填满避免底部参差 */
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
-.card-head {
+.panel-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   padding-bottom: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+/* 预览列：说明表贴到面板底部 */
+.panel--preview .effect-list {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.panel-title {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary-light);
 }
 
-.head-icon {
-  color: var(--accent);
+.panel-note {
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+/* ===== 表单 ===== */
+.publish-form :deep(.ant-form-item-label > label) {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary-light);
+}
+
+.publish-form :deep(.ant-form-item) {
+  margin-bottom: 18px;
+}
+
+.target-hint {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--text-disabled);
 }
 
 .field-hint {
@@ -224,29 +285,35 @@ const handleSend = async () => {
   color: var(--text-disabled);
 }
 
-.send-btn {
-  border: none;
-  background: linear-gradient(135deg, #40a9ff, #1677ff);
-  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.send-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 26px rgba(22, 119, 255, 0.45);
-}
-
-/* 预览区 */
-.preview-body {
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding-top: 4px;
 }
 
-.bell-preview {
+/* 主按钮：实色，无渐变无投影 */
+.send-btn {
+  border: none;
+  background: var(--link);
+  font-weight: 600;
+}
+
+.send-btn:not(:disabled):hover {
+  background: var(--accent);
+}
+
+.send-hint {
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+/* ===== 预览：与真实铃铛面板同构 ===== */
+.bell {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-elevated);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  background: var(--bg-body);
 }
 
 .bell-head {
@@ -257,8 +324,8 @@ const handleSend = async () => {
   border-bottom: 1px solid var(--border-color);
 }
 
-.bell-title {
-  font-size: 14px;
+.bell-head-title {
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-primary-light);
 }
@@ -276,21 +343,17 @@ const handleSend = async () => {
   padding: 12px 14px;
 }
 
-.bell-item.unread {
-  background: rgba(64, 169, 255, 0.05);
-}
-
 .bell-thumb {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 16px;
   color: #722ed1;
-  background: linear-gradient(135deg, rgba(114, 46, 209, 0.12), rgba(114, 46, 209, 0.2));
+  background: rgba(114, 46, 209, 0.1);
 }
 
 .bell-body {
@@ -298,33 +361,36 @@ const handleSend = async () => {
   min-width: 0;
 }
 
+.bell-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .bell-item-title {
   font-size: 13.5px;
   font-weight: 600;
-  color: #1677ff;
-  line-height: 19px;
+  color: var(--text-primary-light);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .bell-tag {
-  display: inline-block;
-  margin-left: 6px;
+  flex-shrink: 0;
   padding: 0 6px;
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
-  line-height: 15px;
+  line-height: 16px;
   color: #722ed1;
   background: rgba(114, 46, 209, 0.1);
-  vertical-align: 1px;
 }
 
-.bell-item-desc {
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 17px;
+.bell-desc {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -333,7 +399,13 @@ const handleSend = async () => {
   word-break: break-word;
 }
 
-.bell-item-time {
+/* 未填写内容时用更浅的灰，明确这是占位而非真实内容 */
+.bell-desc.is-placeholder {
+  color: var(--text-disabled);
+  font-style: italic;
+}
+
+.bell-time {
   margin-top: 4px;
   font-size: 11px;
   color: var(--text-disabled);
@@ -341,10 +413,10 @@ const handleSend = async () => {
 
 .bell-dot {
   position: absolute;
-  top: 14px;
-  right: 12px;
-  width: 8px;
-  height: 8px;
+  top: 16px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #ff4d4f;
 }
@@ -352,45 +424,69 @@ const handleSend = async () => {
 .bell-foot {
   padding: 9px 0;
   text-align: center;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--accent);
   border-top: 1px solid var(--border-color);
 }
 
-.preview-hint {
+/* ===== 效果说明：规格表形式 ===== */
+.effect-list {
+  margin: 18px 0 0;
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 14px;
-  font-size: 12px;
-  line-height: 18px;
+  flex-direction: column;
+}
+
+.effect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.effect-row:last-child {
+  border-bottom: none;
+}
+
+.effect-row dt {
+  font-size: 12.5px;
   color: var(--text-disabled);
 }
 
-/* 窄屏：预览置底 */
+.effect-row dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary-light);
+}
+
+/* ===== 窄屏：预览置底 ===== */
 @media (max-width: 900px) {
   .publish-layout {
     grid-template-columns: 1fr;
   }
 }
 
-/* 深色模式 */
-html.dark .form-card,
-html.dark .preview-card {
-  box-shadow: var(--card-shadow);
-}
-
-html.dark .bell-preview {
-  background: rgba(45, 45, 45, 0.9);
-}
-
-html.dark .card-head,
-html.dark .bell-title,
+/* ===== 深色模式 ===== */
+html.dark .page-title,
+html.dark .panel-title,
+html.dark .bell-head-title,
 html.dark .bell-item-title {
   color: var(--text-primary);
 }
 
-html.dark .bell-item-title {
-  color: #69b9ff;
+html.dark .bell {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+html.dark .bell-thumb {
+  background: rgba(114, 46, 209, 0.2);
+  color: #b794f6;
+}
+
+html.dark .bell-tag {
+  background: rgba(114, 46, 209, 0.2);
+  color: #b794f6;
 }
 </style>

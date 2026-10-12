@@ -97,57 +97,55 @@
           </template>
         </a-dropdown>
 
-        <!-- 右：图片信息栏 + 评论（两段式：信息区可滚动，评论区固定在下方） -->
+        <!-- 右：信息与评论（排版式布局，无卡片嵌套） -->
         <div class="info-area">
-          <!-- 信息区：内容超出时自身滚动，不把评论区顶走 -->
           <div class="info-scroll">
             <h2 class="pic-title">{{ picture.name ?? '图片详情' }}</h2>
-            <a-tag v-if="picture.isAiGenerated === 1" color="purple" class="ai-tag">AI 生成</a-tag>
-            <!-- 简介 -->
+
+            <div v-if="picture.isAiGenerated === 1" class="ai-flag">
+              <span class="ai-flag-dot" /> AI 生成内容
+            </div>
+
             <p v-if="picture.introduction" class="intro-block">
               {{ picture.introduction }}
             </p>
-            <!-- 分类与标签 -->
+
             <div v-if="picture.tags?.length || picture.category" class="tags-row">
-              <a-tag color="blue">{{ picture.category ?? '默认' }}</a-tag>
+              <a-tag v-if="picture.category" color="blue">{{ picture.category }}</a-tag>
               <a-tag v-for="tag in picture.tags" :key="tag">{{ tag }}</a-tag>
             </div>
-            <!-- 元信息 -->
-            <div class="meta-grid">
-              <div class="meta-item">
-                <span class="meta-label">格式</span>
-                <span class="meta-value">{{ picture.picFormat ?? '-' }}</span>
+
+            <!-- 规格表：label 左 value 右，去卡片化 -->
+            <dl class="spec-list">
+              <div class="spec-row">
+                <dt>格式</dt>
+                <dd>{{ picture.picFormat ?? '—' }}</dd>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">尺寸</span>
-                <span class="meta-value">
-                  {{ picture.picWidth ?? '-' }} × {{ picture.picHeight ?? '-' }}
-                </span>
+              <div class="spec-row">
+                <dt>尺寸</dt>
+                <dd>{{ picture.picWidth ?? '—' }} × {{ picture.picHeight ?? '—' }}</dd>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">宽高比</span>
-                <span class="meta-value">{{ picture.picScale ?? '-' }}</span>
+              <div class="spec-row">
+                <dt>宽高比</dt>
+                <dd>{{ picture.picScale ?? '—' }}</dd>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">大小</span>
-                <span class="meta-value">{{ formatSize(picture.picSize) }}</span>
+              <div class="spec-row">
+                <dt>大小</dt>
+                <dd>{{ formatSize(picture.picSize) }}</dd>
               </div>
-              <div class="meta-item meta-item-wide">
-                <span class="meta-label">主色调</span>
-                <span class="meta-value color-value">
-                  {{ picture.picColor ?? '-' }}
-                  <i
-                    v-if="picture.picColor"
-                    class="color-dot"
-                    :style="{ background: toHexColor(picture.picColor) }"
-                  />
-                </span>
+              <div class="spec-row" v-if="picture.picColor">
+                <dt>主色调</dt>
+                <dd class="color-value">
+                  {{ picture.picColor }}
+                  <i class="color-dot" :style="{ background: toHexColor(picture.picColor) }" />
+                </dd>
               </div>
-            </div>
+            </dl>
+
             <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
           </div>
 
-          <!-- 评论区：占满剩余高度，输入框固定在面板底部 -->
+          <!-- 评论区：占满剩余高度，输入框固定底部 -->
           <div class="comment-zone">
             <PictureCommentPanel
               :picture-id="picture.id"
@@ -594,71 +592,125 @@ html.dark .preview-area {
 }
 
 .pic-title {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary-light);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
-.ai-tag {
+/* AI 生成标识：小圆点 + 文字，不用 tag 胶囊 */
+.ai-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.ai-flag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7c3aed;
+}
+
+html.dark .ai-flag {
+  color: #b794f6;
+}
+
+html.dark .ai-flag-dot {
+  background: #b794f6;
 }
 
 .intro-block {
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 13.5px;
+  line-height: 1.75;
   color: var(--text-secondary);
-  background: rgba(64, 169, 255, 0.05);
-  border-radius: 10px;
-  padding: 10px 12px;
   margin: 0;
+  padding-left: 12px;
+  /* 排版式引用：左侧一根细线，不用底色块 */
+  border-left: 2px solid var(--accent);
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .tags-row :deep(.ant-tag) {
   margin-inline-end: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
 }
 
-.meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+html.dark .tags-row :deep(.ant-tag) {
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.meta-item {
+/* 规格表：两栏 label/value，细分隔线，无卡片 */
+.spec-list {
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  background: rgba(64, 169, 255, 0.04);
-  border-radius: 8px;
-  padding: 8px 10px;
 }
 
-.meta-item-wide {
-  grid-column: span 2;
+.spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.meta-label {
-  font-size: 12px;
+.spec-row:last-child {
+  border-bottom: none;
+}
+
+.spec-row dt {
+  font-size: 12.5px;
   color: var(--text-disabled);
+  flex-shrink: 0;
 }
 
-.meta-value {
+.spec-row dd {
+  margin: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary-light);
+  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: center;
 }
 
 .color-dot {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 4px;
-  margin-left: 6px;
+  margin-left: 8px;
   border: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
+/* 顶部栏：与内容区之间用一条贯穿的横线分隔（排版式，不用阴影） */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
 .switch-tip {
   align-self: flex-start;
   font-size: 12px;
@@ -669,22 +721,12 @@ html.dark .preview-area {
 
 /* 弹窗整体 padding 微调 */
 .picture-detail-modal :deep(.ant-modal-content) {
-  padding: 16px 20px 20px;
+  padding: 20px 24px 24px;
 }
 
 /* 深色模式 */
-html.dark .author-tip,
-html.dark .meta-label {
-  color: rgba(179, 179, 179, 0.5);
-}
-
 html.dark .intro-block {
-  color: rgba(179, 179, 179, 0.75);
-  background: rgba(64, 169, 255, 0.08);
-}
-
-html.dark .meta-item {
-  background: rgba(64, 169, 255, 0.07);
+  color: rgba(179, 179, 179, 0.8);
 }
 
 html.dark .top-bar {

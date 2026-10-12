@@ -1,42 +1,40 @@
 <template>
   <div id="pictureDetailPage">
-    <a-row :gutter="[24, 24]">
-      <!-- 图片预览 -->
+    <a-row :gutter="[32, 24]">
+      <!-- 左列：预览 + 评论（同一列，左右边界与预览严格对齐） -->
       <a-col :sm="24" :md="16" :xl="18">
-        <div class="preview-card">
-          <div class="preview-head">
-            <span class="preview-title">图片预览</span>
-            <a-tag v-if="picture.isAiGenerated === 1" color="purple" class="ai-tag">
-              AI 生成
-            </a-tag>
+        <div class="preview-wrap">
+          <a-image
+            :src="picture.url"
+            class="preview-image"
+            :preview="{ maskClassName: 'preview-mask' }"
+          />
+          <div v-if="picture.isAiGenerated === 1" class="ai-flag">
+            <span class="ai-flag-dot" /> AI 生成内容
           </div>
-          <div class="preview-body">
-            <a-image
-              :src="picture.url"
-              class="preview-image"
-              :preview="{
-                maskClassName: 'preview-mask',
-              }"
-            />
-          </div>
+        </div>
+
+        <!-- 评论区：与预览同宽同边界，不再整行撑开 -->
+        <div class="comment-section">
+          <PictureCommentPanel :picture-id="picture.id" :author-id="picture.userId" />
         </div>
       </a-col>
 
-      <!-- 图片信息区域 -->
+      <!-- 图片信息区域：排版式，无卡片 -->
       <a-col :sm="24" :md="8" :xl="6">
-        <div class="info-card">
+        <div class="info-col">
           <!-- 作者 -->
           <div class="info-author" @click="goUser">
             <a-avatar :size="40" :src="picture.user?.userAvatar" class="author-avatar" />
             <div class="author-meta">
               <div class="author-name">{{ picture.user?.userName ?? '视界用户' }}</div>
-              <div class="author-hint">点击查看主页</div>
+              <div class="author-hint">查看主页</div>
             </div>
             <RightOutlined class="author-arrow" />
           </div>
 
           <!-- 名称 -->
-          <div class="info-name">{{ picture.name ?? '未命名' }}</div>
+          <h1 class="info-name">{{ picture.name ?? '未命名' }}</h1>
 
           <!-- 互动状态：点赞 / 收藏 -->
           <div class="interaction-row">
@@ -71,42 +69,36 @@
             </a-tag>
           </div>
 
-          <a-divider class="info-divider" />
-
-          <!-- 参数网格 -->
-          <div class="param-grid">
-            <div class="param-item">
-              <div class="param-label">格式</div>
-              <div class="param-value">{{ picture.picFormat ?? '-' }}</div>
+          <!-- 规格表 -->
+          <dl class="spec-list">
+            <div class="spec-row">
+              <dt>格式</dt>
+              <dd>{{ picture.picFormat ?? '—' }}</dd>
             </div>
-            <div class="param-item">
-              <div class="param-label">尺寸</div>
-              <div class="param-value">{{ picture.picWidth ?? '-' }} × {{ picture.picHeight ?? '-' }}</div>
+            <div class="spec-row">
+              <dt>尺寸</dt>
+              <dd>{{ picture.picWidth ?? '—' }} × {{ picture.picHeight ?? '—' }}</dd>
             </div>
-            <div class="param-item">
-              <div class="param-label">宽高比</div>
-              <div class="param-value">{{ picture.picScale ?? '-' }}</div>
+            <div class="spec-row">
+              <dt>大小</dt>
+              <dd>{{ formatSize(picture.picSize) }}</dd>
             </div>
-            <div class="param-item">
-              <div class="param-label">大小</div>
-              <div class="param-value">{{ formatSize(picture.picSize) }}</div>
-            </div>
-            <div class="param-item">
-              <div class="param-label">主色调</div>
-              <div class="param-value param-color">
+            <div class="spec-row" v-if="picture.picColor">
+              <dt>主色调</dt>
+              <dd class="param-color">
                 <span
                   v-if="picture.picColor"
                   class="color-dot"
                   :style="{ backgroundColor: toHexColor(picture.picColor) }"
                 ></span>
-                {{ picture.picColor ?? '-' }}
-              </div>
+                {{ picture.picColor }}
+              </dd>
             </div>
-            <div class="param-item">
-              <div class="param-label">发布时间</div>
-              <div class="param-value">{{ formatCreateTime(picture.createTime) }}</div>
+            <div class="spec-row">
+              <dt>发布</dt>
+              <dd>{{ formatCreateTime(picture.createTime) }}</dd>
             </div>
-          </div>
+          </dl>
 
           <!-- 操作区 -->
           <!-- 从消息通知进入（审核结果）：只保留「编辑」，引导修改后重新提交 -->
@@ -140,11 +132,6 @@
         </div>
       </a-col>
     </a-row>
-
-    <!-- 评论区（独立整行；标题与排序由面板头部承担） -->
-    <div class="comment-card">
-      <PictureCommentPanel :picture-id="picture.id" :author-id="picture.userId" />
-    </div>
 
     <ShareModal ref="shareModalRef" :picture-id="picture.id" />
   </div>
@@ -279,48 +266,51 @@ const doShare = () => {
   padding: 0 12px;
 }
 
-/* ===== 预览卡 ===== */
-.preview-card {
-  background: var(--bg-card);
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
-.preview-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.preview-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary-light);
-}
-
-.ai-tag {
-  margin-inline-end: 0;
-}
-
-.preview-body {
+/* ===== 预览：无卡片，图片直接坐在页面底色上 ===== */
+.preview-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 280px;
-  padding: 32px;
+  min-height: 320px;
+  padding: 24px;
+  border-radius: 16px;
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(64, 169, 255, 0.06), transparent 60%),
-    radial-gradient(ellipse at 70% 80%, rgba(22, 119, 255, 0.05), transparent 60%),
-    var(--bg-body);
+    radial-gradient(ellipse at 30% 20%, rgba(64, 169, 255, 0.05), transparent 60%),
+    var(--bg-card);
+  border: 1px solid var(--border-color);
 }
 
-/* 图片自适应：宽高同时约束，避免宽图横向溢出被卡片裁切 */
+/* AI 标识：右下角小字标注，不用胶囊 */
+.ai-flag {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+.ai-flag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7c3aed;
+}
+
+html.dark .ai-flag {
+  color: #b794f6;
+}
+
+html.dark .ai-flag-dot {
+  background: #b794f6;
+}
+
+/* 图片自适应：宽高同时约束，避免宽图横向溢出 */
 .preview-image {
-  /* flex 子项默认 min-width:auto 会阻止收缩，置 0 让超宽图能被压缩 */
   min-width: 0;
   max-width: 100%;
   line-height: 0;
@@ -338,17 +328,31 @@ const doShare = () => {
 }
 
 /* 预览 hover 遮罩 */
-.preview-body :deep(.ant-image-mask) {
+.preview-wrap :deep(.ant-image-mask) {
   border-radius: 12px;
 }
 
-/* ===== 信息卡 ===== */
-.info-card {
-  background: var(--bg-card);
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  padding: 20px;
+/* ===== 信息列：排版式，无卡片 ===== */
+/*
+  信息列：sticky 跟随滚动。
+  左列含预览 + 评论，高度往往远超右列；若右列静态排列，
+  滚动到评论区时右侧会留下大片空白。sticky 让它保持可见。
+  top 值 = 导航栏高度 + 呼吸间距。
+*/
+.info-col {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 84px;
+  align-self: flex-start;
+}
+
+/* 窄屏（单列堆叠）时取消 sticky，避免与上方内容重叠 */
+@media (max-width: 992px) {
+  .info-col {
+    position: static;
+    margin-top: 24px;
+  }
 }
 
 /* 作者 */
@@ -356,15 +360,10 @@ const doShare = () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  margin: -6px -8px 14px;
-  border-radius: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 18px;
   cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.info-author:hover {
-  background: rgba(64, 169, 255, 0.07);
 }
 
 .info-author:hover .author-arrow {
@@ -374,7 +373,6 @@ const doShare = () => {
 
 .author-avatar {
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .author-meta {
@@ -383,7 +381,7 @@ const doShare = () => {
 }
 
 .author-name {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-primary-light);
   overflow: hidden;
@@ -403,19 +401,23 @@ const doShare = () => {
   transition: all 0.2s ease;
 }
 
-/* 名称与简介 */
+/* 标题：整列最大的字，建立层级 */
 .info-name {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary-light);
-  line-height: 26px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
 }
 
 .info-intro {
-  margin: 8px 0 14px;
-  font-size: 13px;
-  line-height: 20px;
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  line-height: 1.75;
   color: var(--text-secondary);
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
 }
 
 /* 分类与标签 */
@@ -423,76 +425,85 @@ const doShare = () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-bottom: 18px;
 }
 
-.cat-tag {
+.info-tags-row :deep(.ant-tag) {
   margin-inline-end: 0;
-}
-
-.tag-pill {
-  margin-inline-end: 0;
-}
-
-.info-divider {
-  margin: 16px 0;
-  border-top-color: var(--border-color);
-}
-
-/* 参数网格 */
-.param-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 12px;
-}
-
-.param-label {
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-secondary);
   font-size: 12px;
-  color: var(--text-disabled);
-  margin-bottom: 3px;
+  line-height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
 }
 
-.param-value {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--text-primary-light);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+html.dark .info-tags-row :deep(.ant-tag) {
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.param-color {
+/* 规格表：两栏 label/value，细分隔线 */
+.spec-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.spec-row:last-child {
+  border-bottom: none;
+}
+
+.spec-row dt {
+  font-size: 12.5px;
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
+
+.spec-row dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary-light);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
 }
 
 .color-dot {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 4px;
+  margin-right: 8px;
   border: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 /* 操作区 */
 .action-group {
-  margin-top: 20px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
 }
 
+/* 主按钮：实色 accent，不用渐变不用投影 */
 .download-btn {
   border: none;
-  background: linear-gradient(135deg, #40a9ff, #1677ff);
-  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--link);
+  font-weight: 600;
 }
 
 .download-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 26px rgba(22, 119, 255, 0.45);
-}
-
-.download-btn:active {
-  transform: translateY(0);
+  background: var(--accent);
 }
 
 .action-row {
@@ -562,49 +573,32 @@ const doShare = () => {
 }
 
 /* 评论区卡片 */
-.comment-card {
-  margin-top: 20px;
-  padding: 18px 20px 20px;
-  background: var(--bg-card);
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-}
-
 /*
-  限制评论内容的最大宽度：
-  卡片占满整行时，长评论会横跨约 1400px，行长过宽极难阅读。
-  把正文行宽控制在约 70 个字符（≈760px）以内，符合可读性经验值。
-  左对齐而非居中：与上方图片预览的左边界保持视觉一致。
+  评论区：与预览同处左列，左右边界严格对齐（不再整行撑开）。
+  与预览之间留 24px，视觉上分为上下两个区块。
+  内部不再限制宽度 —— 列宽本身已是合理阅读宽度。
 */
-.comment-card :deep(.cmt) {
-  max-width: 760px;
+.comment-section {
+  margin-top: 24px;
+  padding: 20px 24px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
 }
 
 /* ===== 深色模式 ===== */
-html.dark .preview-card,
-html.dark .info-card {
-  box-shadow: var(--card-shadow);
-}
-
-html.dark .preview-body {
+html.dark .preview-wrap {
   background:
     radial-gradient(ellipse at 30% 20%, rgba(64, 169, 255, 0.09), transparent 60%),
-    radial-gradient(ellipse at 70% 80%, rgba(22, 119, 255, 0.07), transparent 60%),
-    #1d1d1f;
+    var(--bg-card);
 }
 
-html.dark .info-author:hover {
-  background: rgba(64, 169, 255, 0.12);
+html.dark .info-tags-row :deep(.ant-tag) {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 html.dark .info-name,
-html.dark .author-name,
-html.dark .param-value {
-  color: var(--text-primary);
-}
-
-html.dark .preview-title {
+html.dark .author-name {
   color: var(--text-primary);
 }
 </style>
