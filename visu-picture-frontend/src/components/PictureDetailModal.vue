@@ -97,59 +97,63 @@
           </template>
         </a-dropdown>
 
-        <!-- 右：图片信息栏 -->
+        <!-- 右：图片信息栏 + 评论（两段式：信息区可滚动，评论区固定在下方） -->
         <div class="info-area">
-          <h2 class="pic-title">{{ picture.name ?? '图片详情' }}</h2>
-          <a-tag v-if="picture.isAiGenerated === 1" color="purple" class="ai-tag">AI 生成</a-tag>
-          <!-- 简介 -->
-          <p v-if="picture.introduction" class="intro-block">
-            {{ picture.introduction }}
-          </p>
-          <!-- 分类与标签 -->
-          <div v-if="picture.tags?.length || picture.category" class="tags-row">
-            <a-tag color="blue">{{ picture.category ?? '默认' }}</a-tag>
-            <a-tag v-for="tag in picture.tags" :key="tag">{{ tag }}</a-tag>
+          <!-- 信息区：内容超出时自身滚动，不把评论区顶走 -->
+          <div class="info-scroll">
+            <h2 class="pic-title">{{ picture.name ?? '图片详情' }}</h2>
+            <a-tag v-if="picture.isAiGenerated === 1" color="purple" class="ai-tag">AI 生成</a-tag>
+            <!-- 简介 -->
+            <p v-if="picture.introduction" class="intro-block">
+              {{ picture.introduction }}
+            </p>
+            <!-- 分类与标签 -->
+            <div v-if="picture.tags?.length || picture.category" class="tags-row">
+              <a-tag color="blue">{{ picture.category ?? '默认' }}</a-tag>
+              <a-tag v-for="tag in picture.tags" :key="tag">{{ tag }}</a-tag>
+            </div>
+            <!-- 元信息 -->
+            <div class="meta-grid">
+              <div class="meta-item">
+                <span class="meta-label">格式</span>
+                <span class="meta-value">{{ picture.picFormat ?? '-' }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">尺寸</span>
+                <span class="meta-value">
+                  {{ picture.picWidth ?? '-' }} × {{ picture.picHeight ?? '-' }}
+                </span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">宽高比</span>
+                <span class="meta-value">{{ picture.picScale ?? '-' }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">大小</span>
+                <span class="meta-value">{{ formatSize(picture.picSize) }}</span>
+              </div>
+              <div class="meta-item meta-item-wide">
+                <span class="meta-label">主色调</span>
+                <span class="meta-value color-value">
+                  {{ picture.picColor ?? '-' }}
+                  <i
+                    v-if="picture.picColor"
+                    class="color-dot"
+                    :style="{ background: toHexColor(picture.picColor) }"
+                  />
+                </span>
+              </div>
+            </div>
+            <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
           </div>
-          <!-- 元信息 -->
-          <div class="meta-grid">
-            <div class="meta-item">
-              <span class="meta-label">格式</span>
-              <span class="meta-value">{{ picture.picFormat ?? '-' }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">尺寸</span>
-              <span class="meta-value">
-                {{ picture.picWidth ?? '-' }} × {{ picture.picHeight ?? '-' }}
-              </span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">宽高比</span>
-              <span class="meta-value">{{ picture.picScale ?? '-' }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">大小</span>
-              <span class="meta-value">{{ formatSize(picture.picSize) }}</span>
-            </div>
-            <div class="meta-item meta-item-wide">
-              <span class="meta-label">主色调</span>
-              <span class="meta-value color-value">
-                {{ picture.picColor ?? '-' }}
-                <i
-                  v-if="picture.picColor"
-                  class="color-dot"
-                  :style="{ background: toHexColor(picture.picColor) }"
-                />
-              </span>
-            </div>
-          </div>
-          <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
 
-          <!-- 评论（匿名可读；登录后可发表/点赞/回复）
-               面板头部含排序切换，必须保留；标题本身由头部承担 -->
-          <PictureCommentPanel
-            :picture-id="picture.id"
-            :author-id="picture.userId"
-          />
+          <!-- 评论区：占满剩余高度，输入框固定在面板底部 -->
+          <div class="comment-zone">
+            <PictureCommentPanel
+              :picture-id="picture.id"
+              :author-id="picture.userId"
+            />
+          </div>
         </div>
       </div>
     </a-spin>
@@ -395,7 +399,6 @@ const formatDate = (time?: string) => {
   justify-content: space-between;
   gap: 12px;
   padding: 4px 4px 12px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .top-author {
@@ -488,22 +491,31 @@ const formatDate = (time?: string) => {
 /* 主体布局：左大图 + 右信息栏 */
 .detail-body {
   display: flex;
-  gap: 20px;
+  /* 两栏等高：右栏据此撑满，评论输入框才能贴到弹窗底部 */
+  height: calc(88vh - 130px);
+  min-height: 420px;
   margin-top: 12px;
+  /* 左右两栏之间的分隔：用一条实线明确切分（参考图的做法），
+     仅靠间距在白底上区分度不够 */
+  border-top: 1px solid var(--border-color);
 }
 
-/* 左侧预览区：纯白背景，固定高度，小图也放大撑满区域 */
+/* 左侧预览区：纯白背景，底部对齐，右侧以竖线与信息栏分隔 */
 .preview-area {
   flex: 1;
   min-width: 0;
-  height: calc(88vh - 130px);
-  min-height: 320px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  border-radius: 12px;
+  padding: 16px 24px 16px 4px;
   background-color: var(--bg-card);
+  /* 竖线分隔：与右栏形成明确边界。
+     用比通用 border-color 更实的颜色 —— 白底白卡上 0.08 的透明度几乎不可见 */
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+html.dark .preview-area {
+  border-right-color: rgba(255, 255, 255, 0.14);
 }
 
 .preview-area :deep(.ant-image) {
@@ -521,15 +533,64 @@ const formatDate = (time?: string) => {
   border-radius: 8px;
 }
 
-/* 右侧信息区 */
+/*
+  右侧信息区：两段式布局。
+  - .info-scroll 承载图片元信息，内容超出时自身滚动
+  - .comment-zone 占满剩余高度，其内部再分「列表滚动 + 输入框固定」
+  这样无论元信息多长、评论多少，输入框始终贴在弹窗底部。
+*/
 .info-area {
   width: 320px;
   flex-shrink: 0;
-  max-height: 82vh;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* 与左侧图片区留出呼吸空间（竖线在 preview-area 的 border-right 上） */
+  padding-left: 20px;
+  padding-top: 16px;
+  padding-bottom: 4px;
+}
+
+/* 元信息区：可滚动，但不占据评论区的空间 */
+.info-scroll {
+  flex-shrink: 0;
+  /* 上限约为右栏一半，超出则自身滚动，避免把评论区挤没 */
+  max-height: 46%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding-right: 4px;
+}
+
+.info-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.info-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+.info-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 评论区：占满剩余高度；面板自身是 flex 列，输入框贴底 */
+.comment-zone {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 面板在弹窗内不再自限高度，改为撑满 comment-zone（由父级决定高度） */
+.comment-zone :deep(.cmt) {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .pic-title {
