@@ -36,8 +36,9 @@ const props = withDefaults(defineProps<Props>(), {
   queryPublic: false,
 })
 
-// 图表数据
-const dataList = ref<API.SpaceCategoryAnalyzeResponse>([])
+// 图表数据（类型应是标签分析响应：原实现误用了分类分析的响应类型，
+// 导致 item.tag 不存在、并连带产生一串 .map/length 报错）
+const dataList = ref<API.SpaceTagAnalyzeResponse[]>([])
 // 加载状态
 const loading = ref(true)
 

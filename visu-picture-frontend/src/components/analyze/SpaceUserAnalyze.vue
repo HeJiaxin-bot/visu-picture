@@ -54,14 +54,21 @@ const timeDimensionOptions = [
     value: 'month',
   },
 ]
-// 用户选项
-const userId = ref<string>()
+// 用户选项：后端 userId 为数字类型，这里输入框拿到的是字符串，
+// 因此在此处转换为数字；非法输入置空（表示不按用户过滤）
+const userId = ref<number>()
 const doSearch = (value: string) => {
-  userId.value = value
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    userId.value = undefined
+    return
+  }
+  const parsed = Number(trimmed)
+  userId.value = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
-// 图表数据
-const dataList = ref<API.SpaceCategoryAnalyzeResponse>([])
+// 图表数据（类型应是用户分析响应：原实现误用了分类分析的响应类型）
+const dataList = ref<API.SpaceUserAnalyzeResponse[]>([])
 // 加载状态
 const loading = ref(true)
 

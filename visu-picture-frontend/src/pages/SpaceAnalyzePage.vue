@@ -85,8 +85,14 @@ const route = useRoute()
 const router = useRouter()
 
 // 空间 id
-const spaceId = computed(() => {
-  return route.query?.spaceId as string
+// 路由 query 的值可能是 string | null | (string|null)[]，而子组件与后端接口
+// 都要求 number 类型，因此这里统一做「取值 → 转数字 → 非法置 undefined」的归一化。
+const spaceId = computed<number | undefined>(() => {
+  const raw = route.query?.spaceId
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value == null || value === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 })
 
 // 是否查询所有空间
@@ -118,7 +124,8 @@ const goBack = () => {
 // 单空间分析时获取空间名称，用于副标题展示与跳转
 const spaceName = ref('')
 const fetchSpaceName = async () => {
-  if (!spaceId.value || queryAll.value || queryPublic.value) return
+  // 无空间 id（或查询全部/公共空间）时不需要取空间名称
+  if (spaceId.value == null || queryAll.value || queryPublic.value) return
   const res = await getSpaceVoByIdUsingGet({ id: spaceId.value })
   if (res.data.code === 0 && res.data.data) {
     spaceName.value = res.data.data.spaceName ?? ''

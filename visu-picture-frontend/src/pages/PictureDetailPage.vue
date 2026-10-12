@@ -38,6 +38,28 @@
           <!-- 名称 -->
           <div class="info-name">{{ picture.name ?? '未命名' }}</div>
 
+          <!-- 互动状态：点赞 / 收藏 -->
+          <div class="interaction-row">
+            <button
+              class="interact-btn like"
+              :class="{ active: likeStore.isLiked(picture.id) }"
+              @click="doLike"
+            >
+              <HeartFilled v-if="likeStore.isLiked(picture.id)" />
+              <HeartOutlined v-else />
+              <span>{{ picture.likeCount ?? 0 }}</span>
+            </button>
+            <button
+              class="interact-btn favorite"
+              :class="{ active: likeStore.isFavorited(picture.id) }"
+              @click="doFavorite"
+            >
+              <StarFilled v-if="likeStore.isFavorited(picture.id)" />
+              <StarOutlined v-else />
+              <span>{{ picture.favoriteCount ?? 0 }}</span>
+            </button>
+          </div>
+
           <!-- 简介 -->
           <p class="info-intro">{{ picture.introduction || '暂无简介' }}</p>
 
@@ -118,37 +140,77 @@
         </div>
       </a-col>
     </a-row>
-    <ShareModal ref="shareModalRef" :link="shareLink" />
+
+    <!-- 评论区（独立整行，宽度足够展示长评论） -->
+    <div class="comment-card">
+      <div class="comment-card-head">
+        <MessageOutlined />
+        <span>评论</span>
+      </div>
+      <PictureCommentPanel :picture-id="picture.id" />
+    </div>
+
+    <ShareModal ref="shareModalRef" :picture-id="picture.id" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue'
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
+import { recordView } from '@/api/interaction.ts'
 import { message } from 'ant-design-vue'
 import {
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
+  HeartFilled,
+  HeartOutlined,
+  MessageOutlined,
   RightOutlined,
   ShareAltOutlined,
+  StarFilled,
+  StarOutlined,
 } from '@ant-design/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { formatSize, toHexColor } from '@/utils'
+import { firstQueryValue, formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
+import PictureCommentPanel from '@/components/PictureCommentPanel.vue'
 import { usePictureDetail } from '@/composables/usePictureDetail.ts'
+import { useLikeStore } from '@/stores/useLikeStore.ts'
+import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 interface Props {
   id: string | number
 }
 
 const props = defineProps<Props>()
-const { picture, canEdit, canDelete, fetchDetail, download, shareLink, setShareLink } =
-  usePictureDetail()
+const { picture, canEdit, canDelete, fetchDetail, download } = usePictureDetail()
+const likeStore = useLikeStore()
+const loginUserStore = useLoginUserStore()
 
-onMounted(() => {
-  fetchDetail(props.id)
+onMounted(async () => {
+  await fetchDetail(props.id)
+  // 浏览历史：仅登录用户记录；失败静默（旁路数据，不打断查看）
+  // id 保持字符串原样（雪花 id 超出 JS 安全整数，转 Number 会改末位）
+  if (loginUserStore.loginUser?.id) {
+    const pictureId = firstQueryValue(props.id)
+    if (pictureId) {
+      try {
+        await recordView(pictureId)
+      } catch {
+        // 忽略
+      }
+    }
+  }
 })
+
+// 点赞 / 收藏
+const doLike = () => {
+  likeStore.toggle(picture.value)
+}
+const doFavorite = () => {
+  likeStore.toggleFavorite(picture.value)
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -206,9 +268,8 @@ const doDownload = () => {
 
 // ----- 分享操作 ----
 const shareModalRef = ref()
-// 分享
+// 分享（由 ShareModal 负责创建/查询后端分享链接）
 const doShare = () => {
-  setShareLink()
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }
@@ -457,6 +518,76 @@ const doShare = () => {
   color: var(--text-disabled);
 }
 
+/* 互动按钮组：点赞 / 收藏 */
+.interaction-row {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+
+.interact-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.interact-btn.like:hover {
+  color: #ff4d6a;
+  border-color: rgba(255, 77, 106, 0.5);
+  background: rgba(255, 77, 106, 0.06);
+}
+
+.interact-btn.like.active {
+  color: #ff4d6a;
+  border-color: rgba(255, 77, 106, 0.55);
+  background: rgba(255, 77, 106, 0.1);
+}
+
+.interact-btn.favorite:hover {
+  color: #faad14;
+  border-color: rgba(250, 173, 20, 0.5);
+  background: rgba(250, 173, 20, 0.06);
+}
+
+.interact-btn.favorite.active {
+  color: #faad14;
+  border-color: rgba(250, 173, 20, 0.55);
+  background: rgba(250, 173, 20, 0.1);
+}
+
+/* 评论区卡片 */
+.comment-card {
+  margin-top: 20px;
+  padding: 18px 20px 20px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+
+.comment-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary-light);
+}
+
 /* ===== 深色模式 ===== */
 html.dark .preview-card,
 html.dark .info-card {
@@ -476,7 +607,8 @@ html.dark .info-author:hover {
 
 html.dark .info-name,
 html.dark .author-name,
-html.dark .param-value {
+html.dark .param-value,
+html.dark .comment-card-head {
   color: var(--text-primary);
 }
 

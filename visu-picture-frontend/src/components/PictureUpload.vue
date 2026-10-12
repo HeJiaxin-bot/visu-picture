@@ -26,7 +26,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { CloudUploadOutlined, LoadingOutlined } from '@ant-design/icons-vue'
-import type { UploadProps } from 'ant-design-vue'
+import type { UploadFile, UploadProps } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
 import { uploadPictureUsingPost } from '@/api/pictureController.ts'
 
@@ -114,14 +114,18 @@ defineExpose({ upload, hasPendingFile })
  * 上传前的校验
  * @param file
  */
-const beforeUpload = (file: UploadProps['fileList'][number]) => {
+// 参数类型用 UploadFile 而非 UploadProps['fileList'][number]：
+// 后者是 UploadFile[] | undefined，对可空数组取下标会报 TS2537
+const beforeUpload = (file: UploadFile) => {
   // 校验图片格式（与后端允许的后缀保持一致：jpeg / png / jpg / webp）
-  const isSupported = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  // file.type 在类型上可选：缺失视为不支持（与原逻辑一致 —— 原实现 includes(undefined) 也返回 false）
+  const isSupported = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type ?? '')
   if (!isSupported) {
     message.error('不支持上传该格式的图片，推荐 jpg / png / webp')
   }
   // 校验图片大小（上限 10MB，与后端 FilePictureUpload 保持一致）
-  const isLt10M = file.size / 1024 / 1024 < 10
+  // file.size 可选：缺失时按 0 处理（交给后端兜底校验），避免 NaN 比较意外放行/拦截
+  const isLt10M = (file.size ?? 0) / 1024 / 1024 < 10
   if (!isLt10M) {
     message.error('不能上传超过 10M 的图片')
   }

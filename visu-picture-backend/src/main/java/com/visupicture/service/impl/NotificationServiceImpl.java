@@ -175,6 +175,32 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
     }
 
     @Override
+    public void sendInteractionNotification(Long targetUserId, String actorName, String actionText,
+                                            Long picId, String picName, String picThumbnail, String content) {
+        if (targetUserId == null) {
+            return;
+        }
+        try {
+            String shortName = picName != null && picName.length() > 20
+                    ? picName.substring(0, 20) + "…" : picName;
+            String who = StrUtil.blankToDefault(actorName, "有人");
+            String action = StrUtil.blankToDefault(actionText, "互动了");
+            Notification notification = new Notification();
+            notification.setUserId(targetUserId);
+            notification.setType(NotificationTypeEnum.INTERACT.getValue());
+            notification.setTitle(who + " " + action + "你的图片「" + shortName + "」");
+            notification.setContent(StrUtil.maxLength(content, 200));
+            notification.setPicId(picId);
+            notification.setPicThumbnail(picThumbnail);
+            notification.setIsRead(0);
+            this.save(notification);
+        } catch (Exception e) {
+            // 通知失败不影响互动主流程
+            log.error("发送互动通知失败, targetUserId={}, picId={}", targetUserId, picId, e);
+        }
+    }
+
+    @Override
     public Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category) {
         long page = Math.max(current, 1);
         long size = Math.min(Math.max(pageSize, 1), 50);

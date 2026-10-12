@@ -164,11 +164,14 @@ public interface PictureService extends IService<Picture> {
     PictureAiEditResult generateAiEditResult(Picture picture);
 
     /**
-     * 图片点赞 / 取消点赞
+     * 图片点赞 / 取消点赞（按用户去重，幂等）
+     *
+     * <p>计数变更由 picture_like 记录表的写入结果决定，重复点赞不会重复计数。</p>
      *
      * @param pictureId 图片 id
+     * @param userId    当前登录用户 id（去重必须绑定具体用户，故由调用方保证非空）
      * @param isLike    true-点赞；false-取消
-     * @return 点赞后的点赞数
+     * @return 操作后的点赞数
      */
-    int likePicture(long pictureId, boolean isLike);
+    int likePicture(long pictureId, long userId, boolean isLike);
 }

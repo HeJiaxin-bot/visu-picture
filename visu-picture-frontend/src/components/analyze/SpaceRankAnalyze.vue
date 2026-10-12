@@ -36,11 +36,10 @@ const chartTheme = useChartTheme()
 // 获取数据
 const fetchData = async () => {
   loading.value = true
-  // 转换搜索参数
+  // 后端 SpaceRankAnalyzeRequest 只有 topN 一个字段（已核对 DTO），
+  // 原先额外传 queryAll/queryPublic/spaceId 会被 Jackson 静默忽略，
+  // 属于无效参数 —— 去掉后行为不变，同时消除类型不匹配。
   const res = await getSpaceRankAnalyzeUsingPost({
-    queryAll: props.queryAll,
-    queryPublic: props.queryPublic,
-    spaceId: props.spaceId,
     topN: 10, // 后端默认是 10
   })
   if (res.data.code === 0 && res.data.data) {
@@ -62,7 +61,8 @@ watchEffect(() => {
 const options = computed(() => {
   const t = chartTheme.value
   const spaceNames = dataList.value.map((item) => item.spaceName)
-  const usageData = dataList.value.map((item) => (item.totalSize / (1024 * 1024)).toFixed(2)) // 转为 MB
+  // totalSize 在 API.Space 中是可选的，显式兜底 0，避免 "possibly undefined" 报错
+  const usageData = dataList.value.map((item) => ((item.totalSize ?? 0) / (1024 * 1024)).toFixed(2)) // 转为 MB
 
   return {
     tooltip: {

@@ -36,7 +36,9 @@ import com.visupicture.model.enums.PictureReviewStatusEnum;
 import com.visupicture.model.vo.PictureVO;
 import com.visupicture.model.vo.UserVO;
 import com.visupicture.service.NotificationService;
+import com.visupicture.service.PictureInteractionService;
 import com.visupicture.service.PictureService;
+import com.visupicture.service.PictureShareService;
 import com.visupicture.service.SpaceService;
 import com.visupicture.service.UserService;
 import com.visupicture.utils.ColorSimilarUtils;
@@ -49,6 +51,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -107,10 +110,50 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private PictureInteractionService pictureInteractionService;
+
+    @Resource
+    private PictureShareService pictureShareService;
+
+    /**
+     * 是否拦截重复图片上传（同一空间内 picHash 相同即视为重复）。
+     * 默认开启；若业务上允许重复（如多份同图但元数据不同），可通过配置关闭。
+     */
+    @Value("${app.duplicate-picture.reject:true}")
+    private boolean rejectDuplicate;
+
     /**
      * 批量抓取上传任务的进度缓存 key 前缀
      */
     private static final String BATCH_UPLOAD_PROGRESS_KEY = "visupicture:batch:upload:progress:";
+
+    /**
+     * 查找同一空间内内容完全相同的图片
+     *
+     * <p>作用域限定为「同一空间」：不同用户/空间的私有图片互不干扰，
+     * 也避免通过"上传能否成功"探测他人是否已上传过某张图（跨空间存在性泄露）。</p>
+     *
+     * @param picHash 图片内容摘要
+     * @param spaceId 空间 id（null 表示公共图库，此时作用域限定为公共图库 + 本人）
+     * @param userId  上传者 id
+     * @return 已存在的重复图片；无重复返回 null
+     */
+    private Picture findDuplicatePicture(String picHash, Long spaceId, Long userId) {
+        if (StrUtil.isBlank(picHash)) {
+            return null;
+        }
+        return this.lambdaQuery()
+                .eq(Picture::getPicHash, picHash)
+                .eq(spaceId != null, Picture::getSpaceId, spaceId)
+                // 公共图库场景：只在公共图库（spaceId 为空）内比对，且限定本人已上传的图片，
+                // 避免泄露"他人是否传过同一张图"
+                .isNull(spaceId == null, Picture::getSpaceId)
+                .eq(spaceId == null && userId != null, Picture::getUserId, userId)
+                .orderByAsc(Picture::getId)
+                .last("limit 1")
+                .one();
+    }
 
     /**
      * 批量上传中待通知管理员的图片计数（ThreadLocal，仅当前请求线程可见）
@@ -235,11 +278,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 //        picture.setPicColor(uploadPictureResult.getPicColor());
         // 转换为标准颜色
         picture.setPicColor(ColorTransformUtils.getStandardColor(uploadPictureResult.getPicColor()));
+        // 图片内容摘要：用于重复图片检测（上传模板中对原始输入源计算）
+        picture.setPicHash(uploadPictureResult.getPicHash());
         picture.setUserId(loginUser.getId());
         // AI 生成标识（AI 扩图上传时由前端传入）
         picture.setIsAiGenerated(pictureUploadRequest.getIsAiGenerated());
         // 补充审核参数
         this.fillReviewParams(picture, loginUser);
+        // 【重复图片检测】新增图片时，若同一空间内已存在内容完全相同的图片，按配置拦截。
+        // 说明：只做"字节级完全相同"的判定（同一文件重复上传），不含视觉相似的近似去重。
+        // 更新场景（pictureId != null）跳过检测，否则用户无法保存对已有图片的编辑。
+        if (pictureId == null && StrUtil.isNotBlank(picture.getPicHash()) && rejectDuplicate) {
+            Picture duplicate = findDuplicatePicture(picture.getPicHash(), spaceId, loginUser.getId());
+            if (duplicate != null) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR,
+                        "检测到重复图片：已存在内容完全相同的图片「" + duplicate.getName() + "」（id="
+                                + duplicate.getId() + "），请勿重复上传");
+            }
+        }
         // 操作数据库
         // 如果 pictureId 不为空，表示更新，否则是新增
         if (pictureId != null) {
@@ -287,7 +343,25 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             UserVO userVO = userService.getUserVO(user);
             pictureVO.setUser(userVO);
         }
+        // 填充当前登录用户的点赞/收藏状态（服务端下发，取代前端 localStorage 推断）
+        pictureInteractionService.fillInteractionState(
+                Collections.singletonList(pictureVO), tryGetLoginUserId(request));
         return pictureVO;
+    }
+
+    /**
+     * 尽力获取当前登录用户 id；未登录或会话失效时返回 null（详情接口允许匿名访问）
+     */
+    private Long tryGetLoginUserId(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        try {
+            User loginUser = userService.getLoginUser(request);
+            return loginUser == null ? null : loginUser.getId();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -319,6 +393,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
             pictureVO.setUser(userService.getUserVO(user));
         });
+        // 批量填充当前登录用户的点赞/收藏状态（两个 IN 查询完成整页，避免 N+1）
+        pictureInteractionService.fillInteractionState(pictureVOList, tryGetLoginUserId(request));
         pictureVOPage.setRecords(pictureVOList);
         return pictureVOPage;
     }
@@ -666,7 +742,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             return;
         }
         // 先删除数据库记录，再清理对象存储文件（文件清理为异步、失败不影响记录删除）
-        this.removeByIds(pictureList.stream().map(Picture::getId).collect(Collectors.toList()));
+        List<Long> pictureIds = pictureList.stream().map(Picture::getId).collect(Collectors.toList());
+        transactionTemplate.execute(status -> {
+            this.removeByIds(pictureIds);
+            // 一并清理这批图片的互动数据，避免关联表残留孤儿记录
+            pictureIds.forEach(pictureInteractionService::cleanUpByPictureId);
+            return true;
+        });
         pictureList.forEach(this::clearPictureFile);
     }
 
@@ -686,6 +768,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 操作数据库
             boolean result = this.removeById(pictureId);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+            // 清理该图片的互动数据（点赞、收藏、评论、浏览历史、分享链接）
+            // 放在同一事务内：避免图片已删但关联记录残留，出现指向不存在图片的孤儿数据
+            pictureInteractionService.cleanUpByPictureId(pictureId);
             // 更新空间的使用额度，释放额度
             if (oldPicture.getSpaceId() != null) {
                 boolean update = spaceService.lambdaUpdate()
@@ -927,23 +1012,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     /**
-     * 图片点赞 / 取消点赞：使用 SQL 原子自增自减，取消时保证下限为 0
+     * 图片点赞 / 取消点赞
+     *
+     * <p>【点赞去重】原实现直接 {@code likeCount = likeCount + 1}，
+     * 没有任何"谁赞过"的记录，导致同一用户可无限次点赞把计数刷高
+     * （连点、脚本、并发请求都能触发）。</p>
+     *
+     * <p>现改为：计数是否变更由 {@code picture_like} 表的写入结果决定 ——
+     * 唯一索引 {@code uk_pictureId_userId} + {@code INSERT IGNORE} 使重复点赞自然失效，
+     * 记录与计数同事务提交。具体逻辑见
+     * {@link PictureInteractionService#like(long, long, boolean)}。</p>
+     *
+     * @param pictureId 图片 id
+     * @param userId    当前登录用户 id（由 Controller 保证非空，计数去重必须绑定到具体用户）
+     * @param isLike    是否点赞
+     * @return 操作后的点赞数
      */
-    @Override
-    public int likePicture(long pictureId, boolean isLike) {
-        Picture picture = this.getById(pictureId);
-        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-        UpdateWrapper<Picture> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.eq("id", pictureId);
-        if (isLike) {
-            updateWrapper.setSql("likeCount = likeCount + 1");
-        } else {
-            updateWrapper.setSql("likeCount = GREATEST(likeCount - 1, 0)");
-        }
-        boolean updated = this.update(updateWrapper);
-        ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "操作失败");
-        int current = picture.getLikeCount() == null ? 0 : picture.getLikeCount();
-        return isLike ? current + 1 : Math.max(current - 1, 0);
+    public int likePicture(long pictureId, long userId, boolean isLike) {
+        return pictureInteractionService.like(pictureId, userId, isLike);
     }
 }
 

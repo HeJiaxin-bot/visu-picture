@@ -33,6 +33,16 @@
             <HeartOutlined v-else />
             <b>{{ picture.likeCount ?? 0 }}</b>
           </button>
+          <!-- 收藏 -->
+          <button
+            class="pill-btn favorite-btn"
+            :class="{ favorited: likeStore.isFavorited(picture.id) }"
+            @click="doFavorite"
+          >
+            <StarFilled v-if="likeStore.isFavorited(picture.id)" />
+            <StarOutlined v-else />
+            <b>{{ picture.favoriteCount ?? 0 }}</b>
+          </button>
           <button class="pill-btn" @click="doSearch">
             <SearchOutlined /> 搜图
           </button>
@@ -42,7 +52,7 @@
           <button class="pill-btn" @click="doShare">
             <ShareAltOutlined /> 分享
           </button>
-          <button v-if="canEdit" class="pill-btn" @click="doEdit">
+          <button class="pill-btn" @click="doEdit" v-if="canEdit">
             <EditOutlined /> 编辑
           </button>
           <button v-if="canDelete" class="pill-btn danger" @click="doDelete">
@@ -133,10 +143,18 @@
             </div>
           </div>
           <a-tag v-if="canSwitch" class="switch-tip">← → 切换图片</a-tag>
+
+          <!-- 评论（需先登录才能发表；匿名可读） -->
+          <a-divider class="comment-divider">
+            <span class="comment-divider-text">
+              <MessageOutlined /> 评论
+            </span>
+          </a-divider>
+          <PictureCommentPanel :picture-id="picture.id" />
         </div>
       </div>
     </a-spin>
-    <ShareModal ref="shareModalRef" :link="shareLink" />
+    <ShareModal ref="shareModalRef" :picture-id="picture.id" />
   </a-modal>
 </template>
 
@@ -153,21 +171,28 @@ import {
   ExclamationCircleOutlined,
   HeartFilled,
   HeartOutlined,
+  MessageOutlined,
   SearchOutlined,
   ShareAltOutlined,
+  StarFilled,
+  StarOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
-import { formatSize, toHexColor } from '@/utils'
+import { recordView } from '@/api/interaction.ts'
+import { firstQueryValue, formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
+import PictureCommentPanel from '@/components/PictureCommentPanel.vue'
 import { usePictureDetail } from '@/composables/usePictureDetail.ts'
 import { useLikeStore } from '@/stores/useLikeStore.ts'
+import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 const emit = defineEmits<{
   (e: 'deleted'): void
 }>()
 
 const likeStore = useLikeStore()
+const loginUserStore = useLoginUserStore()
 
 const {
   picture,
@@ -176,8 +201,6 @@ const {
   canDelete,
   fetchDetail,
   download,
-  shareLink,
-  setShareLink,
 } = usePictureDetail()
 
 const visible = ref(false)
@@ -193,6 +216,7 @@ const currentIndex = computed(() =>
 const switchTo = (id: string | number) => {
   currentId.value = id
   fetchDetail(id)
+  recordViewIfLoggedIn(id)
 }
 
 const goPrev = () => {
@@ -213,6 +237,25 @@ const openModal = (id: string | number, list?: (string | number)[]) => {
   idList.value =
     list && list.length ? list : [id]
   fetchDetail(id)
+  recordViewIfLoggedIn(id)
+}
+
+/**
+ * 记录浏览历史（仅登录用户；同一张图只保留一条记录）
+ * 静默失败：浏览历史是旁路数据，不应打断查看
+ *
+ * id 保持字符串原样：雪花 id（如 2100942816594628609）超出 JS 安全整数，
+ * 经 Number() 转换会末位失真并导致后端 404。
+ */
+const recordViewIfLoggedIn = async (id: string | number) => {
+  if (!loginUserStore.loginUser?.id) return
+  const pictureId = firstQueryValue(id)
+  if (!pictureId) return
+  try {
+    await recordView(pictureId)
+  } catch {
+    // 忽略
+  }
 }
 
 // 键盘导航
@@ -233,6 +276,11 @@ defineExpose({ openModal })
 // ----- 点赞 / 取消点赞 -----
 const doLike = () => {
   likeStore.toggle(picture.value)
+}
+
+// ----- 收藏 / 取消收藏 -----
+const doFavorite = () => {
+  likeStore.toggleFavorite(picture.value)
 }
 
 // ----- 查看作者主页 -----
@@ -323,7 +371,6 @@ const doDelete = () => {
 // ----- 分享 -----
 const shareModalRef = ref()
 const doShare = () => {
-  setShareLink()
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }
@@ -431,6 +478,27 @@ const formatDate = (time?: string) => {
   color: #ff4d6a;
   border-color: rgba(255, 77, 106, 0.5);
   background: rgba(255, 77, 106, 0.08);
+}
+
+/* 收藏按钮选中态 */
+.favorite-btn.favorited {
+  color: #faad14;
+  border-color: rgba(250, 173, 20, 0.55);
+  background: rgba(250, 173, 20, 0.1);
+}
+
+/* 评论区标题分隔线 */
+.comment-divider {
+  margin: 14px 0 10px;
+}
+
+.comment-divider-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* 主体布局：左大图 + 右信息栏 */

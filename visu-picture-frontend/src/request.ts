@@ -1,6 +1,16 @@
 import axios from "axios";
 import {message} from "ant-design-vue";
 
+// 扩展 Axios 请求配置类型：OpenAPI 生成的接口代码会传 requestType: 'form'，
+// 这是 umi/openapi 生成器的约定字段，axios 本身不识别但会在适配器层被处理，
+// 因此需要在此声明，否则生成的 api/*.ts 全部报 TS2353。
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** OpenAPI 生成代码使用：标记表单请求（实际由 requestType 适配器处理） */
+    requestType?: string
+  }
+}
+
 // 区分开发和生产环境
 const DEV_BASE_URL = "http://localhost:8123";
 // APP 打包（Capacitor）时由 .env.app 注入公网 API 地址；

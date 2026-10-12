@@ -8,7 +8,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.visupicture.annotation.AuditLog;
 import com.visupicture.annotation.AuthCheck;
+import com.visupicture.annotation.RateLimit;
 import com.visupicture.api.aliyunai.AliYunAiApi;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.visupicture.api.aliyunai.model.GetOutPaintingTaskResponse;
@@ -92,6 +94,8 @@ public class PictureController {
      */
     @PostMapping("/upload")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
+    @RateLimit(count = 20, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "上传过于频繁，请稍后再试")
 //    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
@@ -107,6 +111,8 @@ public class PictureController {
      */
     @PostMapping("/upload/url")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
+    @RateLimit(count = 20, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "上传过于频繁，请稍后再试")
     public BaseResponse<PictureVO> uploadPictureByUrl(
             @RequestBody PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
@@ -118,21 +124,15 @@ public class PictureController {
 
     /**
      * 图片点赞 / 取消点赞（需登录）
+     *
+     * <p>已迁移至 {@link PictureInteractionController#likePicture}：
+     * 点赞需要按用户去重（依赖 picture_like 表），故该方法连同 @PostMapping("/like")
+     * 一并移到互动控制器，此处不再保留映射，避免路径冲突。</p>
      */
-    @PostMapping("/like")
-    public BaseResponse<Integer> likePicture(@RequestBody PictureLikeRequest pictureLikeRequest
-            , HttpServletRequest request) {
-        ThrowUtils.throwIf(pictureLikeRequest == null || pictureLikeRequest.getPictureId() == null
-                || pictureLikeRequest.getPictureId() <= 0, ErrorCode.PARAMS_ERROR);
-        // 未登录时 getLoginUser 会抛出业务异常，前端据此提示登录
-        userService.getLoginUser(request);
-        boolean isLike = Boolean.TRUE.equals(pictureLikeRequest.getIsLike());
-        int likeCount = pictureService.likePicture(pictureLikeRequest.getPictureId(), isLike);
-        return ResultUtils.success(likeCount);
-    }
-
     @PostMapping("/delete")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
+    @AuditLog(module = "picture", action = "delete", targetType = "picture",
+            targetIdParam = "deleteRequest", description = "删除图片")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest
             , HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
@@ -152,6 +152,8 @@ public class PictureController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuditLog(module = "picture", action = "update", targetType = "picture",
+            targetIdParam = "pictureUpdateRequest", description = "管理员更新图片")
     public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,
                                                HttpServletRequest request) {
         if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
@@ -345,6 +347,8 @@ public class PictureController {
      */
     @PostMapping("/edit")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
+    @AuditLog(module = "picture", action = "edit", targetType = "picture",
+            targetIdParam = "pictureEditRequest", description = "编辑图片")
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
         if (pictureEditRequest == null || pictureEditRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -382,6 +386,8 @@ public class PictureController {
      */
     @PostMapping("/review")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuditLog(module = "picture", action = "review", targetType = "picture",
+            targetIdParam = "pictureReviewRequest", description = "图片审核")
     public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest,
                                                  HttpServletRequest request) {
         ThrowUtils.throwIf(pictureReviewRequest == null, ErrorCode.PARAMS_ERROR);

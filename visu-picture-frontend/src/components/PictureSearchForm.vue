@@ -77,8 +77,9 @@ const doSearch = () => {
 }
 
 // 标签和分类选项
-const categoryOptions = ref<string[]>([])
-const tagOptions = ref<string[]>([])
+// 选项是 { value, label } 结构（供 a-select 使用），不能声明为 string[]
+const categoryOptions = ref<{ value: string; label: string }[]>([])
+const tagOptions = ref<{ value: string; label: string }[]>([])
 
 /**
  * 获取标签和分类选项
@@ -135,9 +136,12 @@ const rangePresets = ref([
 
 // 清理
 const doClear = () => {
-  // 取消所有对象的值
+  // 清空所有查询条件。用 delete 而不是赋 undefined：
+  // searchParams 声明为 API.PictureQueryRequest，其字段均为可选，
+  // 逐个赋 undefined 会因「string 索引访问具体对象」触发 TS7053，
+  // 且会把键保留为 undefined 值（对后端序列化无意义）。
   Object.keys(searchParams).forEach((key) => {
-    searchParams[key] = undefined
+    delete (searchParams as Record<string, unknown>)[key]
   })
   // 日期筛选项单独清空，必须定义为空数组
   dateRange.value = []

@@ -15,6 +15,7 @@ import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.manager.CosManager;
 import com.visupicture.model.dto.file.UploadPictureResult;
+import com.visupicture.utils.PictureHashUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Resource;
@@ -55,8 +56,17 @@ public abstract class PictureUploadTemplate {
         try {
             // 3. 创建临时文件，获取文件到服务器
             file = File.createTempFile(uploadPath, null);
-            // 处理文件来源
+            // 处理文件来源（表单文件拷贝 / URL 下载）
             processFile(inputSource, file);
+            // 【重复图片检测】对**落地后的原始文件**计算内容摘要。
+            //
+            // 为什么放在这里而不是更早：
+            //  - URL 抓取场景下，若在下载前算摘要就需要独立再下载一次（双倍带宽）；
+            //    此时临时文件正是刚下载的原始字节，直接算即可。
+            //  - 必须用原始文件而非对象存储压缩后的文件：压缩结果可能随参数变化，
+            //    只有源文件摘要才能稳定标识"同一张图重复上传"。
+            // 失败返回 null，由上层跳过去重，绝不阻断上传。
+            String picHash = PictureHashUtils.hashFileStream(file);
             // 4. 上传图片到对象存储
             PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
             // 5. 获取图片信息对象，封装返回结果
@@ -74,9 +84,13 @@ public abstract class PictureUploadTemplate {
                     thumbnailCiObject = objectList.get(1);
                 }
                 // 封装压缩图的返回结果
-                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject, imageInfo);
+                UploadPictureResult result = buildResult(originalFilename, compressedCiObject, thumbnailCiObject, imageInfo);
+                result.setPicHash(picHash);
+                return result;
             }
-            return buildResult(originalFilename, file, uploadPath, imageInfo);
+            UploadPictureResult result = buildResult(originalFilename, file, uploadPath, imageInfo);
+            result.setPicHash(picHash);
+            return result;
         } catch (Exception e) {
             log.error("图片上传到对象存储失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");

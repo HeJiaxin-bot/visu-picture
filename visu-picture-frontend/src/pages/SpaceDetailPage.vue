@@ -97,7 +97,7 @@
                 :class="space.spaceType === SPACE_TYPE_ENUM.TEAM ? 'badge-team' : 'badge-private'"
               >
                 <span class="badge-dot" />
-                {{ SPACE_TYPE_MAP[space.spaceType] }}
+                {{ SPACE_TYPE_MAP[space.spaceType ?? SPACE_TYPE_ENUM.PRIVATE] }}
               </span>
               <!-- 空间级别 -->
               <span v-if="space.spaceLevel != null" class="hero-badge" :class="levelClass(space.spaceLevel)">
@@ -422,7 +422,9 @@ const selectSpace = (spaceId: string | number) => {
 // 当前空间容量百分比（防除零 + 上限 100）
 const storagePercent = computed(() => {
   if (!space.value.maxSize || space.value.maxSize <= 0) return 0
-  return Math.min(100, Number(((space.value.totalSize * 100) / space.value.maxSize).toFixed(1)))
+  // totalSize 在类型上可选，兜底 0（新空间尚未统计时后端可能不返回）
+  const used = space.value.totalSize ?? 0
+  return Math.min(100, Number(((used * 100) / space.value.maxSize).toFixed(1)))
 })
 
 // 退出团队

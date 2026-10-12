@@ -2,7 +2,9 @@ package com.visupicture.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.visupicture.annotation.AuditLog;
 import com.visupicture.annotation.AuthCheck;
+import com.visupicture.annotation.RateLimit;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.DeleteRequest;
 import com.visupicture.common.ResultUtils;
@@ -39,8 +41,15 @@ public class UserController {
 
     /**
      * 发送邮箱注册验证码
+     *
+     * <p>限流说明：这是最容易被滥用的接口 —— 每次调用都会真实发一封邮件，
+     * 既消耗配额也可能被用来骚扰他人邮箱。因此同时限制 IP 与邮箱维度，
+     * 且阈值收紧（同一 IP 每分钟 3 次、每小时 10 次由 IP 维度覆盖）。</p>
      */
     @PostMapping("/email/code")
+    @RateLimit(count = 3, period = 60, ipCount = 3, dimension = RateLimit.Dimension.IP_AND_USER,
+            message = "验证码发送过于频繁，请稍后再试")
+    @AuditLog(module = "user", action = "send_email_code", description = "发送邮箱验证码")
     public BaseResponse<Boolean> sendEmailVerifyCode(@RequestBody EmailVerifyCodeRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         emailService.sendVerifyCode(request.getEmail());
@@ -51,6 +60,9 @@ public class UserController {
      * 用户注册（邮箱 + 密码 + 验证码 + 邀请码选填）
      */
     @PostMapping("/register")
+    @RateLimit(count = 5, period = 60, ipCount = 10, dimension = RateLimit.Dimension.IP_AND_USER,
+            message = "注册过于频繁，请稍后再试")
+    @AuditLog(module = "user", action = "register", description = "用户注册")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
         String email = userRegisterRequest.getEmail();
@@ -64,8 +76,14 @@ public class UserController {
 
     /**
      * 用户登录
+     *
+     * <p>限流说明：按 IP 限制暴力破解 —— 阈值放宽到 20 次/分钟，
+     * 因为同一出口 IP 后可能有大量正常用户（校园网/NAT）。</p>
      */
     @PostMapping("/login")
+    @RateLimit(count = 20, period = 60, dimension = RateLimit.Dimension.IP,
+            message = "登录尝试过于频繁，请稍后再试")
+    @AuditLog(module = "user", action = "login", description = "用户登录")
     public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR);
         String userAccount = userLoginRequest.getUserAccount();
@@ -97,6 +115,7 @@ public class UserController {
      * 修改密码（需登录，校验原密码）
      */
     @PostMapping("/change_password")
+    @AuditLog(module = "user", action = "change_password", description = "修改密码")
     public BaseResponse<Boolean> changePassword(@RequestBody UserChangePasswordRequest userChangePasswordRequest,
                                                 HttpServletRequest request) {
         ThrowUtils.throwIf(userChangePasswordRequest == null, ErrorCode.PARAMS_ERROR);
@@ -109,6 +128,7 @@ public class UserController {
      * 注销账号（删除账号数据并退出登录，不可恢复）
      */
     @PostMapping("/deregister")
+    @AuditLog(module = "user", action = "deregister", description = "注销账号（不可恢复）")
     public BaseResponse<Boolean> deregisterAccount(HttpServletRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
@@ -173,6 +193,8 @@ public class UserController {
      */
     @PostMapping("/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuditLog(module = "user", action = "delete", targetType = "user",
+            targetIdParam = "deleteRequest", description = "管理员删除用户")
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -186,6 +208,8 @@ public class UserController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuditLog(module = "user", action = "update", targetType = "user",
+            targetIdParam = "userUpdateRequest", description = "管理员更新用户")
     public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest) {
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -246,6 +270,8 @@ public class UserController {
      * 更新用户头像
      */
     @PostMapping("/avatar")
+    @RateLimit(count = 5, period = 300, dimension = RateLimit.Dimension.USER,
+            message = "头像上传过于频繁，请稍后再试")
     public BaseResponse<LoginUserVO> uploadAvatar(@RequestPart("file") MultipartFile file,
                                                   HttpServletRequest request) {
         ThrowUtils.throwIf(file == null || file.isEmpty(), ErrorCode.PARAMS_ERROR, "头像文件不能为空");
@@ -267,6 +293,9 @@ public class UserController {
      * 兑换会员
      */
     @PostMapping("/exchange/vip")
+    @RateLimit(count = 10, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "兑换过于频繁，请稍后再试")
+    @AuditLog(module = "user", action = "exchange_vip", description = "兑换会员")
     public BaseResponse<Boolean> exchangeVip(@RequestBody VipExchangeRequest vipExchangeRequest,
                                              HttpServletRequest httpServletRequest) {
         ThrowUtils.throwIf(vipExchangeRequest == null, ErrorCode.PARAMS_ERROR);

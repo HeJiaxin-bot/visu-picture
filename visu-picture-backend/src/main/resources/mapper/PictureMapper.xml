@@ -18,6 +18,10 @@
             <result property="picScale" column="picScale" jdbcType="DOUBLE"/>
             <result property="picFormat" column="picFormat" jdbcType="VARCHAR"/>
             <result property="picColor" column="picColor" jdbcType="VARCHAR"/>
+            <result property="picHash" column="picHash" jdbcType="VARCHAR"/>
+            <result property="isAiGenerated" column="isAiGenerated" jdbcType="TINYINT"/>
+            <result property="likeCount" column="likeCount" jdbcType="INTEGER"/>
+            <result property="favoriteCount" column="favoriteCount" jdbcType="INTEGER"/>
             <result property="userId" column="userId" jdbcType="BIGINT"/>
             <result property="spaceId" column="spaceId" jdbcType="BIGINT"/>
             <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
@@ -30,11 +34,17 @@
             <result property="reviewTime" column="reviewTime" jdbcType="TIMESTAMP"/>
     </resultMap>
 
+    <!--
+      注意：isDelete 是逻辑删除字段，直接用本列表查询会包含已删除图片。
+      走 MyBatis-Plus 的 Wrapper/selectPage 会自动追加 isDelete = 0 条件。
+    -->
     <sql id="Base_Column_List">
         id,url,thumbnailUrl,name,
         introduction,category,tags,
         picSize,picWidth,picHeight,
-        picScale,picFormat,userId,spaceId,
+        picScale,picFormat,picColor,
+        picHash,isAiGenerated,likeCount,
+        favoriteCount,userId,spaceId,
         createTime,editTime,updateTime,
         isDelete,reviewStatus,reviewMessage,
         reviewerId,reviewTime

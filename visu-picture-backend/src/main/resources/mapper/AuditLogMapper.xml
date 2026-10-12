@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.visupicture.mapper.AuditLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.visupicture.model.entity.AuditLog">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
+            <result property="module" column="module" jdbcType="VARCHAR"/>
+            <result property="action" column="action" jdbcType="VARCHAR"/>
+            <result property="targetType" column="targetType" jdbcType="VARCHAR"/>
+            <result property="targetId" column="targetId" jdbcType="BIGINT"/>
+            <result property="detail" column="detail" jdbcType="VARCHAR"/>
+            <result property="ip" column="ip" jdbcType="VARCHAR"/>
+            <result property="userAgent" column="userAgent" jdbcType="VARCHAR"/>
+            <result property="success" column="success" jdbcType="TINYINT"/>
+            <result property="errorMessage" column="errorMessage" jdbcType="VARCHAR"/>
+            <result property="costMs" column="costMs" jdbcType="BIGINT"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!--
+      审计日志无逻辑删除字段，可安全用于全量查询。
+      注意：module / action 两个字段名在 MySQL 中不是保留字，无需反引号；
+      但 action 在部分 SQL 方言中是关键字，如需迁移数据库请留意。
+    -->
+    <sql id="Base_Column_List">
+        id,userId,userAccount,
+        module,action,targetType,
+        targetId,detail,ip,
+        userAgent,success,errorMessage,
+        costMs,createTime
+    </sql>
+</mapper>

@@ -25,8 +25,8 @@ const props = withDefaults(defineProps<Props>(), {
   queryPublic: false,
 })
 
-// 图表数据
-const dataList = ref<API.SpaceSizeAnalyzeResponse>([])
+// 图表数据（泛型为数组类型：后端返回的是列表）
+const dataList = ref<API.SpaceSizeAnalyzeResponse[]>([])
 // 加载状态
 const loading = ref(true)
 

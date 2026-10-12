@@ -5,7 +5,9 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.visupicture.annotation.AuditLog;
 import com.visupicture.annotation.AuthCheck;
+import com.visupicture.annotation.RateLimit;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.DeleteRequest;
 import com.visupicture.common.ResultUtils;
@@ -63,6 +65,9 @@ public class SpaceController {
     private PictureService pictureService;
 
     @PostMapping("/add")
+    @RateLimit(count = 5, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "创建空间过于频繁，请稍后再试")
+    @AuditLog(module = "space", action = "create", targetType = "space", description = "创建空间")
     public BaseResponse<Long> addSpace(@RequestBody SpaceAddRequest spaceAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(spaceAddRequest == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
@@ -71,6 +76,8 @@ public class SpaceController {
     }
 
     @PostMapping("/delete")
+    @AuditLog(module = "space", action = "delete", targetType = "space",
+            targetIdParam = "deleteRequest", description = "删除空间（连带图片）")
     public BaseResponse<Boolean> deleteSpace(@RequestBody DeleteRequest deleteRequest
             , HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
@@ -106,6 +113,8 @@ public class SpaceController {
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.DEFAULT_ROLE)
+    @AuditLog(module = "space", action = "update", targetType = "space",
+            targetIdParam = "spaceUpdateRequest", description = "更新空间")
     public BaseResponse<Boolean> updateSpace(@RequestBody SpaceUpdateRequest spaceUpdateRequest,
                                              HttpServletRequest request) {
         if (spaceUpdateRequest == null || spaceUpdateRequest.getId() <= 0) {

@@ -290,7 +290,7 @@ import {
   updateMyInfoUsingPost,
   uploadAvatarUsingPost,
 } from '@/api/userController.ts'
-import type { UploadProps } from 'ant-design-vue'
+import type { UploadFile, UploadProps } from 'ant-design-vue'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
@@ -496,12 +496,15 @@ const avatarUploading = ref(false)
 /**
  * 上传前校验（与图片上传一致的格式与大小限制）
  */
-const beforeAvatarUpload = (file: UploadProps['fileList'][number]) => {
-  const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+// 参数类型用 UploadFile 而非 UploadProps['fileList'][number]：
+// 后者是 UploadFile[] | undefined，对可空数组取下标会报 TS2537
+const beforeAvatarUpload = (file: UploadFile) => {
+  // file.type / file.size 在类型上可选，缺失时按"不支持/0 字节"处理
+  const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type ?? '')
   if (!isImage) {
     message.error('不支持上传该格式的图片，推荐 jpg 或 png')
   }
-  const isLt2M = file.size / 1024 / 1024 < 2
+  const isLt2M = (file.size ?? 0) / 1024 / 1024 < 2
   if (!isLt2M) {
     message.error('头像图片不能超过 2MB')
   }

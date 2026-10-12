@@ -79,6 +79,10 @@
                   <div class="item-title">发布消息</div>
                   <div class="item-desc">向用户推送站内通知</div>
                 </div>
+                <div class="team-panel-item" @click="router.push('/admin/auditLog')">
+                  <div class="item-title">操作审计日志</div>
+                  <div class="item-desc">关键操作留痕与追溯</div>
+                </div>
               </div>
             </template>
           </a-dropdown>
@@ -210,6 +214,13 @@
                     </div>
                     <div
                       class="team-panel-item user-panel-item"
+                      @click="router.push('/my/interaction')"
+                    >
+                      <StarOutlined class="item-icon" />
+                      <span>我的收藏</span>
+                    </div>
+                    <div
+                      class="team-panel-item user-panel-item"
                       @click="router.push('/user/settings')"
                     >
                       <SettingOutlined class="item-icon" />
@@ -303,6 +314,10 @@
             <span>消息中心</span>
             <span v-if="unreadCount > 0" class="drawer-badge">{{ badgeText }}</span>
           </div>
+          <div class="drawer-item" @click="go('/my/interaction')">
+            <StarOutlined class="drawer-icon" />
+            <span>我的收藏</span>
+          </div>
           <div class="drawer-item" @click="go('/user/invite')">
             <GiftOutlined class="drawer-icon" />
             <span>会员中心</span>
@@ -329,6 +344,10 @@
           <div class="drawer-item" @click="go('/admin/notification')">
             <BellOutlined class="drawer-icon" />
             <span>发布消息</span>
+          </div>
+          <div class="drawer-item" @click="go('/admin/auditLog')">
+            <DeploymentUnitOutlined class="drawer-icon" />
+            <span>操作审计日志</span>
           </div>
         </div>
       </template>
@@ -368,6 +387,7 @@ import {
   CrownFilled,
   BellOutlined,
   DeploymentUnitOutlined,
+  StarOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter, useRoute } from 'vue-router'

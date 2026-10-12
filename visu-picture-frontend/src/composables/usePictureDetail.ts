@@ -2,7 +2,8 @@ import { computed, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { getPictureVoByIdUsingGet } from '@/api/pictureController.ts'
 import { SPACE_PERMISSION_ENUM } from '@/constants/space.ts'
-import { downloadImage } from '@/utils'
+import { downloadImage, firstQueryValue } from '@/utils'
+import { useLikeStore } from '@/stores/useLikeStore.ts'
 
 /**
  * 图片详情逻辑（数据拉取 + 权限判断 + 下载/分享）
@@ -11,6 +12,7 @@ import { downloadImage } from '@/utils'
 export function usePictureDetail() {
   const loading = ref(false)
   const picture = ref<API.PictureVO>({})
+  const likeStore = useLikeStore()
 
   // 权限判定（基于后端下发的 permissionList）
   const canEdit = computed(() =>
@@ -22,13 +24,27 @@ export function usePictureDetail() {
 
   /**
    * 拉取图片详情，成功返回 true，失败返回 false
+   *
+   * ⚠️ id 必须原样传递（字符串），**不能**转成 Number：
+   * 后端 JsonConfig 把 Long 序列化为 String 正是为了规避 JS 精度丢失
+   *（雪花 id 如 2100942816594628609 超出 Number.MAX_SAFE_INTEGER，
+   *  Number("2100942816594628609") === 2100942816594628600，末位被抹掉，接口会返回 404）。
+   * 这里只做「数组取值 + 空值判断」，保持原始字符串形态。
    */
   const fetchDetail = async (id: string | number) => {
     loading.value = true
     try {
-      const res = await getPictureVoByIdUsingGet({ id })
+      const pictureId = firstQueryValue(id)
+      if (!pictureId) {
+        message.error('图片 id 不合法')
+        return false
+      }
+      const res = await getPictureVoByIdUsingGet({ id: pictureId })
       if (res.data.code === 0 && res.data.data) {
         picture.value = res.data.data
+        // 用服务端下发的 isLiked / isFavorited 校准本地状态，
+        // 避免换设备或清缓存后点赞/收藏图标显示错误
+        likeStore.syncFromServer([res.data.data])
         return true
       }
       message.error('获取图片详情失败，' + res.data.message)
@@ -46,7 +62,7 @@ export function usePictureDetail() {
     downloadImage(picture.value.url)
   }
 
-  // 分享链接（指向详情页，供分享模块使用）
+  // 分享链接（指向详情页，供不需要后端分享码的场景复用）
   const shareLink = ref<string>()
   const setShareLink = () => {
     shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.value.id}`

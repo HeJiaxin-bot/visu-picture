@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.visupicture.mapper.PictureCommentMapper">
+
+    <resultMap id="BaseResultMap" type="com.visupicture.model.entity.PictureComment">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="pictureId" column="pictureId" jdbcType="BIGINT"/>
+            <result property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="content" column="content" jdbcType="VARCHAR"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+            <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!--
+      注意：查询请勿直接使用 Base_Column_List —— isDelete 是逻辑删除字段，
+      未过滤时会把已删除评论一并查出。走 MyBatis-Plus 的 Wrapper/selectPage
+      会自动追加 isDelete = 0 条件。
+    -->
+    <sql id="Base_Column_List">
+        id,pictureId,userId,
+        content,createTime,updateTime,
+        isDelete
+    </sql>
+</mapper>

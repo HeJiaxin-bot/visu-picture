@@ -100,6 +100,19 @@ sa-token:
 # 此处仅保留「本地开发」作为兜底默认值，避免未指定 profile 时跨域全被拦。
 cors:
   allowed-origins: http://localhost:5173,http://localhost:8123,http://127.0.0.1:5173,https://localhost,capacitor://localhost
+
+# 业务开关
+app:
+  # 站点地址：用于拼接「分享链接」的完整绝对地址。
+  # 各环境不同，需在 profile 中覆盖（线上为 https://www.visuhoriz.cn）；
+  # 此处留空表示后端返回相对路径 /share/{code}，由前端按当前 origin 自动补全。
+  # 刻意不写死 localhost：否则线上分享出去的链接会指向 localhost 而无法打开。
+  site-url: ""
+  duplicate-picture:
+    # 是否拦截重复图片上传（同一空间内 picHash 相同即判定为重复）。
+    # 关闭后仅记录 picHash、不做拦截，便于排查误判场景（例如确实需要重复上传同一文件）。
+    reject: true
+
 ## 对象存储配置（需要从腾讯云获取）
 #cos:
 #  client:

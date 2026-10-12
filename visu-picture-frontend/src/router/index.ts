@@ -25,6 +25,9 @@ const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
 const UserProfilePage = () => import('@/pages/user/UserProfilePage.vue')
 const NotificationPage = () => import('@/pages/user/NotificationPage.vue')
 const TechStackPage = () => import('@/pages/TechStackPage.vue')
+const MyInteractionPage = () => import('@/pages/MyInteractionPage.vue')
+const PublicSharePage = () => import('@/pages/PublicSharePage.vue')
+const AuditLogPage = () => import('@/pages/admin/AuditLogPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -141,6 +144,23 @@ const router = createRouter({
       path: '/tech-stack',
       name: '技术栈全景图',
       component: TechStackPage,
+    },
+    {
+      path: '/my/interaction',
+      name: '我的互动',
+      component: MyInteractionPage,
+    },
+    {
+      // 公开分享页：无需登录，凭 shareCode 访问
+      path: '/share/:shareCode',
+      name: '图片分享',
+      component: PublicSharePage,
+      props: true,
+    },
+    {
+      path: '/admin/auditLog',
+      name: '操作审计日志',
+      component: AuditLogPage,
     },
     {
       path: '/user/:id',

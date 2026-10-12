@@ -350,11 +350,12 @@ const doDelete = async (id: string) => {
 }
 
 // 审核图片（按行加锁，避免重复提交）
+// 锁的值统一为字符串：record.id 可能是 string（雪花 id 序列化为字符串）或 number
 const reviewingId = ref<string>('')
 const handleReview = async (record: API.Picture, reviewStatus: number) => {
   const reviewMessage =
     reviewStatus === PIC_REVIEW_STATUS_ENUM.PASS ? '管理员操作通过' : '管理员操作拒绝'
-  reviewingId.value = record.id ?? ''
+  reviewingId.value = record.id == null ? '' : String(record.id)
   try {
     const res = await doPictureReviewUsingPost({
       id: record.id,

@@ -108,6 +108,22 @@ public class PictureVO implements Serializable {
     private Integer likeCount;
 
     /**
+     * 收藏数
+     */
+    private Integer favoriteCount;
+
+    /**
+     * 当前登录用户是否已点赞（未登录时为 false）
+     * 由服务端下发，取代前端 localStorage 的本地推断，多端/清缓存后状态依然准确
+     */
+    private Boolean isLiked;
+
+    /**
+     * 当前登录用户是否已收藏（未登录时为 false）
+     */
+    private Boolean isFavorited;
+
+    /**
      * 用户 id
      */
     private Long userId;
@@ -141,6 +157,11 @@ public class PictureVO implements Serializable {
      * 权限列表
      */
     private List<String> permissionList = new ArrayList<>();
+
+    /**
+     * 图片内容 SHA-256（重复检测用；对外一般无意义，但后台管理需要看到）
+     */
+    private String picHash;
 
     private static final long serialVersionUID = 1L;
 

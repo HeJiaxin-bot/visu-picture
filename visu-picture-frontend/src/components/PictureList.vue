@@ -65,15 +65,28 @@
                 </a-avatar>
                 <span class="author-name">{{ cell.picture.user?.userName ?? '未知用户' }}</span>
               </div>
-              <div
-                class="pic-like"
-                :class="{ liked: likeStore.isLiked(cell.picture.id) }"
-                title="点赞"
-                @click.stop="doLike(cell.picture)"
-              >
-                <HeartFilled v-if="likeStore.isLiked(cell.picture.id)" />
-                <HeartOutlined v-else />
-                {{ formatCount(cell.picture.likeCount ?? 0) }}
+              <div class="meta-actions">
+                <!-- 收藏 -->
+                <div
+                  class="pic-favorite"
+                  :class="{ favorited: likeStore.isFavorited(cell.picture.id) }"
+                  title="收藏"
+                  @click.stop="doFavorite(cell.picture)"
+                >
+                  <StarFilled v-if="likeStore.isFavorited(cell.picture.id)" />
+                  <StarOutlined v-else />
+                </div>
+                <!-- 点赞 -->
+                <div
+                  class="pic-like"
+                  :class="{ liked: likeStore.isLiked(cell.picture.id) }"
+                  title="点赞"
+                  @click.stop="doLike(cell.picture)"
+                >
+                  <HeartFilled v-if="likeStore.isLiked(cell.picture.id)" />
+                  <HeartOutlined v-else />
+                  {{ formatCount(cell.picture.likeCount ?? 0) }}
+                </div>
               </div>
             </div>
           </div>
@@ -85,7 +98,7 @@
       <a-spin v-if="loading && dataList.length > 0" size="small" />
       <span v-else-if="finished" class="no-more-text">没有更多了</span>
     </div>
-    <ShareModal ref="shareModalRef" :link="shareLink" />
+    <ShareModal ref="shareModalRef" :picture-id="sharePictureId" />
     <!-- 图片详情弹窗 -->
     <PictureDetailModal ref="detailModalRef" @deleted="handleDetailDeleted" />
   </div>
@@ -100,6 +113,8 @@ import {
   HeartOutlined,
   SearchOutlined,
   ShareAltOutlined,
+  StarFilled,
+  StarOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
@@ -282,12 +297,29 @@ watch(
 )
 
 const router = useRouter()
-// 点赞状态管理
+// 点赞 / 收藏状态管理
 const likeStore = useLikeStore()
+
+/**
+ * 列表数据变化时用服务端状态校准本地点赞/收藏标记
+ * （服务端在 VO 上下发 isLiked / isFavorited，是唯一事实来源）
+ */
+watch(
+  () => props.dataList,
+  (list) => {
+    likeStore.syncFromServer(list)
+  },
+  { immediate: true, deep: false },
+)
 
 // 点赞 / 取消点赞
 const doLike = (picture: API.PictureVO) => {
   likeStore.toggle(picture)
+}
+
+// 收藏 / 取消收藏
+const doFavorite = (picture: API.PictureVO) => {
+  likeStore.toggleFavorite(picture)
 }
 
 // 查看作者主页
@@ -361,13 +393,14 @@ const doDelete = async (picture: API.PictureVO, e: Event) => {
 
 // ----- 分享操作 ----
 const shareModalRef = ref()
-// 分享链接
-const shareLink = ref<string>('')
+// 当前要分享的图片 id（由 ShareModal 负责创建/查询后端分享链接）
+// 保持 string | number：后端把 Long 序列化为 String，转 Number 会丢精度
+const sharePictureId = ref<string | number>()
 // 分享
 const doShare = (picture: API.PictureVO, e: Event) => {
   // 阻止冒泡
   e.stopPropagation()
-  shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.id}`
+  sharePictureId.value = picture.id
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }
@@ -501,6 +534,33 @@ html.dark .pic-name {
 .pic-like.liked {
   color: #ff4d6a;
   font-weight: 600;
+}
+
+/* 收藏：与点赞并列，选中态用金色区分语义 */
+.meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pic-favorite {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition:
+    color 0.2s,
+    transform 0.15s;
+}
+
+.pic-favorite:hover {
+  color: #faad14;
+  transform: scale(1.15);
+}
+
+.pic-favorite.favorited {
+  color: #faad14;
 }
 
 /* AI 生成内容标识：右上角常显 */

@@ -181,6 +181,7 @@ import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-desi
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
+import { toNumberOrUndefined } from '@/utils'
 
 const router = useRouter()
 const route = useRoute()
@@ -219,9 +220,9 @@ const formatPicSize = (size: number) => {
     : `${(size / 1024).toFixed(1)} KB`
 }
 // 空间 id
-const spaceId = computed(() => {
-  return route.query?.spaceId
-})
+// route.query 的值是 string | null | (string|null)[]，而子组件与接口都要求 number，
+// 因此统一归一化为 number | undefined（非法值返回 undefined = 未指定空间）
+const spaceId = computed<number | undefined>(() => toNumberOrUndefined(route.query?.spaceId))
 
 // 批量上传入口（带上当前空间，保持上传目标一致）
 const batchUploadPath = computed(() =>
@@ -353,9 +354,10 @@ const handleSubmit = async () => {
       return
     }
     // 表单未使用 a-form-item，@finish 回传的 values 为空，直接取 pictureForm 的当前值
+    // 注意：后端 PictureEditRequest 并没有 spaceId 字段（已核对 DTO），
+    // 原先多传的 spaceId 会被 Jackson 静默忽略。这里去掉以免造成"能改空间"的误解。
     const res = await editPictureUsingPost({
       id: pictureId,
-      spaceId: spaceId.value,
       name: pictureForm.name,
       introduction: pictureForm.introduction,
       category: pictureForm.category,
@@ -401,8 +403,8 @@ const handleSubmit = async () => {
 
 // 获取老数据
 const getOldPicture = async () => {
-  // 获取到 id
-  const id = route.query?.id
+  // 获取到 id（route.query.id 需归一化为数字后传给接口）
+  const id = toNumberOrUndefined(route.query?.id)
   if (id) {
     const res = await getPictureVoByIdUsingGet({
       id,

@@ -158,6 +158,9 @@
                     <source>11</source>
                     <target>11</target>
                     <encoding>UTF-8</encoding>
+                    <!-- 保留方法参数名：操作审计切面需要按参数名提取目标 id，
+                         同时让 Spring 的 @RequestParam/@PathVariable 无需显式写 name -->
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
             <plugin>

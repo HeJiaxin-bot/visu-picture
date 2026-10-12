@@ -7,11 +7,13 @@
     <resultMap id="BaseResultMap" type="com.visupicture.model.entity.User">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
+            <result property="email" column="email" jdbcType="VARCHAR"/>
             <result property="userPassword" column="userPassword" jdbcType="VARCHAR"/>
             <result property="userName" column="userName" jdbcType="VARCHAR"/>
             <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
             <result property="userProfile" column="userProfile" jdbcType="VARCHAR"/>
             <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
+            <result property="isVip" column="isVip" jdbcType="TINYINT"/>
             <result property="editTime" column="editTime" jdbcType="TIMESTAMP"/>
             <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
@@ -19,13 +21,23 @@
             <result property="vipExpireTime" column="vipExpireTime" jdbcType="TIMESTAMP"/>
             <result property="vipCode" column="vipCode" jdbcType="VARCHAR"/>
             <result property="vipNumber" column="vipNumber" jdbcType="BIGINT"/>
+            <result property="points" column="points" jdbcType="INTEGER"/>
+            <result property="lastSignInTime" column="lastSignInTime" jdbcType="TIMESTAMP"/>
+            <result property="inviteCode" column="inviteCode" jdbcType="VARCHAR"/>
+            <result property="inviterId" column="inviterId" jdbcType="BIGINT"/>
     </resultMap>
 
+    <!--
+      注意：userPassword 属敏感字段，返回给前端前必须经 UserVO/LoginUserVO 脱敏。
+      isDelete 是逻辑删除字段，走 MyBatis-Plus 的 Wrapper 会自动追加 isDelete = 0。
+    -->
     <sql id="Base_Column_List">
-        id,userAccount,userPassword,
-        userName,userAvatar,userProfile,
-        userRole,editTime,createTime,
-        updateTime,isDelete,vipExpireTime,
-        vipCode,vipNumber
+        id,userAccount,email,
+        userPassword,userName,userAvatar,
+        userProfile,userRole,isVip,
+        editTime,createTime,updateTime,
+        isDelete,vipExpireTime,vipCode,
+        vipNumber,points,lastSignInTime,
+        inviteCode,inviterId
     </sql>
 </mapper>

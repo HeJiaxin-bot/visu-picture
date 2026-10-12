@@ -54,6 +54,20 @@ public interface NotificationService extends IService<Notification> {
     int sendSystemNotification(String title, String content, Long targetUserId);
 
     /**
+     * 发送互动通知（如有人评论了你的图片）
+     *
+     * @param targetUserId 接收者（图片作者）id
+     * @param actorName    触发者昵称
+     * @param actionText   行为描述，如「评论了」
+     * @param picId        关联图片 id
+     * @param picName      图片名称
+     * @param picThumbnail 图片缩略图
+     * @param content      互动内容摘要（评论正文）
+     */
+    void sendInteractionNotification(Long targetUserId, String actorName, String actionText,
+                                     Long picId, String picName, String picThumbnail, String content);
+
+    /**
      * 分页查询我的通知（按时间倒序）
      *
      * @param userId   用户 id

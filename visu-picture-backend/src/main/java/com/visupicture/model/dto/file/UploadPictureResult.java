@@ -52,4 +52,11 @@ public class UploadPictureResult {
      * 图片主色调
      */
     private String picColor;
+
+    /**
+     * 图片内容 SHA-256（用于重复图片检测）
+     * <p>注意：这是<b>原始输入文件</b>的摘要，不是压缩后文件的摘要 ——
+     * 同一源文件无论被压缩成什么样，摘要都相同，重复检测才成立。</p>
+     */
+    private String picHash;
 }

@@ -1,9 +1,16 @@
 export default class PictureEditWebSocket {
-  private pictureId: number
+  /**
+   * 图片 id：保持字符串形态
+   *
+   * 雪花 id（如 2100942816594628609）超出 JS 安全整数范围，转 Number 会末位失真，
+   * 导致 WebSocket 握手参数与服务端记录对不上。后端把 Long 序列化为 String
+   * 正是为此，这里沿用同样约定。
+   */
+  private pictureId: string | number
   private socket: WebSocket | null
   private eventHandlers: any
 
-  constructor(pictureId: number) {
+  constructor(pictureId: string | number) {
     this.pictureId = pictureId // 当前编辑的图片 ID
     this.socket = null // WebSocket 实例
     this.eventHandlers = {} // 自定义事件处理器

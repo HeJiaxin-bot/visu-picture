@@ -102,7 +102,7 @@ const expandScale = ref<number>(1.3)
 const prompt = ref<string>('')
 
 // 任务 id
-const taskId = ref<string>()
+const taskId = ref<string | undefined>()
 
 // 模拟进度：阿里云无百分比进度，按预估耗时用减速曲线估算，封顶 99%，任务完成跳 100%
 const progress = ref<number>(0)
@@ -150,8 +150,18 @@ const createTask = async () => {
   const res = await createPictureOutPaintingTaskUsingPost(params)
   if (res.data.code === 0 && res.data.data) {
     message.success('创建任务成功，请耐心等待，不要退出界面')
-    console.log(res.data.data.output.taskId)
-    taskId.value = res.data.data.output.taskId
+    // output 在类型上可选（服务端异常时可能缺失），取值前先判空，避免运行时 undefined 崩溃
+    const taskOutput = res.data.data.output
+    if (!taskOutput?.taskId) {
+      Modal.error({
+        title: '创建扩图任务失败',
+        content: '服务端未返回任务 id，请稍后重试',
+        centered: true,
+      })
+      return
+    }
+    console.log(taskOutput.taskId)
+    taskId.value = taskOutput.taskId
     // 扣了积分，刷新登录用户信息以更新剩余积分
     loginUserStore.fetchLoginUser()
     // 启动模拟进度
@@ -168,7 +178,9 @@ const createTask = async () => {
 }
 
 // 轮询定时器
-let pollingTimer: NodeJS.Timeout = null
+// 用 ReturnType<typeof setInterval> 而非 NodeJS.Timeout：
+// 后者需要 @types/node 的全局命名空间，在浏览器端代码里引用会报 TS2503
+let pollingTimer: ReturnType<typeof setInterval> | null = null
 
 // 开始轮询
 const startPolling = () => {
@@ -183,6 +195,10 @@ const startPolling = () => {
       })
       if (res.data.code === 0 && res.data.data) {
         const taskResult = res.data.data.output
+        // output 类型上可选：缺失时直接跳过本轮，等下一次轮询
+        if (!taskResult) {
+          return
+        }
         if (taskResult.taskStatus === 'SUCCEEDED') {
           message.success('扩图任务执行成功')
           // 专用扩图模型返回 outputImageUrl，万相编辑模型返回 results[0].url
@@ -205,9 +221,9 @@ const startPolling = () => {
           })
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('扩图任务轮询失败', error)
-      message.error('扩图任务轮询失败，' + error.message)
+      message.error('扩图任务轮询失败，' + (error?.message ?? ''))
       // 清理轮询
       clearPolling()
     }
@@ -219,7 +235,7 @@ const clearPolling = () => {
   if (pollingTimer) {
     clearInterval(pollingTimer)
     pollingTimer = null
-    taskId.value = null
+    taskId.value = undefined
   }
   stopProgress()
 }
@@ -253,9 +269,9 @@ const handleUpload = async () => {
     } else {
       message.error('图片上传失败，' + res.data.message)
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('图片上传失败', error)
-    message.error('图片上传失败，' + error.message)
+    message.error('图片上传失败，' + (error?.message ?? ''))
   }
   uploadLoading.value = false
 }

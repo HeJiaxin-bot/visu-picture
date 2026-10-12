@@ -157,7 +157,7 @@ import {
 } from '@/api/spaceController.ts'
 import { useRoute, useRouter } from 'vue-router'
 import { SPACE_LEVEL_ENUM, SPACE_TYPE_ENUM, SPACE_TYPE_MAP } from '@/constants/space.ts'
-import { formatSize } from '../utils'
+import { firstQueryValue, formatSize } from '../utils'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 // 空间级别图标
@@ -345,14 +345,17 @@ const handleSubmit = async (values: any) => {
       })
     }
     if (res.data.code === 0 && res.data.data) {
+      // data 是 BaseResponseLong_，类型为 number（后端 Long 序列化为字符串的只是实体 id 字段，
+      // 这里的结果值由接口单独定义）。显式取 string 形态以便后续统一按 id 语义传递。
+      targetSpaceId = firstQueryValue(res.data.data)
       if (!targetSpaceId) {
-        targetSpaceId = res.data.data
+        message.warning('未获取到新空间 id，封面未上传')
       }
       // 上传封面（失败不阻断主流程）
       if (coverFile.value && targetSpaceId) {
         try {
           const coverRes = await uploadSpaceCoverUsingPost(
-            { spaceId: targetSpaceId as number },
+            { spaceId: targetSpaceId },
             coverFile.value,
           )
           if (coverRes.data.code !== 0) {

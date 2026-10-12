@@ -29,7 +29,7 @@
           <a-select
             v-model:value="record.spaceRole"
             :options="SPACE_ROLE_OPTIONS"
-            @change="(value) => editSpaceRole(value, record)"
+            @change="(value: string) => editSpaceRole(value, record)"
           />
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
@@ -139,7 +139,7 @@ const handleSubmit = async () => {
 }
 
 // 编辑成员角色
-const editSpaceRole = async (value, record) => {
+const editSpaceRole = async (value: string, record: API.SpaceUserVO) => {
   const res = await editSpaceUserUsingPost({
     id: record.id,
     spaceRole: value,
@@ -151,8 +151,8 @@ const editSpaceRole = async (value, record) => {
   }
 }
 
-// 删除数据
-const doDelete = async (id: string) => {
+// 删除数据（id 走字符串形态，见 utils/firstQueryValue 的说明：雪花 id 不可转 Number）
+const doDelete = async (id: string | number) => {
   if (!id) {
     return
   }

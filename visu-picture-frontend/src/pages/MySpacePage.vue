@@ -31,9 +31,11 @@ const checkUserSpace = async () => {
     spaceType: SPACE_TYPE_ENUM.PRIVATE,
   })
   if (res.data.code === 0) {
+    // 取出分页记录并做空值兜底：data / records 在类型上都是可选的
+    const records = res.data.data?.records ?? []
     // 如果有，则进入第一个空间
-    if (res.data.data?.records?.length > 0) {
-      const space = res.data.data.records[0]
+    if (records.length > 0) {
+      const space = records[0]
       router.replace(`/space/${space.id}`)
     } else {
       // 如果没有，则跳转到创建空间页面

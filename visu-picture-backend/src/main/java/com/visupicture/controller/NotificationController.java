@@ -1,7 +1,9 @@
 package com.visupicture.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.visupicture.annotation.AuditLog;
 import com.visupicture.annotation.AuthCheck;
+import com.visupicture.annotation.RateLimit;
 import com.visupicture.common.BaseResponse;
 import com.visupicture.common.ResultUtils;
 import com.visupicture.constant.UserConstant;
@@ -108,6 +110,10 @@ public class NotificationController {
      */
     @PostMapping("/send")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @RateLimit(count = 10, period = 60, dimension = RateLimit.Dimension.USER,
+            message = "发布消息过于频繁，请稍后再试")
+    @AuditLog(module = "notification", action = "send", targetType = "user",
+            targetIdParam = "sendRequest", description = "管理员发布系统消息")
     public BaseResponse<Integer> sendSystemNotification(@RequestBody NotificationSendRequest sendRequest) {
         ThrowUtils.throwIf(sendRequest == null, ErrorCode.PARAMS_ERROR);
         int receiverCount = notificationService.sendSystemNotification(

@@ -45,7 +45,8 @@ import { message } from 'ant-design-vue'
 
 interface Props {
   pictureList: API.PictureVO[]
-  spaceId: number
+  /** 空间 id：路由参数传来的是字符串，接口接受 number | string（后端 Long） */
+  spaceId: number | string
   onSuccess: () => void
 }
 
@@ -98,8 +99,9 @@ const handleSubmit = async (values: any) => {
   }
 }
 
-const categoryOptions = ref<string[]>([])
-const tagOptions = ref<string[]>([])
+// 选项是 { value, label } 结构（供 a-select 使用），不能声明为 string[]
+const categoryOptions = ref<{ value: string; label: string }[]>([])
+const tagOptions = ref<{ value: string; label: string }[]>([])
 
 /**
  * 获取标签和分类选项

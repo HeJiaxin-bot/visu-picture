@@ -80,6 +80,11 @@ public class Picture implements Serializable {
     private String picColor;
 
     /**
+     * 图片内容 SHA-256（用于重复图片检测）
+     */
+    private String picHash;
+
+    /**
      * 是否 AI 生成（1-是，0-否）：AI 扩图等 AI 生成内容需标识
      */
     private Integer isAiGenerated;
@@ -88,6 +93,11 @@ public class Picture implements Serializable {
      * 点赞数
      */
     private Integer likeCount;
+
+    /**
+     * 收藏数
+     */
+    private Integer favoriteCount;
 
     /**
      * 创建用户 id
