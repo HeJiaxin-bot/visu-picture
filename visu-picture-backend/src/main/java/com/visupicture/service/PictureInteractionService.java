@@ -54,18 +54,27 @@ public interface PictureInteractionService {
     /**
      * 发表评论
      *
+     * @param parentId 被回复的评论 id；为空表示发表顶层评论
      * @return 新评论的 VO（含评论者信息）
      */
-    PictureCommentVO addComment(long pictureId, String content, User loginUser);
+    PictureCommentVO addComment(long pictureId, Long parentId, String content, User loginUser);
 
     /**
-     * 分页查询某张图片的评论
+     * 分页查询某张图片的评论（两级线程：顶层分页 + 每页首屏带前 N 条回复）
      *
      * @param loginUser 当前登录用户（用于计算 canDelete；可为 null）
      * @param sortField 排序方式：hot-按点赞数（默认）；new-按时间倒序
      */
     Page<PictureCommentVO> pageComments(long pictureId, long current, long pageSize, User loginUser,
                                         String sortField);
+
+    /**
+     * 分页获取某条顶层评论下的全部回复（展开楼中楼时调用）
+     *
+     * @param rootId 顶层评论 id
+     * @param loginUser 当前登录用户（可为 null）
+     */
+    Page<PictureCommentVO> pageReplies(long rootId, long current, long pageSize, User loginUser);
 
     /**
      * 评论点赞 / 取消点赞（幂等，与图片点赞同构）

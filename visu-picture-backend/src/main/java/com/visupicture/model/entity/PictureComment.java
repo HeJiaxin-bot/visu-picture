@@ -35,6 +35,32 @@ public class PictureComment implements Serializable {
     private Long userId;
 
     /**
+     * 父评论 id（回复时指向被回复的评论，顶层为 NULL）
+     */
+    private Long parentId;
+
+    /**
+     * 线程根评论 id（回复所属的顶层评论，顶层为 NULL）。
+     * 回复"回复"时仍指向最顶层的根，保证楼中楼只有两级展示。
+     */
+    private Long rootId;
+
+    /**
+     * 被回复用户 id
+     */
+    private Long replyToUserId;
+
+    /**
+     * 被回复用户昵称快照（用户改名后回复语境仍完整）
+     */
+    private String replyToUserName;
+
+    /**
+     * 评论者 IP 属地（省份，预留字段）
+     */
+    private String location;
+
+    /**
      * 评论内容
      */
     private String content;

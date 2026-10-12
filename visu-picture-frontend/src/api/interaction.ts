@@ -10,11 +10,19 @@ import myAxios from '@/request.ts'
  */
 export type EntityId = number | string
 
-/** 评论视图对象 */
+/** 评论视图对象（顶层含 replies 楼中楼） */
 export interface PictureCommentVO {
   id?: EntityId
   pictureId?: EntityId
   userId?: EntityId
+  /** 父评论 id（顶层为 null） */
+  parentId?: EntityId | null
+  /** 线程根评论 id（顶层为 null） */
+  rootId?: EntityId | null
+  /** 被回复用户昵称快照（回复里有） */
+  replyToUserName?: string | null
+  /** 评论者 IP 属地（省份） */
+  location?: string | null
   content?: string
   /** 点赞数 */
   likeCount?: number
@@ -24,6 +32,10 @@ export interface PictureCommentVO {
   user?: API.UserVO
   /** 当前登录用户是否有权删除该评论（本人或管理员） */
   canDelete?: boolean
+  /** 该顶层评论下的回复总数（仅顶层有值） */
+  replyCount?: number
+  /** 楼中楼回复（首屏带前 N 条，展开拉全量） */
+  replies?: PictureCommentVO[]
 }
 
 /** 分享链接视图对象 */
@@ -76,12 +88,26 @@ export async function pageMyLikes(params: { current?: number; pageSize?: number 
 }
 
 /**
- * 发表评论
+ * 发表评论 / 回复
+ * @param body.parentId 被回复的评论 id；不传表示顶层评论
  */
-export async function addComment(body: { pictureId: EntityId; content: string }) {
+export async function addComment(body: { pictureId: EntityId; parentId?: EntityId; content: string }) {
   return (await myAxios.post('/api/picture/comment/add', body)).data as {
     code: number
     data?: PictureCommentVO
+    message?: string
+  }
+}
+
+/** 分页获取某条顶层评论下的全部回复（展开楼中楼） */
+export async function pageCommentReplies(params: {
+  rootId: EntityId
+  current?: number
+  pageSize?: number
+}) {
+  return (await myAxios.get('/api/picture/comment/replies', { params })).data as {
+    code: number
+    data?: { records?: PictureCommentVO[]; total?: number; current?: number; size?: number }
     message?: string
   }
 }

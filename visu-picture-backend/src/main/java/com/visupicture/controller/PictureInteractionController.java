@@ -135,7 +135,22 @@ public class PictureInteractionController {
                 ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         return ResultUtils.success(pictureInteractionService.addComment(
-                commentAddRequest.getPictureId(), commentAddRequest.getContent(), loginUser));
+                commentAddRequest.getPictureId(), commentAddRequest.getParentId(),
+                commentAddRequest.getContent(), loginUser));
+    }
+
+    /**
+     * 分页获取某条顶层评论下的全部回复（展开楼中楼时调用；匿名可读）
+     */
+    @GetMapping("/comment/replies")
+    public BaseResponse<Page<PictureCommentVO>> pageReplies(
+            @RequestParam long rootId,
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "10") long pageSize,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(rootId <= 0 || current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(pictureInteractionService.pageReplies(
+                rootId, current, pageSize, tryGetLoginUser(request)));
     }
 
     /**

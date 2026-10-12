@@ -1,5 +1,5 @@
 <template>
-  <div class="cmt" :class="{ 'cmt--locked': !loginUser.id }">
+  <div class="cmt">
     <!-- 头部：总数 + 排序切换 -->
     <div v-if="showHeader" class="cmt__head">
       <span class="cmt__head-total">评论 <b>{{ total }}</b></span>
@@ -27,88 +27,201 @@
     <!-- 评论流 -->
     <a-spin :spinning="loading">
       <div v-if="comments.length" class="cmt__list">
-        <div v-for="item in comments" :key="String(item.id)" class="cmt__item">
-          <a-avatar
-            :size="40"
-            :src="item.user?.userAvatar"
-            class="cmt__avatar"
-            @click="goUserPage(item)"
-          >
-            <template #icon><UserOutlined /></template>
-          </a-avatar>
-
-          <div class="cmt__bubble">
-            <!-- 气泡头部：昵称 + 作者标识 + 操作 -->
-            <div class="cmt__bubble-head">
-              <span class="cmt__name" @click="goUserPage(item)">
-                {{ item.user?.userName ?? '匿名用户' }}
-              </span>
-              <span v-if="isPictureAuthor(item)" class="cmt__badge">作者</span>
-              <div class="cmt__tools">
-                <a-dropdown :trigger="['click']">
-                  <button type="button" class="cmt__icon-btn" title="更多">
-                    <EllipsisOutlined />
+        <div v-for="root in comments" :key="String(root.id)" class="cmt__thread">
+          <!-- ===== 顶层评论 ===== -->
+          <div class="cmt__item">
+            <a-avatar :size="40" :src="root.user?.userAvatar" class="cmt__avatar" @click="goUserPage(root)">
+              <template #icon><UserOutlined /></template>
+            </a-avatar>
+            <div class="cmt__main">
+              <div class="cmt__bubble">
+                <div class="cmt__bubble-head">
+                  <span class="cmt__name" @click="goUserPage(root)">
+                    {{ root.user?.userName ?? '匿名用户' }}
+                  </span>
+                  <span v-if="isPictureAuthor(root)" class="cmt__badge">作者</span>
+                  <div class="cmt__tools">
+                    <a-dropdown :trigger="['click']">
+                      <button type="button" class="cmt__icon-btn" title="更多">
+                        <EllipsisOutlined />
+                      </button>
+                      <template #overlay>
+                        <a-menu>
+                          <a-menu-item v-if="root.canDelete" key="delete" danger @click="confirmRemove(root)">
+                            <DeleteOutlined /> 删除评论
+                          </a-menu-item>
+                          <a-menu-item v-else key="report" disabled>
+                            <StopOutlined /> 举报
+                          </a-menu-item>
+                        </a-menu>
+                      </template>
+                    </a-dropdown>
+                  </div>
+                </div>
+                <div class="cmt__text">{{ root.content }}</div>
+                <div class="cmt__foot">
+                  <span class="cmt__time">{{ formatTime(root.createTime) }}</span>
+                  <span v-if="root.location" class="cmt__loc">{{ root.location }}</span>
+                  <span class="cmt__foot-gap" />
+                  <button
+                    type="button"
+                    class="cmt__like"
+                    :class="{ 'is-liked': root.isLiked }"
+                    @click="toggleLike(root)"
+                  >
+                    <HeartFilled v-if="root.isLiked" />
+                    <HeartOutlined v-else />
+                    <i v-if="root.likeCount">{{ formatLikeCount(root.likeCount) }}</i>
                   </button>
-                  <template #overlay>
-                    <a-menu>
-                      <a-menu-item v-if="item.canDelete" key="delete" danger @click="confirmRemove(item)">
-                        <DeleteOutlined /> 删除评论
-                      </a-menu-item>
-                      <a-menu-item v-else key="report" disabled>
-                        <StopOutlined /> 举报
-                      </a-menu-item>
-                    </a-menu>
-                  </template>
-                </a-dropdown>
+                  <button type="button" class="cmt__reply-btn" @click="startReply(root, root)">
+                    回复
+                  </button>
+                </div>
+
+                <!-- 顶层评论的内联回复框 -->
+                <div v-if="replyingId === String(root.id)" class="cmt__inline-editor">
+                  <div class="cmt__inline-row">
+                    <a-avatar :size="26" :src="loginUser.userAvatar">
+                      <template #icon><UserOutlined /></template>
+                    </a-avatar>
+                    <a-textarea
+                      ref="inlineInputRef"
+                      v-model:value="replyDraft"
+                      :auto-size="{ minRows: 1, maxRows: 3 }"
+                      :maxlength="COMMENT_MAX"
+                      :placeholder="`回复 @${replyTargetName}：`"
+                      class="cmt__inline-input"
+                      @press-enter="onReplyEnter"
+                    />
+                  </div>
+                  <div class="cmt__inline-foot">
+                    <a-button size="small" type="text" @click="cancelReply">取消</a-button>
+                    <a-button
+                      size="small"
+                      type="primary"
+                      :loading="replying"
+                      :disabled="!replyDraft.trim()"
+                      @click="sendReply()"
+                    >
+                      回复
+                    </a-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 楼中楼回复 ===== -->
+          <div v-if="root.replies?.length || (root.replyCount ?? 0) > 0" class="cmt__replies">
+            <div
+              v-for="reply in root.replies"
+              :key="String(reply.id)"
+              class="cmt__item cmt__item--reply"
+            >
+              <a-avatar :size="28" :src="reply.user?.userAvatar" class="cmt__avatar cmt__avatar--sm" @click="goUserPage(reply)">
+                <template #icon><UserOutlined /></template>
+              </a-avatar>
+              <div class="cmt__main cmt__main--reply">
+                <div class="cmt__bubble cmt__bubble--reply">
+                  <div class="cmt__bubble-head">
+                    <span class="cmt__name cmt__name--sm" @click="goUserPage(reply)">
+                      {{ reply.user?.userName ?? '匿名用户' }}
+                    </span>
+                    <span v-if="isPictureAuthor(reply)" class="cmt__badge">作者</span>
+                    <div class="cmt__tools">
+                      <a-dropdown :trigger="['click']">
+                        <button type="button" class="cmt__icon-btn" title="更多">
+                          <EllipsisOutlined />
+                        </button>
+                        <template #overlay>
+                          <a-menu>
+                            <a-menu-item v-if="reply.canDelete" key="delete" danger @click="confirmRemove(reply)">
+                              <DeleteOutlined /> 删除回复
+                            </a-menu-item>
+                            <a-menu-item v-else key="report" disabled>
+                              <StopOutlined /> 举报
+                            </a-menu-item>
+                          </a-menu>
+                        </template>
+                      </a-dropdown>
+                    </div>
+                  </div>
+                  <div class="cmt__text cmt__text--reply">
+                    <!-- 回复"回复"时显示蓝色 @昵称（对齐参考图） -->
+                    <template v-if="reply.replyToUserName">
+                      <span class="cmt__at" @click="goUserPage(reply)">@{{ reply.replyToUserName }}</span>：
+                    </template>{{ reply.content }}
+                  </div>
+                  <div class="cmt__foot">
+                    <span class="cmt__time">{{ formatTime(reply.createTime) }}</span>
+                    <span v-if="reply.location" class="cmt__loc">{{ reply.location }}</span>
+                    <span class="cmt__foot-gap" />
+                    <button
+                      type="button"
+                      class="cmt__like cmt__like--sm"
+                      :class="{ 'is-liked': reply.isLiked }"
+                      @click="toggleLike(reply, root)"
+                    >
+                      <HeartFilled v-if="reply.isLiked" />
+                      <HeartOutlined v-else />
+                      <i v-if="reply.likeCount">{{ formatLikeCount(reply.likeCount) }}</i>
+                    </button>
+                    <button type="button" class="cmt__reply-btn" @click="startReply(reply, root)">
+                      回复
+                    </button>
+                  </div>
+
+                  <!-- 回复的内联回复框 -->
+                  <div v-if="replyingId === String(reply.id)" class="cmt__inline-editor">
+                    <div class="cmt__inline-row">
+                      <a-avatar :size="26" :src="loginUser.userAvatar">
+                        <template #icon><UserOutlined /></template>
+                      </a-avatar>
+                      <a-textarea
+                        v-model:value="replyDraft"
+                        :auto-size="{ minRows: 1, maxRows: 3 }"
+                        :maxlength="COMMENT_MAX"
+                        :placeholder="`回复 @${replyTargetName}：`"
+                        class="cmt__inline-input"
+                        @press-enter="onReplyEnter"
+                      />
+                    </div>
+                    <div class="cmt__inline-foot">
+                      <a-button size="small" type="text" @click="cancelReply">取消</a-button>
+                      <a-button
+                        size="small"
+                        type="primary"
+                        :loading="replying"
+                        :disabled="!replyDraft.trim()"
+                        @click="sendReply()"
+                      >
+                        回复
+                      </a-button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- 正文 -->
-            <div class="cmt__text">{{ item.content }}</div>
-
-            <!-- 气泡底部：时间 + 点赞 + 回复 -->
-            <div class="cmt__foot">
-              <span class="cmt__time">{{ formatTime(item.createTime) }}</span>
-              <span class="cmt__foot-gap" />
-              <button
-                type="button"
-                class="cmt__like"
-                :class="{ 'is-liked': item.isLiked }"
-                @click="toggleLike(item)"
-              >
-                <HeartFilled v-if="item.isLiked" />
-                <HeartOutlined v-else />
-                <i v-if="item.likeCount">{{ formatLikeCount(item.likeCount) }}</i>
-              </button>
-              <button type="button" class="cmt__reply-btn" @click="startReply(item)">
-                回复
-              </button>
-            </div>
-
-            <!-- 内联回复输入框 -->
-            <div v-if="replyingId === item.id" class="cmt__inline-editor">
-              <a-textarea
-                ref="replyInputRef"
-                v-model:value="replyDraft"
-                :auto-size="{ minRows: 1, maxRows: 3 }"
-                :maxlength="COMMENT_MAX"
-                :placeholder="`回复 @${item.user?.userName ?? '匿名用户'}：`"
-                class="cmt__inline-input"
-                @press-enter="onReplyEnter(item)"
-              />
-              <div class="cmt__inline-foot">
-                <a-button size="small" type="text" @click="cancelReply">取消</a-button>
-                <a-button
-                  size="small"
-                  type="primary"
-                  :loading="replying"
-                  :disabled="!replyDraft.trim()"
-                  @click="sendReply(item)"
-                >
-                  回复
-                </a-button>
-              </div>
-            </div>
+            <!-- 展开 / 收起楼中楼 -->
+            <button
+              v-if="(root.replyCount ?? 0) > (root.replies?.length ?? 0) && !expanded[root.id!]"
+              type="button"
+              class="cmt__expand"
+              @click="expandReplies(root)"
+            >
+              <CaretDownOutlined />
+              展开 {{ (root.replyCount ?? 0) - (root.replies?.length ?? 0) }} 条回复
+            </button>
+            <button
+              v-else-if="expanded[root.id!]"
+              type="button"
+              class="cmt__expand"
+              @click="collapseReplies(root)"
+            >
+              <CaretUpOutlined />
+              收起回复
+            </button>
           </div>
         </div>
 
@@ -177,7 +290,6 @@
           </a-button>
         </div>
       </div>
-      <!-- 未登录：展示输入框样式，点击引导登录 -->
       <div v-else class="cmt__composer-body" @click="promptLogin">
         <div class="cmt__composer-box cmt__composer-box--locked">
           <span class="cmt__locked-placeholder">登录后发表评论…</span>
@@ -191,9 +303,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import {
+  CaretDownOutlined,
+  CaretUpOutlined,
   DeleteOutlined,
   EllipsisOutlined,
   HeartFilled,
@@ -206,6 +320,7 @@ import {
   addComment,
   deleteComment,
   likeComment,
+  pageCommentReplies,
   pageComments,
 } from '@/api/interaction.ts'
 import type { PictureCommentVO } from '@/api/interaction.ts'
@@ -216,11 +331,7 @@ interface Props {
   pictureId?: number | string
   /** 图片作者用户 id：命中时在昵称旁显示「作者」标识 */
   authorId?: number | string
-  /**
-   * 是否展示头部。
-   * 头部承载「评论 N + 最热/最新排序」，关闭它排序也会消失——
-   * 仅在宿主自备了同等排序控件的场合才传 false。
-   */
+  /** 是否展示头部（含排序切换） */
   showHeader?: boolean
 }
 
@@ -253,10 +364,21 @@ const draft = ref('')
 const composerFocus = ref(false)
 const composerRef = ref<HTMLTextAreaElement>()
 
-// 回复态
-const replyingId = ref<string | number | null>(null)
+// 回复态：replyingId 是被回复评论的 id；replyRootId 是所在线程根（新回复插入位置）
+const replyingId = ref<string | null>(null)
+const replyRootId = ref<string | null>(null)
+const replyTargetName = ref('')
 const replyDraft = ref('')
 const replying = ref(false)
+
+/** 已展开楼中楼的线程（rootId -> true） */
+const expanded = reactive<Record<string, boolean>>({})
+/**
+ * 一次性标记：下一个 load() 是否保留展开态。
+ * 回复成功后重载列表时置 true（用户正盯着这个楼中楼，不能收起）；
+ * 分页/排序切换时保持 false（旧展开无意义）。
+ */
+let keepExpandedOnLoad = false
 
 /** 是否还有下一页 */
 const hasMore = computed(() => current.value * pageSize < total.value)
@@ -283,6 +405,23 @@ const load = async () => {
     if (res.code === 0) {
       comments.value = res.data?.records ?? []
       total.value = res.data?.total ?? 0
+      // 分页/排序变化后旧的展开态无意义，清空；
+      // 但回复成功后的重载要保留当前线程的展开（见 sendReply 的 keepExpanded）
+      if (!keepExpandedOnLoad) {
+        Object.keys(expanded).forEach((k) => delete expanded[k])
+      }
+      keepExpandedOnLoad = false
+      // 恢复展开态：重新拉取对应线程的全部回复
+      const expandIds = Object.keys(expanded)
+      if (expandIds.length) {
+        await Promise.all(expandIds.map(async (rootId) => {
+          const root = comments.value.find((c) => String(c.id) === rootId)
+          if (root && (root.replyCount ?? 0) > (root.replies?.length ?? 0)) {
+            const r = await pageCommentReplies({ rootId, pageSize: 100 })
+            if (r.code === 0) root.replies = r.data?.records ?? []
+          }
+        }))
+      }
     } else {
       message.error(res.message ?? '评论加载失败')
     }
@@ -315,7 +454,6 @@ const submit = async () => {
     if (res.code === 0) {
       draft.value = ''
       message.success('评论成功')
-      // 「最新」排序下新评论在第一页顶部；「最热」排序下同样回到首页查看
       current.value = 1
       sort.value = 'new'
       await load()
@@ -337,7 +475,7 @@ const onComposerKeydown = (e: KeyboardEvent) => {
   }
 }
 
-/** 输入框高度自适应（原生 textarea 无 auto-size，这里手动撑开） */
+/** 输入框高度自适应（原生 textarea 手动撑开） */
 const autoGrow = () => {
   const el = composerRef.value
   if (!el) return
@@ -353,7 +491,7 @@ const autoGrowAfterClear = () => {
 
 const confirmRemove = (item: PictureCommentVO) => {
   Modal.confirm({
-    title: '删除这条评论？',
+    title: item.parentId == null ? '删除这条评论及其全部回复？' : '删除这条回复？',
     content: item.content?.slice(0, 60),
     okText: '删除',
     okType: 'danger',
@@ -378,7 +516,7 @@ const remove = async (item: PictureCommentVO) => {
 }
 
 // ----- 评论点赞（乐观更新 + 服务端对账） -----
-const toggleLike = async (item: PictureCommentVO) => {
+const toggleLike = async (item: PictureCommentVO, root?: PictureCommentVO) => {
   if (!loginUser.id) {
     promptLogin()
     return
@@ -386,7 +524,6 @@ const toggleLike = async (item: PictureCommentVO) => {
   if (item.id == null) return
   const liked = !!item.isLiked
   const base = item.likeCount ?? 0
-  // 乐观更新
   item.isLiked = !liked
   item.likeCount = liked ? Math.max(base - 1, 0) : base + 1
   try {
@@ -407,12 +544,19 @@ const toggleLike = async (item: PictureCommentVO) => {
 }
 
 // ----- 回复 -----
-const startReply = (item: PictureCommentVO) => {
+/**
+ * 打开内联回复框。
+ * @param target 被回复的评论（顶层或回复均可）
+ * @param root   所在线程的顶层评论（决定新回复的插入位置）
+ */
+const startReply = (target: PictureCommentVO, root: PictureCommentVO) => {
   if (!loginUser.id) {
     promptLogin()
     return
   }
-  replyingId.value = item.id ?? null
+  replyingId.value = target.id != null ? String(target.id) : null
+  replyRootId.value = root.id != null ? String(root.id) : null
+  replyTargetName.value = target.user?.userName ?? '匿名用户'
   replyDraft.value = ''
   nextTick(() => {
     document.querySelector<HTMLTextAreaElement>('.cmt__inline-input')?.focus()
@@ -420,31 +564,30 @@ const startReply = (item: PictureCommentVO) => {
 }
 const cancelReply = () => {
   replyingId.value = null
+  replyRootId.value = null
+  replyTargetName.value = ''
   replyDraft.value = ''
 }
-const onReplyEnter = (item: PictureCommentVO) => {
-  // ant-design-vue 的 pressEnter 回调携带原生 KeyboardEvent（挂在 window.event 上）
-  const native = window.event as KeyboardEvent | undefined
-  if (native?.ctrlKey || native?.metaKey) sendReply(item)
+const onReplyEnter = (e?: KeyboardEvent) => {
+  const native = (e ?? (window.event as KeyboardEvent | undefined))
+  if (native?.ctrlKey || native?.metaKey) sendReply()
 }
-/**
- * 回复目前落到同一评论流（后端为一级平铺模型）：
- * 内容以「回复 @昵称：」前缀保留语境，是当前数据结构下最诚实的实现。
- */
-const sendReply = async (item: PictureCommentVO) => {
+const sendReply = async () => {
   const id = resolvePictureId()
-  if (id == null) return
+  const rootId = replyRootId.value
+  const parentId = replyingId.value
+  if (id == null || rootId == null || parentId == null) return
   const content = replyDraft.value.trim()
   if (!content) return
   replying.value = true
   try {
-    const full = `回复 @${item.user?.userName ?? '匿名用户'}：${content}`
-    const res = await addComment({ pictureId: id, content: full })
+    const res = await addComment({ pictureId: id, parentId, content })
     if (res.code === 0) {
       message.success('回复成功')
       cancelReply()
-      current.value = 1
-      sort.value = 'new'
+      // 保持该线程展开：否则重载后楼中楼收起，用户看不到刚发的回复
+      keepExpandedOnLoad = true
+      expanded[rootId] = true
       await load()
     } else {
       message.error(res.message ?? '回复失败')
@@ -453,6 +596,31 @@ const sendReply = async (item: PictureCommentVO) => {
     message.error('回复失败：' + (e?.message ?? ''))
   } finally {
     replying.value = false
+  }
+}
+
+// ----- 展开楼中楼（拉全量回复） -----
+const expandReplies = async (root: PictureCommentVO) => {
+  if (root.id == null) return
+  const key = String(root.id)
+  try {
+    const res = await pageCommentReplies({ rootId: root.id, pageSize: 100 })
+    if (res.code === 0) {
+      root.replies = res.data?.records ?? []
+      expanded[key] = true
+    } else {
+      message.error(res.message ?? '回复加载失败')
+    }
+  } catch (e: any) {
+    message.error('回复加载失败：' + (e?.message ?? ''))
+  }
+}
+const collapseReplies = (root: PictureCommentVO) => {
+  const key = String(root.id)
+  expanded[key] = false
+  // 收起后恢复为首屏预览条数
+  if (root.replies && root.replies.length > 2) {
+    root.replies = root.replies.slice(0, 2)
   }
 }
 
@@ -494,7 +662,7 @@ watch(
   (newId) => {
     if (firstQueryValue(newId)) {
       current.value = 1
-      replyingId.value = null
+      cancelReply()
       load()
     }
   },
@@ -513,18 +681,14 @@ defineExpose({ reload: load })
   --cmt-bubble: #f5f7fa;
   --cmt-bubble-hover: #eef2f7;
   --cmt-bubble-radius: 14px;
+  --cmt-heart: #ff4d6a;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+}
 
-  /* 主题化浏览器默认外观：文本选中色与滚动条，避免系统蓝/灰裸奔 */
-  &::selection {
-    background: rgba(64, 169, 255, 0.22);
-  }
-
-  & *::selection {
-    background: rgba(64, 169, 255, 0.22);
-  }
+.cmt *::selection {
+  background: rgba(64, 169, 255, 0.22);
 }
 
 /* ===== 头部 ===== */
@@ -545,7 +709,6 @@ defineExpose({ reload: load })
   font-weight: 700;
 }
 
-/* 排序：胶囊分段控件 */
 .cmt__sort {
   display: inline-flex;
   align-items: center;
@@ -583,11 +746,11 @@ defineExpose({ reload: load })
   margin: 0 2px;
 }
 
-/* ===== 评论流 ===== */
+/* ===== 线程 ===== */
 .cmt__list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
 .cmt__item {
@@ -607,12 +770,20 @@ defineExpose({ reload: load })
   transform: scale(1.06);
 }
 
-.cmt__bubble {
+.cmt__avatar--sm {
+  box-shadow: none;
+}
+
+.cmt__main {
   flex: 1;
   min-width: 0;
+}
+
+/* ===== 气泡 ===== */
+.cmt__bubble {
   background: var(--cmt-bubble);
   border-radius: var(--cmt-bubble-radius);
-  border-top-left-radius: 4px; /* 指向头像的对话气泡尖角 */
+  border-top-left-radius: 4px;
   padding: 12px 16px 10px;
   transition: background 0.18s ease;
 }
@@ -642,7 +813,6 @@ defineExpose({ reload: load })
   color: var(--cmt-accent);
 }
 
-/* 作者标识：小圆角胶囊 */
 .cmt__badge {
   flex-shrink: 0;
   padding: 0 6px;
@@ -694,11 +864,22 @@ defineExpose({ reload: load })
   word-break: break-word;
 }
 
-/* 气泡底部操作行 */
+/* 蓝色 @昵称（回复语境，对齐参考图） */
+.cmt__at {
+  color: var(--cmt-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cmt__at:hover {
+  text-decoration: underline;
+}
+
+/* ===== 底部操作行 ===== */
 .cmt__foot {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   margin-top: 8px;
 }
 
@@ -706,6 +887,16 @@ defineExpose({ reload: load })
   font-size: 12px;
   color: var(--cmt-meta);
   font-variant-numeric: tabular-nums;
+}
+
+.cmt__loc {
+  font-size: 12px;
+  color: var(--cmt-meta);
+}
+
+.cmt__loc::before {
+  content: '·';
+  margin-right: 6px;
 }
 
 .cmt__foot-gap {
@@ -733,17 +924,13 @@ defineExpose({ reload: load })
 }
 
 .cmt__like:hover {
-  color: #ff4d6a;
+  color: var(--cmt-heart);
   background: rgba(255, 77, 106, 0.08);
   transform: scale(1.04);
 }
 
 .cmt__like.is-liked {
-  color: #ff4d6a;
-}
-
-.cmt__like.is-liked i {
-  font-weight: 600;
+  color: var(--cmt-heart);
 }
 
 .cmt__reply-btn {
@@ -762,14 +949,77 @@ defineExpose({ reload: load })
   background: rgba(64, 169, 255, 0.08);
 }
 
+/* ===== 楼中楼 ===== */
+.cmt__replies {
+  margin-top: 10px;
+  margin-left: 52px; /* 顶层头像 40 + 间距 12，与顶层正文对齐 */
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 竖向连接线：贯穿整个回复区 */
+  border-left: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+.cmt__item--reply .cmt__bubble {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.cmt__item--reply:hover .cmt__bubble {
+  background: transparent;
+}
+
+.cmt__item--reply .cmt__tools {
+  /* 回复区更紧凑，操作常驻但弱化 */
+  opacity: 0;
+}
+
+.cmt__text--reply {
+  font-size: 13.5px;
+  margin-top: 3px;
+}
+
+.cmt__like--sm {
+  font-size: 12.5px;
+}
+
+/* 展开/收起 */
+.cmt__expand {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 14px;
+  border: none;
+  background: transparent;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--cmt-accent);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cmt__expand:hover {
+  background: rgba(64, 169, 255, 0.08);
+}
+
 /* 内联回复框 */
 .cmt__inline-editor {
   margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.cmt__inline-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .cmt__inline-input {
+  flex: 1;
   border-radius: 10px;
   background: #fff;
   font-size: 13.5px;
@@ -845,7 +1095,6 @@ defineExpose({ reload: load })
   min-width: 0;
 }
 
-/* 输入容器：白底描边卡片，聚焦时主色光晕 */
 .cmt__composer-box {
   background: var(--bg-card);
   border: 1.5px solid var(--border-color);
@@ -944,10 +1193,11 @@ html.dark .cmt {
   --cmt-text: #e8e8e8;
   --cmt-meta: #6e7681;
   --cmt-bubble: rgba(255, 255, 255, 0.055);
+  --cmt-bubble-hover: rgba(255, 255, 255, 0.09);
 }
 
-html.dark .cmt__item:hover .cmt__bubble {
-  background: rgba(255, 255, 255, 0.09);
+html.dark .cmt__replies {
+  border-left-color: rgba(255, 255, 255, 0.08);
 }
 
 html.dark .cmt__head-total {
@@ -983,7 +1233,6 @@ html.dark .cmt__send:disabled {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* 触屏：操作常显 */
 @media (hover: none) {
   .cmt__tools {
     opacity: 1;

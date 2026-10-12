@@ -252,8 +252,13 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
 
     // ============================ 评论 ============================
 
+    /**
+     * 楼中楼首屏每个顶层评论默认带出的回复条数（超出部分点开"展开 N 条回复"再拉）
+     */
+    private static final int REPLY_PREVIEW_COUNT = 2;
+
     @Override
-    public PictureCommentVO addComment(long pictureId, String content, User loginUser) {
+    public PictureCommentVO addComment(long pictureId, Long parentId, String content, User loginUser) {
         ThrowUtils.throwIf(loginUser == null || loginUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
         Picture picture = requirePicture(pictureId);
         String trimmed = StrUtil.trim(content);
@@ -267,22 +272,54 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         comment.setContent(trimmed);
         comment.setCreateTime(new Date());
         comment.setUpdateTime(new Date());
+
+        // ----- 线程归属 -----
+        Long parentSnapshotUser = null;
+        String parentSnapshotName = null;
+        Long pictureAuthorId = picture.getUserId();
+        if (parentId != null) {
+            // 回复：parentId 指向被回复的评论；若它本身也是回复，root 向上取到真正的顶层
+            PictureComment parent = pictureCommentMapper.selectById(parentId);
+            ThrowUtils.throwIf(parent == null, ErrorCode.NOT_FOUND_ERROR, "被回复的评论不存在");
+            ThrowUtils.throwIf(parent.getPictureId() == null || parent.getPictureId() != pictureId,
+                    ErrorCode.PARAMS_ERROR, "被回复的评论不属于当前图片");
+            comment.setParentId(parent.getId());
+            comment.setRootId(parent.getRootId() == null ? parent.getId() : parent.getRootId());
+            // 记录被回复人（回复"回复"时指向被回复的那条，而非顶层作者）
+            parentSnapshotUser = parent.getUserId();
+            comment.setReplyToUserId(parentSnapshotUser);
+            if (parentSnapshotUser != null) {
+                User parentUser = userService.getById(parentSnapshotUser);
+                parentSnapshotName = parentUser == null ? null : parentUser.getUserName();
+                comment.setReplyToUserName(parentSnapshotName);
+            }
+        }
         boolean saved = pictureCommentMapper.insert(comment) > 0;
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "评论失败");
 
-        // 通知图片作者（自己评论自己的图片不通知；失败不影响评论）
-        Long authorId = picture.getUserId();
-        if (authorId != null && !authorId.equals(loginUser.getId())) {
-            notificationService.sendInteractionNotification(
-                    authorId,
-                    loginUser.getUserName(),
-                    "评论了",
-                    picture.getId(),
-                    picture.getName(),
-                    picture.getThumbnailUrl(),
-                    trimmed);
+        // ----- 通知（失败不影响评论） -----
+        String shortContent = trimmed.length() > 30 ? trimmed.substring(0, 30) + "…" : trimmed;
+        if (parentId != null && parentSnapshotUser != null) {
+            // 回复通知：通知被回复的人（自己回自己不通知）
+            if (!parentSnapshotUser.equals(loginUser.getId())) {
+                notificationService.sendInteractionNotification(
+                        parentSnapshotUser, loginUser.getUserName(), "回复了",
+                        picture.getId(), picture.getName(), picture.getThumbnailUrl(),
+                        shortContent);
+            }
         }
-        return toCommentVO(comment, loginUser);
+        if (pictureAuthorId != null && !pictureAuthorId.equals(loginUser.getId())) {
+            // 顶层评论通知图片作者；若作者正是被回复人则不重复通知
+            boolean authorIsParent = parentId != null && pictureAuthorId.equals(parentSnapshotUser);
+            if (!authorIsParent) {
+                notificationService.sendInteractionNotification(
+                        pictureAuthorId, loginUser.getUserName(),
+                        parentId == null ? "评论了" : "回复了",
+                        picture.getId(), picture.getName(), picture.getThumbnailUrl(),
+                        shortContent);
+            }
+        }
+        return buildCommentVOs(Collections.singletonList(comment), loginUser).get(0);
     }
 
     @Override
@@ -290,14 +327,14 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
                                                String sortField) {
         long page = Math.max(current, 1);
         long size = Math.min(Math.max(pageSize, 1), 50);
+        // 两级线程：分页只针对顶层评论（parentId 为空）
         QueryWrapper<PictureComment> wrapper = new QueryWrapper<>();
-        wrapper.eq("pictureId", pictureId);
+        wrapper.eq("pictureId", pictureId).isNull("parentId");
         // 排序方式：hot-按点赞数（相同赞数按时间倒序，保证分页稳定）；new-按时间倒序。
         // sortField 是白名单内的枚举值而非自由列名，不存在注入风险。
         if ("new".equals(sortField)) {
             wrapper.orderByDesc("createTime").orderByDesc("id");
         } else {
-            // 默认 hot：热门优先
             wrapper.orderByDesc("likeCount").orderByDesc("createTime").orderByDesc("id");
         }
         Page<PictureComment> entityPage = pictureCommentMapper.selectPage(new Page<>(page, size), wrapper);
@@ -308,32 +345,131 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
             voPage.setRecords(Collections.emptyList());
             return voPage;
         }
-        // 批量取评论者信息，避免 N+1
-        Set<Long> userIds = entityPage.getRecords().stream()
+
+        List<Long> rootIds = entityPage.getRecords().stream()
+                .map(PictureComment::getId).collect(Collectors.toList());
+
+        // 批量取每个顶层评论的前 N 条回复 + 回复总数（两条查询完成整页，避免 N+1）
+        Map<Long, List<PictureComment>> previewMap = new LinkedHashMap<>();
+        Map<Long, Long> replyCountMap = new LinkedHashMap<>();
+        loadReplyPreviews(rootIds, previewMap, replyCountMap);
+
+        // 组装（批量取用户、点赞态，复用同一套填充逻辑）
+        List<PictureComment> all = new ArrayList<>(entityPage.getRecords());
+        previewMap.values().forEach(all::addAll);
+        List<PictureCommentVO> voList = buildCommentVOs(all, loginUser);
+
+        // 按 id 索引，回填回复与计数
+        Map<Long, PictureCommentVO> voById = new LinkedHashMap<>();
+        for (PictureCommentVO vo : voList) {
+            voById.put(vo.getId(), vo);
+        }
+        for (PictureCommentVO vo : voList) {
+            if (vo.getParentId() == null) {
+                vo.setReplyCount(replyCountMap.getOrDefault(vo.getId(), 0L));
+                List<PictureComment> previews = previewMap.get(vo.getId());
+                if (previews != null) {
+                    for (PictureComment reply : previews) {
+                        vo.getReplies().add(voById.get(reply.getId()));
+                    }
+                }
+            }
+        }
+        voPage.setRecords(voList.stream().filter(v -> v.getParentId() == null).collect(Collectors.toList()));
+        return voPage;
+    }
+
+    @Override
+    public Page<PictureCommentVO> pageReplies(long rootId, long current, long pageSize, User loginUser) {
+        ThrowUtils.throwIf(rootId <= 0L, ErrorCode.PARAMS_ERROR);
+        long page = Math.max(current, 1);
+        long size = Math.min(Math.max(pageSize, 1), 50);
+        Page<PictureComment> entityPage = pictureCommentMapper.selectPage(new Page<>(page, size),
+                new QueryWrapper<PictureComment>()
+                        .eq("rootId", rootId)
+                        .orderByAsc("createTime").orderByAsc("id"));
+        Page<PictureCommentVO> voPage = new Page<>(
+                entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+        if (CollUtil.isEmpty(entityPage.getRecords())) {
+            voPage.setRecords(Collections.emptyList());
+            return voPage;
+        }
+        voPage.setRecords(buildCommentVOs(entityPage.getRecords(), loginUser));
+        return voPage;
+    }
+
+    /**
+     * 批量取每个顶层评论的前 N 条回复与回复总数
+     *
+     * <p>两条查询完成整页数据（回复预览 + 分组计数），避免每条评论单独查询的 N+1。</p>
+     */
+    private void loadReplyPreviews(List<Long> rootIds,
+                                   Map<Long, List<PictureComment>> previewMap,
+                                   Map<Long, Long> replyCountMap) {
+        // 回复总数：GROUP BY rootId（selectMaps 让 count(*) 落在独立键上，
+        // 不像把聚合值塞进实体字段那样依赖类型转换的巧合）
+        List<Map<String, Object>> countRows = pictureCommentMapper.selectMaps(
+                new QueryWrapper<PictureComment>()
+                        .select("rootId", "count(*) as cnt")
+                        .in("rootId", rootIds)
+                        .groupBy("rootId"));
+        for (Map<String, Object> row : countRows) {
+            Object root = row.get("rootId");
+            Object cnt = row.get("cnt");
+            if (root instanceof Number && cnt instanceof Number) {
+                replyCountMap.put(((Number) root).longValue(), ((Number) cnt).longValue());
+            }
+        }
+        if (replyCountMap.isEmpty()) {
+            return;
+        }
+        // 每个线程的前 N 条：全量取回后内存截断（线程回复量通常很小；
+        // 若将来单线程回复过千，再改为按 rootId 窗口查询）
+        List<PictureComment> replies = pictureCommentMapper.selectList(
+                new QueryWrapper<PictureComment>()
+                        .in("rootId", rootIds)
+                        .orderByAsc("createTime").orderByAsc("id"));
+        for (PictureComment reply : replies) {
+            List<PictureComment> list = previewMap.computeIfAbsent(reply.getRootId(), k -> new ArrayList<>());
+            if (list.size() < REPLY_PREVIEW_COUNT) {
+                list.add(reply);
+            }
+        }
+    }
+
+    /**
+     * 批量组装评论 VO：用户信息、点赞态、删除权限
+     *
+     * @param comments 评论实体（顶层与回复混排均可）
+     */
+    private List<PictureCommentVO> buildCommentVOs(List<PictureComment> comments, User loginUser) {
+        Set<Long> userIds = comments.stream()
                 .map(PictureComment::getUserId).collect(Collectors.toSet());
         Map<Long, User> userMap = userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
         Long loginUserId = loginUser == null ? null : loginUser.getId();
         boolean isAdmin = loginUser != null && userService.isAdmin(loginUser);
 
-        // 批量取当前用户对本页评论的点赞集合（两个 IN 查询完成整页，避免 N+1）
         Set<Long> likedCommentIds = Collections.emptySet();
         if (loginUserId != null) {
-            List<Long> commentIds = entityPage.getRecords().stream()
-                    .map(PictureComment::getId).collect(Collectors.toList());
+            List<Long> ids = comments.stream().map(PictureComment::getId).collect(Collectors.toList());
             likedCommentIds = commentLikeMapper.selectList(new QueryWrapper<CommentLike>()
                             .select("commentId")
                             .eq("userId", loginUserId)
-                            .in("commentId", commentIds))
+                            .in("commentId", ids))
                     .stream().map(CommentLike::getCommentId).collect(Collectors.toSet());
         }
 
         List<PictureCommentVO> voList = new ArrayList<>();
-        for (PictureComment comment : entityPage.getRecords()) {
+        for (PictureComment comment : comments) {
             PictureCommentVO vo = new PictureCommentVO();
             vo.setId(comment.getId());
             vo.setPictureId(comment.getPictureId());
             vo.setUserId(comment.getUserId());
+            vo.setParentId(comment.getParentId());
+            vo.setRootId(comment.getRootId());
+            vo.setReplyToUserName(comment.getReplyToUserName());
+            vo.setLocation(comment.getLocation());
             vo.setContent(comment.getContent());
             vo.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
             vo.setIsLiked(loginUserId != null && likedCommentIds.contains(comment.getId()));
@@ -342,8 +478,7 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
             vo.setCanDelete(isAdmin || (loginUserId != null && loginUserId.equals(comment.getUserId())));
             voList.add(vo);
         }
-        voPage.setRecords(voList);
-        return voPage;
+        return voList;
     }
 
     /**
@@ -392,22 +527,13 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         boolean isOwner = comment.getUserId() != null && comment.getUserId().equals(loginUser.getId());
         ThrowUtils.throwIf(!isOwner && !userService.isAdmin(loginUser),
                 ErrorCode.NO_AUTH_ERROR, "无权删除该评论");
-        // @TableLogic：逻辑删除
+        // @TableLogic：逻辑删除。
+        // 若删除的是顶层评论，其楼中楼回复一并删除，避免残留指向已删线程的孤儿回复
+        if (comment.getRootId() == null) {
+            pictureCommentMapper.delete(new QueryWrapper<PictureComment>().eq("rootId", commentId));
+        }
         int deleted = pictureCommentMapper.deleteById(commentId);
         ThrowUtils.throwIf(deleted <= 0, ErrorCode.OPERATION_ERROR, "删除失败");
-    }
-
-    private PictureCommentVO toCommentVO(PictureComment comment, User loginUser) {
-        PictureCommentVO vo = new PictureCommentVO();
-        vo.setId(comment.getId());
-        vo.setPictureId(comment.getPictureId());
-        vo.setUserId(comment.getUserId());
-        vo.setContent(comment.getContent());
-        vo.setCreateTime(comment.getCreateTime());
-        vo.setUser(userService.getUserVO(userService.getById(comment.getUserId())));
-        boolean isAdmin = loginUser != null && userService.isAdmin(loginUser);
-        vo.setCanDelete(isAdmin || (loginUser != null && loginUser.getId().equals(comment.getUserId())));
-        return vo;
     }
 
     // ========================= 浏览历史 =========================
