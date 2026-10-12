@@ -70,6 +70,11 @@ create table if not exists picture
     isAiGenerated tinyint default 0                not null comment '是否 AI 生成（1-是，0-否）',
     likeCount    int default 0                     not null comment '点赞数',
     favoriteCount int default 0                    not null comment '收藏数',
+    -- 分享字段（原 picture_share 表已并入：一张图最多一条有效分享链接，本质 1:1）
+    shareCode      varchar(32)                     null comment '分享码（NULL=未分享，非空即可公开访问）',
+    shareExpireTime datetime                       null comment '分享过期时间（NULL=永久有效）',
+    shareViewCount int      default 0              not null comment '分享链接访问次数',
+    shareCreateTime datetime                       null comment '分享创建时间',
     INDEX idx_name (name),                 -- 提升基于图片名称的查询性能
     INDEX idx_introduction (introduction), -- 用于模糊搜索图片简介
     INDEX idx_category (category),         -- 提升基于分类的查询性能
@@ -77,7 +82,8 @@ create table if not exists picture
     INDEX idx_userId (userId),             -- 提升基于用户 ID 的查询性能
     INDEX idx_reviewStatus (reviewStatus), -- 提升基于审核状态的查询性能
     INDEX idx_spaceId (spaceId),           -- 提升基于空间的查询性能
-    INDEX idx_picHash (picHash)            -- 提升重复图片检测的比对性能
+    INDEX idx_picHash (picHash),           -- 提升重复图片检测的比对性能
+    UNIQUE KEY uk_shareCode (shareCode)    -- 分享码唯一（NULL 不参与去重，正好表达"未分享"）
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
 -- 图片互动记录（点赞 / 收藏合并为一张表）
@@ -143,24 +149,6 @@ create table if not exists picture_view_history
     UNIQUE KEY uk_userId_pictureId (userId, pictureId),
     INDEX idx_userId_viewTime (userId, viewTime)
 ) comment '图片浏览历史' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
-
--- 图片分享链接（公开访问）
--- shareCode 为对外暴露的随机码；撤销（逻辑删除）后立即失效；expireTime 为空表示永久有效。
-create table if not exists picture_share
-(
-    id          bigint auto_increment comment 'id' primary key,
-    shareCode   varchar(32)                        not null comment '分享码（对外唯一标识）',
-    pictureId   bigint                             not null comment '被分享的图片 id',
-    userId      bigint                             not null comment '创建分享的用户 id',
-    expireTime  datetime                           null comment '过期时间（为空表示永久有效）',
-    viewCount   int      default 0                 not null comment '公开访问次数',
-    createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete    tinyint  default 0                 not null comment '是否删除（撤销分享）',
-    UNIQUE KEY uk_shareCode (shareCode),
-    INDEX idx_pictureId (pictureId),
-    INDEX idx_userId (userId)
-) comment '图片分享链接' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
 -- 操作审计日志
 create table if not exists audit_log

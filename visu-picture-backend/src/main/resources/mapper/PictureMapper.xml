@@ -22,6 +22,10 @@
             <result property="isAiGenerated" column="isAiGenerated" jdbcType="TINYINT"/>
             <result property="likeCount" column="likeCount" jdbcType="INTEGER"/>
             <result property="favoriteCount" column="favoriteCount" jdbcType="INTEGER"/>
+            <result property="shareCode" column="shareCode" jdbcType="VARCHAR"/>
+            <result property="shareExpireTime" column="shareExpireTime" jdbcType="TIMESTAMP"/>
+            <result property="shareViewCount" column="shareViewCount" jdbcType="INTEGER"/>
+            <result property="shareCreateTime" column="shareCreateTime" jdbcType="TIMESTAMP"/>
             <result property="userId" column="userId" jdbcType="BIGINT"/>
             <result property="spaceId" column="spaceId" jdbcType="BIGINT"/>
             <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
@@ -37,6 +41,7 @@
     <!--
       注意：isDelete 是逻辑删除字段，直接用本列表查询会包含已删除图片。
       走 MyBatis-Plus 的 Wrapper/selectPage 会自动追加 isDelete = 0 条件。
+      分享字段（shareCode 等）已从原 picture_share 表并入本表。
     -->
     <sql id="Base_Column_List">
         id,url,thumbnailUrl,name,
@@ -44,9 +49,10 @@
         picSize,picWidth,picHeight,
         picScale,picFormat,picColor,
         picHash,isAiGenerated,likeCount,
-        favoriteCount,userId,spaceId,
-        createTime,editTime,updateTime,
-        isDelete,reviewStatus,reviewMessage,
-        reviewerId,reviewTime
+        favoriteCount,shareCode,shareExpireTime,
+        shareViewCount,shareCreateTime,userId,
+        spaceId,createTime,editTime,
+        updateTime,isDelete,reviewStatus,
+        reviewMessage,reviewerId,reviewTime
     </sql>
 </mapper>

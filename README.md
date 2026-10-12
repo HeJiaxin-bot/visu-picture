@@ -62,7 +62,7 @@
 - ⭐ **收藏夹** — 与点赞共用 `picture_action`（`actionType` 区分），「我的收藏 / 我的点赞 / 最近查看」三合一页面，按时间倒序
 - 💬 **图片评论** — 500 字上限、服务端分页、**楼中楼两级回复**、评论点赞、「最热/最新」排序、作者标识
 - 🕘 **浏览历史** — `ON DUPLICATE KEY UPDATE` 单语句幂等写入，同图只留一条，超 200 条自动清理最旧
-- 🔗 **公开分享链接** — 16 位随机分享码 + 有效期（7 天 / 30 天 / 永久）+ 可撤销，分享页无需登录
+- 🔗 **公开分享链接** — 16 位随机分享码 + 有效期（7 天 / 30 天 / 永久）+ 可撤销，分享页无需登录（分享数据直接存在 `picture` 表，1:1 关系无需独立表）
 - 🔍 **重复图片检测** — 上传时计算原始文件 SHA-256，同一空间内字节级重复直接拦截并提示已有图片
 
 ### 消息与通知
@@ -93,7 +93,7 @@
 |:---|:---|
 | **前端** | Vue 3.5 · Vite 5 · TypeScript（`vue-tsc` 0 错误）· Pinia · Vue Router 4 · Ant Design Vue 4 · ECharts 5 · Axios |
 | **后端** | Spring Boot 2.7.6 · MyBatis-Plus · Sa-Token（登录鉴权 / RBAC）· AOP 注解鉴权 / 限流 / 审计 |
-| **数据** | MySQL 8（10 张表）· Redis（会话 / 缓存 / 限流计数 / 任务进度）· ShardingSphere |
+| **数据** | MySQL 8（9 张表）· Redis（会话 / 缓存 / 限流计数 / 任务进度）· ShardingSphere |
 | **存储** | 腾讯云 COS（对象存储 + 缩略图 + 主色调提取） |
 | **AI** | 阿里云百炼 DashScope（AI 扩图 / 智能配文） |
 | **实时** | WebSocket · Disruptor 无锁队列 · Spring Session + Redis |
@@ -114,7 +114,7 @@ graph TD
     C -->|AOP 切面| X[鉴权 / 限流 / 审计]
     C -->|接口调用| S[Service 层<br/>业务逻辑 / 权限校验]
     S -->|Mapper 接口| D[Dao 层<br/>MyBatis-Plus]
-    D -->|JDBC| DB[(MySQL 8<br/>10 张表)]
+    D -->|JDBC| DB[(MySQL 8<br/>9 张表)]
     S -->|Redis Protocol| R[(Redis<br/>会话 / 缓存 / 限流计数 / 进度)]
     S -->|COS SDK| O[(腾讯云 COS<br/>图片对象存储)]
     S -->|DashScope SDK| A[阿里云百炼<br/>AI 扩图异步任务]
@@ -136,14 +136,12 @@ erDiagram
     user ||--o{ picture_comment : "评论"
     user ||--o{ comment_like : "赞评论"
     user ||--o{ picture_view_history : "浏览"
-    user ||--o{ picture_share : "分享"
     user ||--o{ audit_log : "操作留痕"
     space ||--o{ picture : "包含"
     space ||--o{ space_user : "拥有成员"
     picture ||--o{ notification : "触发"
     picture ||--o{ picture_action : "被点赞 / 被收藏"
     picture ||--o{ picture_comment : "被评论"
-    picture ||--o{ picture_share : "被分享"
     picture_comment ||--o{ picture_comment : "楼中楼回复"
     picture_comment ||--o{ comment_like : "被点赞"
 ```
@@ -151,7 +149,7 @@ erDiagram
 | 表 | 说明 |
 |:---|:---|
 | `user` | 用户（含 `isVip` 会员标记、`points` 积分、`inviteCode` 邀请码） |
-| `picture` | 图片（审核状态、缩略图、主色调、`picHash` 去重摘要、`likeCount`/`favoriteCount` 计数） |
+| `picture` | 图片（审核状态、缩略图、主色调、`picHash` 去重摘要、`likeCount`/`favoriteCount` 计数、**分享码 `shareCode` 及有效期/访问次数**） |
 | `space` | 空间（类型、级别、容量与数量额度、封面） |
 | `space_user` | 空间成员与角色（RBAC 权限） |
 | `notification` | 站内通知（审核结果 / 系统公告 / 互动） |
@@ -159,8 +157,9 @@ erDiagram
 | `picture_comment` | 图片评论（楼中楼：`parentId`/`rootId` 两级线程；逻辑删除） |
 | `comment_like` | 评论点赞记录（唯一索引 `(commentId, userId)` 去重） |
 | `picture_view_history` | 浏览历史（唯一索引 `(userId, pictureId)`，同图只留一条） |
-| `picture_share` | 分享链接（随机 `shareCode` + 有效期 + 可撤销） |
 | `audit_log` | 操作审计日志（操作人 / 模块 / 动作 / IP / 耗时 / 成败） |
+
+> **分享数据为何并入 `picture`**：一张图片最多只有一条有效分享链接（`createShare` 会复用已有链接，实测库中从未出现一张图有多条有效链接），本质是 **1:1** 关系，独立成表只是历史设计。并入后只需 4 个字段 + 一个唯一索引 `uk_shareCode`（MySQL 唯一索引不约束 NULL，正好表达「未分享」）。代价是撤销即 `shareCode = NULL`，不再保留历史链接痕迹 —— 因系统无分享历史页面（`listMyShares` 无任何 UI 调用），该损失可接受。
 
 > **计数器与记录分离**：`picture.likeCount` / `favoriteCount` 是展示用**计数器**（列表页直接读取，免 COUNT）；「谁赞过/收藏过哪张图」是**多对多记录**，落在 `picture_action`。两者在同一事务内更新，保证不漂移。
 >
@@ -195,7 +194,7 @@ cd visu-picture
 ### 2️⃣ 初始化数据库
 
 ```bash
-# 登录 MySQL 后执行建表脚本（含全部 10 张表的结构与索引）
+# 登录 MySQL 后执行建表脚本（含全部 9 张表的结构与索引）
 mysql -uroot -p
 source visu-picture-backend/sql/create_table.sql
 
@@ -205,6 +204,7 @@ source visu-picture-backend/sql/add_interaction_tables.sql   # 互动 / 分享 /
 source visu-picture-backend/sql/add_comment_like.sql         # 评论点赞表 + picture_comment.likeCount
 source visu-picture-backend/sql/add_comment_threading.sql    # 楼中楼线程字段（parentId/rootId/…）
 source visu-picture-backend/sql/add_picture_action.sql       # 点赞+收藏合并为 picture_action
+source visu-picture-backend/sql/merge_picture_share.sql      # 分享数据并入 picture 表
 ```
 
 > `add_interaction_tables.sql` 使用 `information_schema` 判断后再执行 `ALTER`，
@@ -299,7 +299,7 @@ visu-picture
 │   │   ├── mapper                    # MyBatis-Plus Mapper（11 个）
 │   │   ├── model
 │   │   │   ├── dto                   # 请求对象
-│   │   │   ├── entity                # 数据库实体（10 张表）
+│   │   │   ├── entity                # 数据库实体（9 张表）
 │   │   │   ├── enums                 # 状态 / 角色 / 通知类型枚举
 │   │   │   └── vo                    # 视图对象（脱敏）
 │   │   ├── service                   # 业务逻辑层 + impl 实现
@@ -308,12 +308,13 @@ visu-picture
 │   │   ├── biz/vipCode.json          # 会员激活码
 │   │   └── mapper/*.xml              # MyBatis 映射文件
 │   └── sql
-│       ├── create_table.sql          # 完整建表脚本（10 张表 + 索引）
+│       ├── create_table.sql          # 完整建表脚本（9 张表 + 索引）
 │       ├── add_notification_table.sql# 通知表增量脚本
 │       ├── add_interaction_tables.sql# 互动 / 分享 / 审计增量脚本（含幂等 ALTER）
 │       ├── add_comment_like.sql      # 评论点赞增量脚本
 │       ├── add_comment_threading.sql # 楼中楼线程字段增量脚本
-│       └── add_picture_action.sql    # 点赞+收藏合并脚本（含旧数据迁移）
+│       ├── add_picture_action.sql    # 点赞+收藏合并脚本（含旧数据迁移）
+│       └── merge_picture_share.sql   # 分享数据并入 picture 脚本（含旧数据迁移）
 │
 └── visu-picture-frontend             # 前端应用 (Vue 3 + Vite)
     └── src

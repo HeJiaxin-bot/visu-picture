@@ -2,7 +2,7 @@
   <div class="cmt">
     <!-- 头部：总数 + 排序切换 -->
     <div v-if="showHeader" class="cmt__head">
-      <span class="cmt__head-total">评论 <b>{{ total }}</b></span>
+      <span class="cmt__head-total">共 <b>{{ total }}</b> 条评论</span>
       <div class="cmt__sort">
         <button
           type="button"
@@ -12,7 +12,6 @@
         >
           最热
         </button>
-        <span class="cmt__sort-sep" />
         <button
           type="button"
           class="cmt__sort-btn"
@@ -24,45 +23,32 @@
       </div>
     </div>
 
-    <!-- 评论流 -->
-    <a-spin :spinning="loading">
-      <div v-if="comments.length" class="cmt__list">
-        <div v-for="root in comments" :key="String(root.id)" class="cmt__thread">
-          <!-- ===== 顶层评论 ===== -->
-          <div class="cmt__item">
-            <a-avatar :size="40" :src="root.user?.userAvatar" class="cmt__avatar" @click="goUserPage(root)">
-              <template #icon><UserOutlined /></template>
-            </a-avatar>
-            <div class="cmt__main">
-              <div class="cmt__bubble">
-                <div class="cmt__bubble-head">
-                  <span class="cmt__name" @click="goUserPage(root)">
-                    {{ root.user?.userName ?? '匿名用户' }}
-                  </span>
+    <!-- 滚动区：仅评论列表可滚动，输入区固定在下方 -->
+    <div class="cmt__scroll">
+      <a-spin :spinning="loading">
+        <div v-if="comments.length" class="cmt__list">
+          <div v-for="root in comments" :key="String(root.id)" class="cmt__thread">
+            <!-- ===== 顶层评论（平铺，无气泡） ===== -->
+            <div class="cmt__item">
+              <a-avatar
+                :size="40"
+                :src="root.user?.userAvatar"
+                class="cmt__avatar"
+                @click="goUserPage(root)"
+              >
+                <template #icon><UserOutlined /></template>
+              </a-avatar>
+              <div class="cmt__main">
+                <div class="cmt__name">
+                  {{ root.user?.userName ?? '匿名用户' }}
                   <span v-if="isPictureAuthor(root)" class="cmt__badge">作者</span>
-                  <div class="cmt__tools">
-                    <a-dropdown :trigger="['click']">
-                      <button type="button" class="cmt__icon-btn" title="更多">
-                        <EllipsisOutlined />
-                      </button>
-                      <template #overlay>
-                        <a-menu>
-                          <a-menu-item v-if="root.canDelete" key="delete" danger @click="confirmRemove(root)">
-                            <DeleteOutlined /> 删除评论
-                          </a-menu-item>
-                          <a-menu-item v-else key="report" disabled>
-                            <StopOutlined /> 举报
-                          </a-menu-item>
-                        </a-menu>
-                      </template>
-                    </a-dropdown>
-                  </div>
+                </div>
+                <div class="cmt__meta">
+                  <span>{{ formatTime(root.createTime) }}</span>
+                  <span v-if="root.location" class="cmt__loc">{{ root.location }}</span>
                 </div>
                 <div class="cmt__text">{{ root.content }}</div>
                 <div class="cmt__foot">
-                  <span class="cmt__time">{{ formatTime(root.createTime) }}</span>
-                  <span v-if="root.location" class="cmt__loc">{{ root.location }}</span>
-                  <span class="cmt__foot-gap" />
                   <button
                     type="button"
                     class="cmt__like"
@@ -76,24 +62,33 @@
                   <button type="button" class="cmt__reply-btn" @click="startReply(root, root)">
                     回复
                   </button>
+                  <a-dropdown :trigger="['click']">
+                    <button type="button" class="cmt__icon-btn" title="更多">
+                      <EllipsisOutlined />
+                    </button>
+                    <template #overlay>
+                      <a-menu>
+                        <a-menu-item v-if="root.canDelete" key="delete" danger @click="confirmRemove(root)">
+                          <DeleteOutlined /> 删除评论
+                        </a-menu-item>
+                        <a-menu-item v-else key="report" disabled>
+                          <StopOutlined /> 举报
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                 </div>
 
                 <!-- 顶层评论的内联回复框 -->
                 <div v-if="replyingId === String(root.id)" class="cmt__inline-editor">
-                  <div class="cmt__inline-row">
-                    <a-avatar :size="26" :src="loginUser.userAvatar">
-                      <template #icon><UserOutlined /></template>
-                    </a-avatar>
-                    <a-textarea
-                      ref="inlineInputRef"
-                      v-model:value="replyDraft"
-                      :auto-size="{ minRows: 1, maxRows: 3 }"
-                      :maxlength="COMMENT_MAX"
-                      :placeholder="`回复 @${replyTargetName}：`"
-                      class="cmt__inline-input"
-                      @press-enter="onReplyEnter"
-                    />
-                  </div>
+                  <a-textarea
+                    v-model:value="replyDraft"
+                    :auto-size="{ minRows: 1, maxRows: 3 }"
+                    :maxlength="COMMENT_MAX"
+                    :placeholder="`回复 @${replyTargetName}`"
+                    class="cmt__inline-input"
+                    @press-enter="onReplyEnter"
+                  />
                   <div class="cmt__inline-foot">
                     <a-button size="small" type="text" @click="cancelReply">取消</a-button>
                     <a-button
@@ -109,26 +104,60 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- ===== 楼中楼回复 ===== -->
-          <div v-if="root.replies?.length || (root.replyCount ?? 0) > 0" class="cmt__replies">
-            <div
-              v-for="reply in root.replies"
-              :key="String(reply.id)"
-              class="cmt__item cmt__item--reply"
-            >
-              <a-avatar :size="28" :src="reply.user?.userAvatar" class="cmt__avatar cmt__avatar--sm" @click="goUserPage(reply)">
-                <template #icon><UserOutlined /></template>
-              </a-avatar>
-              <div class="cmt__main cmt__main--reply">
-                <div class="cmt__bubble cmt__bubble--reply">
-                  <div class="cmt__bubble-head">
-                    <span class="cmt__name cmt__name--sm" @click="goUserPage(reply)">
+            <!-- ===== 楼中楼回复：默认收起为一行入口，展开后平铺 ===== -->
+            <div v-if="(root.replyCount ?? 0) > 0" class="cmt__replies">
+              <button
+                v-if="!expanded[String(root.id)]"
+                type="button"
+                class="cmt__expand"
+                @click="expandReplies(root)"
+              >
+                <CaretDownOutlined />
+                @{{ root.user?.userName ?? '匿名用户' }} · {{ root.replyCount }}
+              </button>
+
+              <template v-else>
+                <div
+                  v-for="reply in root.replies"
+                  :key="String(reply.id)"
+                  class="cmt__item cmt__item--reply"
+                >
+                  <a-avatar
+                    :size="28"
+                    :src="reply.user?.userAvatar"
+                    class="cmt__avatar cmt__avatar--sm"
+                    @click="goUserPage(reply)"
+                  >
+                    <template #icon><UserOutlined /></template>
+                  </a-avatar>
+                  <div class="cmt__main">
+                    <div class="cmt__name cmt__name--sm">
                       {{ reply.user?.userName ?? '匿名用户' }}
-                    </span>
-                    <span v-if="isPictureAuthor(reply)" class="cmt__badge">作者</span>
-                    <div class="cmt__tools">
+                      <span v-if="isPictureAuthor(reply)" class="cmt__badge">作者</span>
+                    </div>
+                    <div class="cmt__meta">
+                      <span>{{ formatTime(reply.createTime) }}</span>
+                      <span v-if="reply.location" class="cmt__loc">{{ reply.location }}</span>
+                    </div>
+                    <div class="cmt__text cmt__text--reply">
+                      <span v-if="reply.replyToUserName" class="cmt__at">@{{ reply.replyToUserName }}</span>
+                      {{ reply.content }}
+                    </div>
+                    <div class="cmt__foot">
+                      <button
+                        type="button"
+                        class="cmt__like"
+                        :class="{ 'is-liked': reply.isLiked }"
+                        @click="toggleLike(reply)"
+                      >
+                        <HeartFilled v-if="reply.isLiked" />
+                        <HeartOutlined v-else />
+                        <i v-if="reply.likeCount">{{ formatLikeCount(reply.likeCount) }}</i>
+                      </button>
+                      <button type="button" class="cmt__reply-btn" @click="startReply(reply, root)">
+                        回复
+                      </button>
                       <a-dropdown :trigger="['click']">
                         <button type="button" class="cmt__icon-btn" title="更多">
                           <EllipsisOutlined />
@@ -145,118 +174,79 @@
                         </template>
                       </a-dropdown>
                     </div>
-                  </div>
-                  <div class="cmt__text cmt__text--reply">
-                    <!-- 回复"回复"时显示蓝色 @昵称（对齐参考图） -->
-                    <template v-if="reply.replyToUserName">
-                      <span class="cmt__at" @click="goUserPage(reply)">@{{ reply.replyToUserName }}</span>：
-                    </template>{{ reply.content }}
-                  </div>
-                  <div class="cmt__foot">
-                    <span class="cmt__time">{{ formatTime(reply.createTime) }}</span>
-                    <span v-if="reply.location" class="cmt__loc">{{ reply.location }}</span>
-                    <span class="cmt__foot-gap" />
-                    <button
-                      type="button"
-                      class="cmt__like cmt__like--sm"
-                      :class="{ 'is-liked': reply.isLiked }"
-                      @click="toggleLike(reply, root)"
-                    >
-                      <HeartFilled v-if="reply.isLiked" />
-                      <HeartOutlined v-else />
-                      <i v-if="reply.likeCount">{{ formatLikeCount(reply.likeCount) }}</i>
-                    </button>
-                    <button type="button" class="cmt__reply-btn" @click="startReply(reply, root)">
-                      回复
-                    </button>
-                  </div>
 
-                  <!-- 回复的内联回复框 -->
-                  <div v-if="replyingId === String(reply.id)" class="cmt__inline-editor">
-                    <div class="cmt__inline-row">
-                      <a-avatar :size="26" :src="loginUser.userAvatar">
-                        <template #icon><UserOutlined /></template>
-                      </a-avatar>
+                    <div v-if="replyingId === String(reply.id)" class="cmt__inline-editor">
                       <a-textarea
                         v-model:value="replyDraft"
                         :auto-size="{ minRows: 1, maxRows: 3 }"
                         :maxlength="COMMENT_MAX"
-                        :placeholder="`回复 @${replyTargetName}：`"
+                        :placeholder="`回复 @${replyTargetName}`"
                         class="cmt__inline-input"
                         @press-enter="onReplyEnter"
                       />
-                    </div>
-                    <div class="cmt__inline-foot">
-                      <a-button size="small" type="text" @click="cancelReply">取消</a-button>
-                      <a-button
-                        size="small"
-                        type="primary"
-                        :loading="replying"
-                        :disabled="!replyDraft.trim()"
-                        @click="sendReply()"
-                      >
-                        回复
-                      </a-button>
+                      <div class="cmt__inline-foot">
+                        <a-button size="small" type="text" @click="cancelReply">取消</a-button>
+                        <a-button
+                          size="small"
+                          type="primary"
+                          :loading="replying"
+                          :disabled="!replyDraft.trim()"
+                          @click="sendReply()"
+                        >
+                          回复
+                        </a-button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+
+                <button
+                  v-if="(root.replyCount ?? 0) > (root.replies?.length ?? 0)"
+                  type="button"
+                  class="cmt__expand"
+                  @click="expandReplies(root)"
+                >
+                  <CaretDownOutlined />
+                  展开更多回复
+                </button>
+                <button v-else type="button" class="cmt__expand" @click="collapseReplies(root)">
+                  <CaretUpOutlined />
+                  收起
+                </button>
+              </template>
             </div>
-
-            <!-- 展开 / 收起楼中楼 -->
-            <button
-              v-if="(root.replyCount ?? 0) > (root.replies?.length ?? 0) && !expanded[root.id!]"
-              type="button"
-              class="cmt__expand"
-              @click="expandReplies(root)"
-            >
-              <CaretDownOutlined />
-              展开 {{ (root.replyCount ?? 0) - (root.replies?.length ?? 0) }} 条回复
-            </button>
-            <button
-              v-else-if="expanded[root.id!]"
-              type="button"
-              class="cmt__expand"
-              @click="collapseReplies(root)"
-            >
-              <CaretUpOutlined />
-              收起回复
-            </button>
           </div>
+
+          <div v-if="!hasMore" class="cmt__end">已经到底啦 ~</div>
         </div>
 
-        <div v-if="!hasMore" class="cmt__end">
-          <span class="cmt__end-line" />
-          <span>已经到底啦</span>
-          <span class="cmt__end-line" />
+        <div v-else-if="!loading" class="cmt__empty">
+          <img class="cmt__empty-img" :src="EMPTY_SVG" alt="" />
+          <p class="cmt__empty-title">还没有评论</p>
+          <p class="cmt__empty-sub">来抢第一个沙发吧</p>
         </div>
-      </div>
+      </a-spin>
 
-      <div v-else-if="!loading" class="cmt__empty">
-        <img class="cmt__empty-img" :src="EMPTY_SVG" alt="" />
-        <p class="cmt__empty-title">还没有评论</p>
-        <p class="cmt__empty-sub">来抢第一个沙发吧</p>
+      <!-- 分页 -->
+      <div v-if="total > pageSize" class="cmt__pager">
+        <a-pagination
+          v-model:current="current"
+          :total="total"
+          :page-size="pageSize"
+          size="small"
+          :show-size-changer="false"
+          @change="load"
+        />
       </div>
-    </a-spin>
-
-    <!-- 分页 -->
-    <div v-if="total > pageSize" class="cmt__pager">
-      <a-pagination
-        v-model:current="current"
-        :total="total"
-        :page-size="pageSize"
-        size="small"
-        :show-size-changer="false"
-        @change="load"
-      />
     </div>
 
-    <!-- 主输入区 -->
+    <!-- ===== 底部输入区：固定在面板底部，输入框与发送按钮同一行 ===== -->
     <div class="cmt__composer">
-      <a-avatar :size="38" :src="loginUser.userAvatar" class="cmt__avatar">
+      <a-avatar :size="32" :src="loginUser.userAvatar" class="cmt__composer-avatar">
         <template #icon><UserOutlined /></template>
       </a-avatar>
-      <div v-if="loginUser.id" class="cmt__composer-body">
+
+      <template v-if="loginUser.id">
         <div class="cmt__composer-box" :class="{ 'is-focus': composerFocus }">
           <textarea
             ref="composerRef"
@@ -264,7 +254,7 @@
             class="cmt__textarea"
             rows="1"
             :maxlength="COMMENT_MAX"
-            placeholder="写下你的评论…"
+            placeholder="添加评论…"
             :disabled="submitting"
             @focus="composerFocus = true"
             @blur="composerFocus = false"
@@ -272,32 +262,22 @@
             @input="autoGrow"
           />
         </div>
-        <div class="cmt__composer-foot">
-          <span class="cmt__composer-tip">Ctrl + Enter 发送</span>
-          <span
-            v-if="draft.length"
-            class="cmt__char"
-            :class="{ 'is-warn': draft.length > COMMENT_MAX * 0.9 }"
-          >{{ draft.length }}/{{ COMMENT_MAX }}</span>
-          <a-button
-            type="primary"
-            class="cmt__send"
-            :loading="submitting"
-            :disabled="!draft.trim()"
-            @click="submit"
-          >
-            发 送
-          </a-button>
-        </div>
-      </div>
-      <div v-else class="cmt__composer-body" @click="promptLogin">
-        <div class="cmt__composer-box cmt__composer-box--locked">
+        <button
+          type="button"
+          class="cmt__send"
+          :disabled="!draft.trim() || submitting"
+          @click="submit"
+        >
+          {{ submitting ? '发送中' : '发送' }}
+        </button>
+      </template>
+
+      <template v-else>
+        <div class="cmt__composer-box cmt__composer-box--locked" @click="promptLogin">
           <span class="cmt__locked-placeholder">登录后发表评论…</span>
         </div>
-        <div class="cmt__composer-foot">
-          <a-button type="primary" size="small" class="cmt__send">发 送</a-button>
-        </div>
-      </div>
+        <button type="button" class="cmt__send" @click="promptLogin">发送</button>
+      </template>
     </div>
   </div>
 </template>
@@ -339,7 +319,7 @@ const props = withDefaults(defineProps<Props>(), {
   showHeader: true,
 })
 
-/** 与后端 COMMENT_MAX_LENGTH 保持一致 */
+/** 与后端 COMMENT_MAX_LENGTH 保持一致（输入框仍受此上限约束，只是不再显示计数） */
 const COMMENT_MAX = 500
 
 // 空态插画：内联 SVG data-uri，不引外部资源
@@ -475,12 +455,12 @@ const onComposerKeydown = (e: KeyboardEvent) => {
   }
 }
 
-/** 输入框高度自适应（原生 textarea 手动撑开） */
+/** 输入框高度自适应（原生 textarea 手动撑开，最多 3 行左右） */
 const autoGrow = () => {
   const el = composerRef.value
   if (!el) return
   el.style.height = 'auto'
-  el.style.height = Math.min(el.scrollHeight, 132) + 'px'
+  el.style.height = Math.min(el.scrollHeight, 84) + 'px'
 }
 const autoGrowAfterClear = () => {
   nextTick(() => {
@@ -516,7 +496,7 @@ const remove = async (item: PictureCommentVO) => {
 }
 
 // ----- 评论点赞（乐观更新 + 服务端对账） -----
-const toggleLike = async (item: PictureCommentVO, root?: PictureCommentVO) => {
+const toggleLike = async (item: PictureCommentVO) => {
   if (!loginUser.id) {
     promptLogin()
     return
@@ -673,18 +653,23 @@ defineExpose({ reload: load })
 </script>
 
 <style scoped>
+/*
+  整体结构：头部（固定）+ 滚动区（flex:1，唯一滚动容器）+ 输入区（固定底部）。
+  这样无论评论多少，输入框始终贴在面板底部，不会被列表顶走。
+*/
 .cmt {
   --cmt-accent: var(--accent, #40a9ff);
   --cmt-name: #4e6b8a;
   --cmt-text: #303133;
   --cmt-meta: #9aa4b2;
-  --cmt-bubble: #f5f7fa;
-  --cmt-bubble-hover: #eef2f7;
-  --cmt-bubble-radius: 14px;
   --cmt-heart: #ff4d6a;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  /* 面板自身高度上限：列表在内部滚动，输入区固定在底部。
+     不设 height:100% 是因为宿主（弹窗侧栏 / 详情卡片）高度不确定，
+     用 max-height 才能保证"输入框始终在最下方"且不撑破容器。 */
+  max-height: min(68vh, 680px);
+  min-height: 0;
 }
 
 .cmt *::selection {
@@ -693,9 +678,11 @@ defineExpose({ reload: load })
 
 /* ===== 头部 ===== */
 .cmt__head {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-bottom: 12px;
 }
 
 .cmt__head-total {
@@ -705,10 +692,11 @@ defineExpose({ reload: load })
 }
 
 .cmt__head-total b {
-  margin-left: 4px;
+  margin: 0 2px;
   font-weight: 700;
 }
 
+/* 排序：胶囊分段控件 */
 .cmt__sort {
   display: inline-flex;
   align-items: center;
@@ -739,18 +727,38 @@ defineExpose({ reload: load })
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
-.cmt__sort-sep {
-  width: 1px;
-  height: 10px;
-  background: rgba(0, 0, 0, 0.08);
-  margin: 0 2px;
+/* ===== 滚动区 ===== */
+.cmt__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* ===== 线程 ===== */
+/* 主题化滚动条：默认的系统滚动条与整体风格不符 */
+.cmt__scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cmt__scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+.cmt__scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.cmt__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===== 列表（平铺，无气泡） ===== */
 .cmt__list {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  padding-right: 4px;
 }
 
 .cmt__item {
@@ -762,7 +770,6 @@ defineExpose({ reload: load })
 .cmt__avatar {
   flex-shrink: 0;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: transform 0.18s ease;
 }
 
@@ -771,7 +778,7 @@ defineExpose({ reload: load })
 }
 
 .cmt__avatar--sm {
-  box-shadow: none;
+  margin-top: 2px;
 }
 
 .cmt__main {
@@ -779,38 +786,24 @@ defineExpose({ reload: load })
   min-width: 0;
 }
 
-/* ===== 气泡 ===== */
-.cmt__bubble {
-  background: var(--cmt-bubble);
-  border-radius: var(--cmt-bubble-radius);
-  border-top-left-radius: 4px;
-  padding: 12px 16px 10px;
-  transition: background 0.18s ease;
-}
-
-.cmt__item:hover .cmt__bubble {
-  background: var(--cmt-bubble-hover);
-}
-
-.cmt__bubble-head {
+/* 昵称：主色 + 加粗，与灰色时间形成层次 */
+.cmt__name {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.cmt__name {
+  gap: 6px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--cmt-name);
+  line-height: 1.3;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 0.15s ease;
 }
 
 .cmt__name:hover {
   color: var(--cmt-accent);
+}
+
+.cmt__name--sm {
+  font-size: 13px;
 }
 
 .cmt__badge {
@@ -826,37 +819,21 @@ defineExpose({ reload: load })
   letter-spacing: 1px;
 }
 
-.cmt__tools {
-  margin-left: auto;
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.cmt__item:hover .cmt__tools {
-  opacity: 1;
-}
-
-.cmt__icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
+/* 时间 · 属地 */
+.cmt__meta {
+  margin-top: 3px;
+  font-size: 12px;
   color: var(--cmt-meta);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  line-height: 1.4;
 }
 
-.cmt__icon-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--cmt-text);
+.cmt__loc::before {
+  content: '·';
+  margin: 0 6px;
 }
 
 .cmt__text {
-  margin-top: 6px;
+  margin-top: 7px;
   font-size: 14px;
   line-height: 1.7;
   color: var(--cmt-text);
@@ -864,10 +841,16 @@ defineExpose({ reload: load })
   word-break: break-word;
 }
 
-/* 蓝色 @昵称（回复语境，对齐参考图） */
+.cmt__text--reply {
+  font-size: 13.5px;
+  margin-top: 5px;
+}
+
+/* 蓝色 @昵称（回复语境） */
 .cmt__at {
   color: var(--cmt-accent);
   font-weight: 600;
+  margin-right: 2px;
   cursor: pointer;
 }
 
@@ -875,32 +858,12 @@ defineExpose({ reload: load })
   text-decoration: underline;
 }
 
-/* ===== 底部操作行 ===== */
+/* ===== 操作行：点赞 / 回复 / 更多 ===== */
 .cmt__foot {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.cmt__time {
-  font-size: 12px;
-  color: var(--cmt-meta);
-  font-variant-numeric: tabular-nums;
-}
-
-.cmt__loc {
-  font-size: 12px;
-  color: var(--cmt-meta);
-}
-
-.cmt__loc::before {
-  content: '·';
-  margin-right: 6px;
-}
-
-.cmt__foot-gap {
-  flex: 1;
+  gap: 18px;
+  margin-top: 9px;
 }
 
 .cmt__like {
@@ -909,12 +872,11 @@ defineExpose({ reload: load })
   gap: 5px;
   border: none;
   background: transparent;
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: 0;
   font-size: 13px;
   color: var(--cmt-meta);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: color 0.18s ease;
 }
 
 .cmt__like i {
@@ -925,8 +887,6 @@ defineExpose({ reload: load })
 
 .cmt__like:hover {
   color: var(--cmt-heart);
-  background: rgba(255, 77, 106, 0.08);
-  transform: scale(1.04);
 }
 
 .cmt__like.is-liked {
@@ -936,75 +896,66 @@ defineExpose({ reload: load })
 .cmt__reply-btn {
   border: none;
   background: transparent;
-  padding: 2px 6px;
-  border-radius: 6px;
+  padding: 0;
   font-size: 12.5px;
   color: var(--cmt-meta);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: color 0.18s ease;
 }
 
 .cmt__reply-btn:hover {
   color: var(--cmt-accent);
-  background: rgba(64, 169, 255, 0.08);
+}
+
+.cmt__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
+  color: var(--cmt-meta);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.cmt__icon-btn:hover {
+  color: var(--cmt-text);
 }
 
 /* ===== 楼中楼 ===== */
 .cmt__replies {
-  margin-top: 10px;
-  margin-left: 52px; /* 顶层头像 40 + 间距 12，与顶层正文对齐 */
-  padding-left: 14px;
+  margin-top: 12px;
+  /* 与顶层正文左对齐：头像 40 + 间距 12 */
+  margin-left: 52px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  /* 竖向连接线：贯穿整个回复区 */
-  border-left: 2px solid rgba(0, 0, 0, 0.05);
+  gap: 16px;
 }
 
-.cmt__item--reply .cmt__bubble {
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
+.cmt__item--reply {
+  gap: 10px;
 }
 
-.cmt__item--reply:hover .cmt__bubble {
-  background: transparent;
-}
-
-.cmt__item--reply .cmt__tools {
-  /* 回复区更紧凑，操作常驻但弱化 */
-  opacity: 0;
-}
-
-.cmt__text--reply {
-  font-size: 13.5px;
-  margin-top: 3px;
-}
-
-.cmt__like--sm {
-  font-size: 12.5px;
-}
-
-/* 展开/收起 */
+/* 展开 / 收起入口：与参考一致的「@昵称 · N」形式 */
 .cmt__expand {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: 14px;
   border: none;
   background: transparent;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--cmt-accent);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
 .cmt__expand:hover {
-  background: rgba(64, 169, 255, 0.08);
+  opacity: 0.75;
 }
 
 /* 内联回复框 */
@@ -1012,16 +963,8 @@ defineExpose({ reload: load })
   margin-top: 10px;
 }
 
-.cmt__inline-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
 .cmt__inline-input {
-  flex: 1;
   border-radius: 10px;
-  background: #fff;
   font-size: 13.5px;
 }
 
@@ -1034,18 +977,10 @@ defineExpose({ reload: load })
 
 /* ===== 到底提示 ===== */
 .cmt__end {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 0 0;
+  padding: 18px 0 4px;
+  text-align: center;
   font-size: 12px;
   color: var(--cmt-meta);
-}
-
-.cmt__end-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
 }
 
 /* ===== 空态 ===== */
@@ -1053,7 +988,7 @@ defineExpose({ reload: load })
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 22px 0 10px;
+  padding: 40px 0 24px;
 }
 
 .cmt__empty-img {
@@ -1063,7 +998,7 @@ defineExpose({ reload: load })
 }
 
 .cmt__empty-title {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text-secondary);
@@ -1079,27 +1014,33 @@ defineExpose({ reload: load })
 .cmt__pager {
   display: flex;
   justify-content: center;
+  padding: 12px 0 4px;
 }
 
-/* ===== 主输入区 ===== */
+/* ===== 底部输入区（固定） ===== */
 .cmt__composer {
+  flex-shrink: 0;
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding-top: 16px;
+  align-items: flex-end;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 4px;
   border-top: 1px solid var(--border-color);
 }
 
-.cmt__composer-body {
-  flex: 1;
-  min-width: 0;
+.cmt__composer-avatar {
+  flex-shrink: 0;
+  margin-bottom: 3px;
 }
 
+/* 输入容器：白底描边，聚焦时主色光晕 */
 .cmt__composer-box {
+  flex: 1;
+  min-width: 0;
   background: var(--bg-card);
   border: 1.5px solid var(--border-color);
-  border-radius: 14px;
-  padding: 4px 4px 4px 14px;
+  border-radius: 20px;
+  padding: 6px 14px;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -1114,7 +1055,7 @@ defineExpose({ reload: load })
   cursor: pointer;
   display: flex;
   align-items: center;
-  min-height: 42px;
+  min-height: 38px;
 }
 
 .cmt__locked-placeholder {
@@ -1129,62 +1070,41 @@ defineExpose({ reload: load })
   outline: none;
   resize: none;
   background: transparent;
-  padding: 8px 0;
+  padding: 0;
   font-size: 14px;
   line-height: 1.6;
   font-family: inherit;
   color: var(--cmt-text);
-  max-height: 132px;
+  max-height: 84px;
 }
 
 .cmt__textarea::placeholder {
   color: var(--cmt-meta);
 }
 
-.cmt__composer-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.cmt__composer-tip {
-  font-size: 12px;
-  color: var(--cmt-meta);
-}
-
-.cmt__char {
-  margin-left: auto;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--cmt-meta);
-  transition: color 0.18s ease;
-}
-
-.cmt__char.is-warn {
-  color: #fa8c16;
-  font-weight: 600;
-}
-
+/* 发送按钮：与输入框同一行，胶囊样式 */
 .cmt__send {
-  min-width: 76px;
-  border-radius: 999px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #40a9ff, #1677ff);
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 20px;
   border: none;
-  box-shadow: 0 3px 10px rgba(22, 119, 255, 0.28);
+  border-radius: 19px;
+  background: linear-gradient(135deg, #40a9ff, #1677ff);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .cmt__send:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(22, 119, 255, 0.36);
+  filter: brightness(1.06);
 }
 
 .cmt__send:disabled {
-  background: rgba(0, 0, 0, 0.12);
-  box-shadow: none;
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.3);
+  cursor: not-allowed;
 }
 
 /* ===== 深色模式 ===== */
@@ -1192,12 +1112,6 @@ html.dark .cmt {
   --cmt-name: #8fb8dd;
   --cmt-text: #e8e8e8;
   --cmt-meta: #6e7681;
-  --cmt-bubble: rgba(255, 255, 255, 0.055);
-  --cmt-bubble-hover: rgba(255, 255, 255, 0.09);
-}
-
-html.dark .cmt__replies {
-  border-left-color: rgba(255, 255, 255, 0.08);
 }
 
 html.dark .cmt__head-total {
@@ -1214,11 +1128,15 @@ html.dark .cmt__sort-btn.is-active {
 }
 
 html.dark .cmt__icon-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+html.dark .cmt__scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 html.dark .cmt__inline-input {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 html.dark .cmt__composer-box {
@@ -1231,11 +1149,6 @@ html.dark .cmt__composer-box.is-focus {
 
 html.dark .cmt__send:disabled {
   background: rgba(255, 255, 255, 0.1);
-}
-
-@media (hover: none) {
-  .cmt__tools {
-    opacity: 1;
-  }
+  color: rgba(255, 255, 255, 0.3);
 }
 </style>

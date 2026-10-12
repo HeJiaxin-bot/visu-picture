@@ -38,7 +38,6 @@ import com.visupicture.model.vo.UserVO;
 import com.visupicture.service.NotificationService;
 import com.visupicture.service.PictureInteractionService;
 import com.visupicture.service.PictureService;
-import com.visupicture.service.PictureShareService;
 import com.visupicture.service.SpaceService;
 import com.visupicture.service.UserService;
 import com.visupicture.utils.ColorSimilarUtils;
@@ -112,9 +111,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private PictureInteractionService pictureInteractionService;
-
-    @Resource
-    private PictureShareService pictureShareService;
 
     /**
      * 是否拦截重复图片上传（同一空间内 picHash 相同即视为重复）。

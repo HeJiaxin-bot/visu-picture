@@ -100,6 +100,28 @@ public class Picture implements Serializable {
     private Integer favoriteCount;
 
     /**
+     * 分享码（NULL=未分享；非空即可通过 /share/public/{shareCode} 公开访问）
+     * <p>原 picture_share 表已并入本表：一张图片最多只有一条有效分享链接
+     * （createShare 复用已有链接），本质是 1:1 关系，无需独立成表。</p>
+     */
+    private String shareCode;
+
+    /**
+     * 分享过期时间（NULL=永久有效）
+     */
+    private Date shareExpireTime;
+
+    /**
+     * 分享链接访问次数
+     */
+    private Integer shareViewCount;
+
+    /**
+     * 分享创建时间
+     */
+    private Date shareCreateTime;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

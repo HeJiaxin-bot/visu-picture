@@ -14,13 +14,11 @@ import com.visupicture.mapper.CommentLikeMapper;
 import com.visupicture.mapper.PictureActionMapper;
 import com.visupicture.mapper.PictureCommentMapper;
 import com.visupicture.mapper.PictureMapper;
-import com.visupicture.mapper.PictureShareMapper;
 import com.visupicture.mapper.PictureViewHistoryMapper;
 import com.visupicture.model.entity.CommentLike;
 import com.visupicture.model.entity.Picture;
 import com.visupicture.model.entity.PictureAction;
 import com.visupicture.model.entity.PictureComment;
-import com.visupicture.model.entity.PictureShare;
 import com.visupicture.model.entity.PictureViewHistory;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.PictureReviewStatusEnum;
@@ -77,9 +75,6 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
 
     @Resource
     private PictureViewHistoryMapper pictureViewHistoryMapper;
-
-    @Resource
-    private PictureShareMapper pictureShareMapper;
 
     @Resource
     private UserService userService;
@@ -715,7 +710,6 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         // 评论是逻辑删除表，用 delete 走 @TableLogic 置位
         pictureCommentMapper.delete(new QueryWrapper<PictureComment>().eq("pictureId", pictureId));
         pictureViewHistoryMapper.delete(new QueryWrapper<PictureViewHistory>().eq("pictureId", pictureId));
-        // 分享链接失效，避免已删除图片仍可通过外链访问
-        pictureShareMapper.delete(new QueryWrapper<PictureShare>().eq("pictureId", pictureId));
+        // 分享数据已并入 picture 表：删除图片行即同时移除分享码，无需额外清理
     }
 }
