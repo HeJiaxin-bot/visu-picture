@@ -80,46 +80,54 @@ create table if not exists picture
     INDEX idx_picHash (picHash)            -- 提升重复图片检测的比对性能
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
--- 图片点赞记录（点赞去重）
--- picture.likeCount 是计数器；本表存「谁赞过哪张图」的多对多关系。
--- 唯一索引 uk_pictureId_userId + INSERT IGNORE 保证同一用户对同一图片只有一条记录，
--- 从数据库层面杜绝重复点赞把计数刷高（连点、脚本、并发请求都失效）。
-create table if not exists picture_like
+-- 图片互动记录（点赞 / 收藏合并为一张表）
+-- 原 picture_like 与 picture_favorite 结构、索引、查询模式完全同构，
+-- 合并后用 actionType 区分动作：唯一索引含 actionType，
+-- 因此「同一用户对同一图片的同一动作」仍只能有一条，去重能力不变。
+create table if not exists picture_action
 (
     id         bigint auto_increment comment 'id' primary key,
     pictureId  bigint                             not null comment '图片 id',
+    userId     bigint                             not null comment '用户 id',
+    actionType tinyint                            not null comment '动作类型：1-点赞 2-收藏',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '操作时间',
+    UNIQUE KEY uk_pic_user_type (pictureId, userId, actionType),
+    INDEX idx_user_type (userId, actionType),
+    INDEX idx_pictureId (pictureId)
+) comment '图片互动记录（点赞/收藏）' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
+
+-- 评论点赞记录（与图片互动同构，但目标实体是评论，故独立成表）
+create table if not exists comment_like
+(
+    id         bigint auto_increment comment 'id' primary key,
+    commentId  bigint                             not null comment '评论 id',
     userId     bigint                             not null comment '点赞用户 id',
     createTime datetime default CURRENT_TIMESTAMP not null comment '点赞时间',
-    UNIQUE KEY uk_pictureId_userId (pictureId, userId),
-    INDEX idx_userId (userId),
-    INDEX idx_pictureId (pictureId)
-) comment '图片点赞记录' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
+    UNIQUE KEY uk_commentId_userId (commentId, userId),
+    INDEX idx_commentId (commentId),
+    INDEX idx_userId (userId)
+) comment '评论点赞记录' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
--- 图片收藏记录（与点赞同构，业务语义不同：点赞表达态度，收藏偏私人整理）
-create table if not exists picture_favorite
-(
-    id         bigint auto_increment comment 'id' primary key,
-    pictureId  bigint                             not null comment '图片 id',
-    userId     bigint                             not null comment '收藏用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '收藏时间',
-    UNIQUE KEY uk_pictureId_userId (pictureId, userId),
-    INDEX idx_userId (userId),
-    INDEX idx_pictureId (pictureId)
-) comment '图片收藏记录' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
-
--- 图片评论
+-- 图片评论（含楼中楼线程字段）
 create table if not exists picture_comment
 (
     id          bigint auto_increment comment 'id' primary key,
     pictureId   bigint                             not null comment '图片 id',
     userId      bigint                             not null comment '评论用户 id',
+    parentId    bigint                             null comment '父评论 id（回复时指向被回复的评论，顶层为 NULL）',
+    rootId      bigint                             null comment '线程根评论 id（回复所属的顶层评论，顶层为 NULL）',
+    replyToUserId   bigint                         null comment '被回复用户 id',
+    replyToUserName varchar(256)                   null comment '被回复用户昵称快照（用户改名后仍可显示）',
+    location    varchar(64)                        null comment '评论者 IP 属地（省份，预留字段）',
     content     varchar(500)                       not null comment '评论内容',
+    likeCount   int      default 0                 not null comment '点赞数',
     createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete    tinyint  default 0                 not null comment '是否删除',
     INDEX idx_pictureId (pictureId),
     INDEX idx_userId (userId),
-    INDEX idx_createTime (createTime)
+    INDEX idx_createTime (createTime),
+    INDEX idx_rootId (rootId)
 ) comment '图片评论' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
 -- 图片浏览历史（最近查看）

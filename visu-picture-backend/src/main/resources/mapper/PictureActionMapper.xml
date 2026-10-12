@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.visupicture.mapper.PictureActionMapper">
+
+    <resultMap id="BaseResultMap" type="com.visupicture.model.entity.PictureAction">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="pictureId" column="pictureId" jdbcType="BIGINT"/>
+            <result property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="actionType" column="actionType" jdbcType="TINYINT"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,pictureId,userId,
+        actionType,createTime
+    </sql>
+
+    <!--
+      幂等插入互动记录（点赞去重 / 收藏去重的核心）
+      唯一索引 uk_pic_user_type (pictureId, userId, actionType) + INSERT IGNORE：
+        已存在 -> 插入被忽略并返回 0
+        不存在 -> 插入成功返回 1
+      调用方据返回值决定是否对 picture.likeCount / favoriteCount 计数。
+    -->
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO picture_action (pictureId, userId, actionType)
+        VALUES (#{pictureId}, #{userId}, #{actionType})
+    </insert>
+</mapper>

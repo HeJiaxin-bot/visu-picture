@@ -11,17 +11,15 @@ import com.visupicture.exception.BusinessException;
 import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
 import com.visupicture.mapper.CommentLikeMapper;
+import com.visupicture.mapper.PictureActionMapper;
 import com.visupicture.mapper.PictureCommentMapper;
-import com.visupicture.mapper.PictureFavoriteMapper;
-import com.visupicture.mapper.PictureLikeMapper;
 import com.visupicture.mapper.PictureMapper;
 import com.visupicture.mapper.PictureShareMapper;
 import com.visupicture.mapper.PictureViewHistoryMapper;
 import com.visupicture.model.entity.CommentLike;
 import com.visupicture.model.entity.Picture;
+import com.visupicture.model.entity.PictureAction;
 import com.visupicture.model.entity.PictureComment;
-import com.visupicture.model.entity.PictureFavorite;
-import com.visupicture.model.entity.PictureLike;
 import com.visupicture.model.entity.PictureShare;
 import com.visupicture.model.entity.PictureViewHistory;
 import com.visupicture.model.entity.User;
@@ -69,10 +67,7 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
     private PictureMapper pictureMapper;
 
     @Resource
-    private PictureLikeMapper pictureLikeMapper;
-
-    @Resource
-    private PictureFavoriteMapper pictureFavoriteMapper;
+    private PictureActionMapper pictureActionMapper;
 
     @Resource
     private PictureCommentMapper pictureCommentMapper;
@@ -127,28 +122,58 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
      */
     @Override
     public int like(long pictureId, long userId, boolean isLike) {
+        return toggleAction(pictureId, userId, PictureAction.ActionType.LIKE, isLike);
+    }
+
+    @Override
+    public int favorite(long pictureId, long userId, boolean isFavorite) {
+        return toggleAction(pictureId, userId, PictureAction.ActionType.FAVORITE, isFavorite);
+    }
+
+    /**
+     * 互动动作开关（点赞 / 收藏共用）
+     *
+     * <p><b>幂等实现要点</b>：计数是否变更完全由「记录表的写入结果」决定，
+     * 而不是由前端传入的开关值决定。这样即使用户连点、或两个请求并发到达，
+     * 也只有真正改变了记录状态的那一次会去改计数。</p>
+     *
+     * <ul>
+     *   <li>开启：{@code INSERT IGNORE} 命中唯一索引返回 0（已存在）→ 不动计数；
+     *       返回 1（首次）→ 对应计数列 +1。</li>
+     *   <li>关闭：{@code DELETE} 返回 0（本来就没有）→ 不动计数；
+     *       返回 1（确实取消）→ 用 GREATEST(x-1, 0) 递减，保证不为负。</li>
+     * </ul>
+     * 记录与计数在同一事务内提交，不会出现「记录成功但计数没加」的漂移。
+     *
+     * @param actionType 1-点赞 2-收藏
+     * @return 操作后的对应计数（点赞数 / 收藏数）
+     */
+    private int toggleAction(long pictureId, long userId, int actionType, boolean enable) {
         requirePicture(pictureId);
+        // 计数列与动作类型一一对应，避免调用方传错
+        String countColumn = actionType == PictureAction.ActionType.LIKE ? "likeCount" : "favoriteCount";
         Integer result = transactionTemplate.execute(status -> {
-            if (isLike) {
-                // 唯一索引 (pictureId, userId) + INSERT IGNORE：重复点赞被静默忽略
-                int inserted = pictureLikeMapper.insertIgnore(pictureId, userId);
+            if (enable) {
+                // 唯一索引 (pictureId, userId, actionType) + INSERT IGNORE：重复操作被静默忽略
+                int inserted = pictureActionMapper.insertIgnore(pictureId, userId, actionType);
                 if (inserted == 1) {
                     pictureMapper.update(null, new UpdateWrapper<Picture>()
                             .eq("id", pictureId)
-                            .setSql("likeCount = likeCount + 1"));
+                            .setSql(countColumn + " = " + countColumn + " + 1"));
                 }
             } else {
-                int deleted = pictureLikeMapper.delete(new QueryWrapper<PictureLike>()
+                int deleted = pictureActionMapper.delete(new QueryWrapper<PictureAction>()
                         .eq("pictureId", pictureId)
-                        .eq("userId", userId));
+                        .eq("userId", userId)
+                        .eq("actionType", actionType));
                 if (deleted > 0) {
                     // GREATEST 兜底：即使历史数据导致计数与记录不一致，也不会出现负数
                     pictureMapper.update(null, new UpdateWrapper<Picture>()
                             .eq("id", pictureId)
-                            .setSql("likeCount = GREATEST(likeCount - 1, 0)"));
+                            .setSql(countColumn + " = GREATEST(" + countColumn + " - 1, 0)"));
                 }
             }
-            return currentCount(pictureId, "likeCount");
+            return currentCount(pictureId, countColumn);
         });
         return result == null ? 0 : result;
     }
@@ -167,34 +192,6 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         return value == null ? 0 : value;
     }
 
-    // ============================ 收藏 ============================
-
-    @Override
-    public int favorite(long pictureId, long userId, boolean isFavorite) {
-        requirePicture(pictureId);
-        Integer result = transactionTemplate.execute(status -> {
-            if (isFavorite) {
-                int inserted = pictureFavoriteMapper.insertIgnore(pictureId, userId);
-                if (inserted == 1) {
-                    pictureMapper.update(null, new UpdateWrapper<Picture>()
-                            .eq("id", pictureId)
-                            .setSql("favoriteCount = favoriteCount + 1"));
-                }
-            } else {
-                int deleted = pictureFavoriteMapper.delete(new QueryWrapper<PictureFavorite>()
-                        .eq("pictureId", pictureId)
-                        .eq("userId", userId));
-                if (deleted > 0) {
-                    pictureMapper.update(null, new UpdateWrapper<Picture>()
-                            .eq("id", pictureId)
-                            .setSql("favoriteCount = GREATEST(favoriteCount - 1, 0)"));
-                }
-            }
-            return currentCount(pictureId, "favoriteCount");
-        });
-        return result == null ? 0 : result;
-    }
-
     // ====================== 状态查询与填充 ======================
 
     @Override
@@ -202,18 +199,23 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         if (userId == null) {
             return new boolean[]{false, false};
         }
-        long liked = pictureLikeMapper.selectCount(new QueryWrapper<PictureLike>()
-                .eq("pictureId", pictureId).eq("userId", userId));
-        long favorited = pictureFavoriteMapper.selectCount(new QueryWrapper<PictureFavorite>()
-                .eq("pictureId", pictureId).eq("userId", userId));
-        return new boolean[]{liked > 0, favorited > 0};
+        // 一次查询取回该用户对这张图的全部动作，再按 actionType 判定
+        List<PictureAction> actions = pictureActionMapper.selectList(new QueryWrapper<PictureAction>()
+                .select("actionType")
+                .eq("pictureId", pictureId)
+                .eq("userId", userId));
+        boolean liked = actions.stream()
+                .anyMatch(a -> a.getActionType() != null && a.getActionType() == PictureAction.ActionType.LIKE);
+        boolean favorited = actions.stream()
+                .anyMatch(a -> a.getActionType() != null && a.getActionType() == PictureAction.ActionType.FAVORITE);
+        return new boolean[]{liked, favorited};
     }
 
     /**
      * 批量填充点赞/收藏状态
      *
-     * <p>用两个 IN 查询一次性取回当前用户对整页图片的点赞与收藏集合，
-     * 再在内存里标记，避免逐条查询造成 N+1（一页 20 张图会变成 40 次查询）。</p>
+     * <p>用一次 IN 查询取回当前用户对整页图片的全部动作，再在内存里按 actionType 分组标记，
+     * 避免逐条查询造成 N+1（一页 20 张图会变成 40 次查询）。</p>
      */
     @Override
     public void fillInteractionState(List<PictureVO> pictureVOList, Long userId) {
@@ -234,16 +236,17 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
         if (pictureIds.isEmpty()) {
             return;
         }
-        Set<Long> likedIds = pictureLikeMapper.selectList(new QueryWrapper<PictureLike>()
-                        .select("pictureId")
-                        .eq("userId", userId)
-                        .in("pictureId", pictureIds))
-                .stream().map(PictureLike::getPictureId).collect(Collectors.toSet());
-        Set<Long> favoritedIds = pictureFavoriteMapper.selectList(new QueryWrapper<PictureFavorite>()
-                        .select("pictureId")
-                        .eq("userId", userId)
-                        .in("pictureId", pictureIds))
-                .stream().map(PictureFavorite::getPictureId).collect(Collectors.toSet());
+        // 一次查询拿回「点赞 + 收藏」两类记录，按 actionType 分流
+        List<PictureAction> actions = pictureActionMapper.selectList(new QueryWrapper<PictureAction>()
+                .select("pictureId", "actionType")
+                .eq("userId", userId)
+                .in("pictureId", pictureIds));
+        Set<Long> likedIds = actions.stream()
+                .filter(a -> a.getActionType() != null && a.getActionType() == PictureAction.ActionType.LIKE)
+                .map(PictureAction::getPictureId).collect(Collectors.toSet());
+        Set<Long> favoritedIds = actions.stream()
+                .filter(a -> a.getActionType() != null && a.getActionType() == PictureAction.ActionType.FAVORITE)
+                .map(PictureAction::getPictureId).collect(Collectors.toSet());
         pictureVOList.forEach(vo -> {
             vo.setIsLiked(vo.getId() != null && likedIds.contains(vo.getId()));
             vo.setIsFavorited(vo.getId() != null && favoritedIds.contains(vo.getId()));
@@ -597,26 +600,29 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
 
     @Override
     public Page<PictureVO> pageMyFavorites(long userId, long current, long pageSize) {
-        long page = Math.max(current, 1);
-        long size = Math.min(Math.max(pageSize, 1), 50);
-        Page<PictureFavorite> favoritePage = pictureFavoriteMapper.selectPage(
-                new Page<>(page, size),
-                new QueryWrapper<PictureFavorite>()
-                        .eq("userId", userId)
-                        .orderByDesc("createTime").orderByDesc("id"));
-        return toPictureVOPage(favoritePage, userId);
+        return pageMyActions(userId, PictureAction.ActionType.FAVORITE, current, pageSize);
     }
 
     @Override
     public Page<PictureVO> pageMyLikes(long userId, long current, long pageSize) {
+        return pageMyActions(userId, PictureAction.ActionType.LIKE, current, pageSize);
+    }
+
+    /**
+     * 我的互动列表（点赞 / 收藏共用，按 actionType 区分）
+     *
+     * <p>走索引 idx_user_type (userId, actionType)，排序按操作时间倒序。</p>
+     */
+    private Page<PictureVO> pageMyActions(long userId, int actionType, long current, long pageSize) {
         long page = Math.max(current, 1);
         long size = Math.min(Math.max(pageSize, 1), 50);
-        Page<PictureLike> likePage = pictureLikeMapper.selectPage(
+        Page<PictureAction> actionPage = pictureActionMapper.selectPage(
                 new Page<>(page, size),
-                new QueryWrapper<PictureLike>()
+                new QueryWrapper<PictureAction>()
                         .eq("userId", userId)
+                        .eq("actionType", actionType)
                         .orderByDesc("createTime").orderByDesc("id"));
-        return toPictureVOPage(likePage, userId);
+        return toPictureVOPage(actionPage, userId);
     }
 
     /**
@@ -689,11 +695,8 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
     }
 
     private Long extractPictureId(Object record) {
-        if (record instanceof PictureFavorite) {
-            return ((PictureFavorite) record).getPictureId();
-        }
-        if (record instanceof PictureLike) {
-            return ((PictureLike) record).getPictureId();
+        if (record instanceof PictureAction) {
+            return ((PictureAction) record).getPictureId();
         }
         if (record instanceof PictureViewHistory) {
             return ((PictureViewHistory) record).getPictureId();
@@ -707,8 +710,8 @@ public class PictureInteractionServiceImpl extends ServiceImpl<PictureMapper, Pi
     @Transactional(rollbackFor = Exception.class)
     public void cleanUpByPictureId(long pictureId) {
         // 图片被删除时一并清理其互动数据，避免关联表残留指向不存在图片的孤儿记录
-        pictureLikeMapper.delete(new QueryWrapper<PictureLike>().eq("pictureId", pictureId));
-        pictureFavoriteMapper.delete(new QueryWrapper<PictureFavorite>().eq("pictureId", pictureId));
+        // 点赞与收藏同表，一次删除即覆盖两类动作
+        pictureActionMapper.delete(new QueryWrapper<PictureAction>().eq("pictureId", pictureId));
         // 评论是逻辑删除表，用 delete 走 @TableLogic 置位
         pictureCommentMapper.delete(new QueryWrapper<PictureComment>().eq("pictureId", pictureId));
         pictureViewHistoryMapper.delete(new QueryWrapper<PictureViewHistory>().eq("pictureId", pictureId));
