@@ -153,7 +153,10 @@ const handleSend = async () => {
     message.warning('请填写消息标题')
     return
   }
-  let targetUserId: number | undefined
+  // 视界号即用户 id（雪花 id），必须保持字符串：
+  // 它超出 Number.MAX_SAFE_INTEGER，Number() 会把末位抹掉，
+  // 导致消息发给一个不存在的用户（或静默发给 0 人）。
+  let targetUserId: string | undefined
   if (targetType.value === 'one') {
     const raw = (form.targetUserId ?? '').trim()
     if (!raw) {
@@ -164,7 +167,7 @@ const handleSend = async () => {
       message.warning('视界号格式不正确，应为纯数字')
       return
     }
-    targetUserId = Number(raw)
+    targetUserId = raw
   }
   sending.value = true
   try {

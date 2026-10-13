@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.visupicture.mapper.VipCodeMapper">
+
+    <resultMap id="BaseResultMap" type="com.visupicture.model.entity.VipCode">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="usedBy" column="usedBy" jdbcType="BIGINT"/>
+            <result property="usedTime" column="usedTime" jdbcType="TIMESTAMP"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,code,usedBy,
+        usedTime,createTime
+    </sql>
+
+    <!--
+      原子占用兑换码：单条 UPDATE 内完成「校验未使用 + 标记使用人」。
+      WHERE usedBy IS NULL 命中时 InnoDB 加排他锁，并发下只有一条能成功（返回 1），
+      其余返回 0 —— 因此不需要应用层锁，多实例部署也安全。
+    -->
+    <update id="claim">
+        UPDATE vip_code
+        SET usedBy = #{userId}, usedTime = NOW()
+        WHERE code = #{code} AND usedBy IS NULL
+    </update>
+</mapper>

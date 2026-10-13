@@ -19,6 +19,7 @@
 --   8. space_user            空间成员关联
 --   9. notification          站内通知
 --  10. audit_log             操作审计日志
+--  11. vip_code              会员兑换码（仅结构，数据单独导入）
 --
 -- 命名约定：列名统一使用驼峰，与 MyBatis-Plus 实体字段一致
 -- （application.yml 中 map-underscore-to-camel-case: false）。
@@ -112,7 +113,6 @@ create table if not exists picture
     INDEX idx_picHash (picHash),            -- 提升重复图片检测的比对性能
     UNIQUE KEY uk_shareCode (shareCode)     -- 分享码唯一（NULL 不参与去重，正好表达"未分享"）
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
-
 
 -- ==============================================================================
 -- 3. 图片互动记录（点赞 / 收藏合并为一张表）
@@ -278,12 +278,38 @@ create table if not exists audit_log
 ) comment '操作审计日志' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
 
 -- ==============================================================================
--- 执行结果自检：应列出全部 10 张表
+-- 11. 会员兑换码
+-- ==============================================================================
+-- 原实现把兑换码存在 jar 内的 biz/vipCode.json，用
+-- resourceLoader.getResource("classpath:...").getFile() 读写 —— 该写法在 fat jar 中
+-- 必然抛 FileNotFoundException（资源在 jar 内，无法解析为文件系统路径），
+-- 异常被转成"系统繁忙"，导致线上兑换全部失败。改为落库后与部署形态无关。
+--
+-- 未使用 = usedBy IS NULL。刻意不设 hasUsed 布尔列：两个字段表达同一状态会产生
+-- 「已标记使用但没有使用人」的不一致数据，用一个可空列即可表达且不会矛盾。
+-- 占用走原子 UPDATE ... WHERE usedBy IS NULL（见 VipCodeMapper.xml），
+-- 并发下只有一条能成功，多实例部署同样安全。
+--
+-- 注意：本表只建结构，不含任何兑换码数据。
+-- 兑换码属于敏感凭据，通过单独脚本导入，不入版本库。
+create table if not exists vip_code
+(
+    id         bigint auto_increment comment 'id' primary key,
+    code       varchar(64)                        not null comment '兑换码',
+    usedBy     bigint                             null comment '使用人用户 id（NULL = 未使用）',
+    usedTime   datetime                           null comment '使用时间（NULL = 未使用）',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    UNIQUE KEY uk_code (code),
+    INDEX idx_usedBy (usedBy)
+) comment '会员兑换码' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
+
+-- ==============================================================================
+-- 执行结果自检：应列出全部 11 张表
 -- ==============================================================================
 select table_name as created_table
 from information_schema.TABLES
 where TABLE_SCHEMA = database()
   and TABLE_NAME in ('user', 'picture', 'picture_action', 'picture_comment',
                      'comment_like', 'picture_view_history', 'space',
-                     'space_user', 'notification', 'audit_log')
+                     'space_user', 'notification', 'audit_log', 'vip_code')
 order by table_name;

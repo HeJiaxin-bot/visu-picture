@@ -84,7 +84,8 @@ const loginUserStore = useLoginUserStore()
 
 interface Props {
   picture?: API.PictureVO
-  spaceId?: number
+  /** 雪花 id 需保持字符串以免精度丢失（见 utils/firstQueryValue），故两种形态都接受 */
+  spaceId?: number | string
   onSuccess?: (newPicture: API.PictureVO) => void
 }
 

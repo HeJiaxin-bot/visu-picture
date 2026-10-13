@@ -39,6 +39,10 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+### 敏感凭据：会员兑换码（禁止进版本库，避免公开仓库泄露可用码） ###
+visu-picture-backend/sql/*.local.sql
+visu-picture-backend/src/main/resources/biz/vipCode.json
+
 ### VS Code ###
 .vscode/
 ### Java template

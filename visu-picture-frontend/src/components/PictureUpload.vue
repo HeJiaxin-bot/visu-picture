@@ -32,7 +32,8 @@ import { uploadPictureUsingPost } from '@/api/pictureController.ts'
 
 interface Props {
   picture?: API.PictureVO
-  spaceId?: number
+  /** 雪花 id 需保持字符串以免精度丢失（见 utils/firstQueryValue），故两种形态都接受 */
+  spaceId?: number | string
   onSuccess?: (newPicture: API.PictureVO) => void
   /** 延迟上传：选中文件后只在本地预览，父组件调用 upload() 时才真正上传（避免未提交就产生 COS 文件） */
   deferUpload?: boolean

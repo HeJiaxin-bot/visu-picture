@@ -80,20 +80,17 @@ import { computed, onMounted, ref } from 'vue'
 import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
+import { firstQueryValue } from '@/utils'
 
 const route = useRoute()
 const router = useRouter()
 
 // 空间 id
-// 路由 query 的值可能是 string | null | (string|null)[]，而子组件与后端接口
-// 都要求 number 类型，因此这里统一做「取值 → 转数字 → 非法置 undefined」的归一化。
-const spaceId = computed<number | undefined>(() => {
-  const raw = route.query?.spaceId
-  const value = Array.isArray(raw) ? raw[0] : raw
-  if (value == null || value === '') return undefined
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
-})
+//
+// ⚠️ 必须保持字符串形态，不能转 Number：雪花 id（如 2095809185840291841）
+// 超出 Number.MAX_SAFE_INTEGER，Number() 会抹掉末位（...1841 → ...1800），
+// 导致按空间分析时查不到该空间。理由与 firstQueryValue 的注释一致。
+const spaceId = computed<string | undefined>(() => firstQueryValue(route.query?.spaceId))
 
 // 是否查询所有空间
 const queryAll = computed(() => {

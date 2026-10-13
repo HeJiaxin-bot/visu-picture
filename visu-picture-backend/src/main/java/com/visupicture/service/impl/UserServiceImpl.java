@@ -8,8 +8,6 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -22,10 +20,10 @@ import com.visupicture.exception.ThrowUtils;
 import com.visupicture.manager.CosManager;
 import com.visupicture.manager.auth.StpKit;
 import com.visupicture.manager.upload.FilePictureUpload;
+import com.visupicture.mapper.VipCodeMapper;
 import com.visupicture.model.dto.file.UploadPictureResult;
 import com.visupicture.model.dto.user.UserChangePasswordRequest;
 import com.visupicture.model.dto.user.UserQueryRequest;
-import com.visupicture.model.dto.user.VipCode;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.UserRoleEnum;
 import com.visupicture.model.vo.InviteRankVO;
@@ -37,19 +35,16 @@ import com.visupicture.service.EmailService;
 import com.visupicture.service.UserService;
 import com.visupicture.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -431,12 +426,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
     // region ------- 以下代码为用户兑换会员功能 --------
 
-    // 新增依赖注入
     @Resource
-    private ResourceLoader resourceLoader;
-
-    // 文件读写锁（确保并发安全）
-    private final ReentrantLock fileLock = new ReentrantLock();
+    private VipCodeMapper vipCodeMapper;
 
     // isVip 字段取值
     private static final int VIP_YES = 1;
@@ -450,77 +441,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     /**
      * 兑换会员
      *
-     * @param user
-     * @param vipCode
-     * @return
+     * <p><b>实现要点</b></p>
+     * <ol>
+     *   <li><b>先占用、后开通</b>：{@link VipCodeMapper#claim} 是一条
+     *       {@code UPDATE ... WHERE usedBy IS NULL}，在同一条语句内完成
+     *       「校验未使用 + 标记使用人」。InnoDB 对命中行加排他锁，
+     *       并发提交同一个码时只有一条能返回 1，因此不需要应用层锁，
+     *       多实例部署也安全（原 {@code ReentrantLock} 是单机锁，防不住多实例）。</li>
+     *   <li><b>事务保证一致</b>：占用与开通会员在同一事务内，
+     *       开通失败会回滚占用，不会出现「码被消耗但会员没开」。</li>
+     * </ol>
+     *
+     * @param user    当前登录用户
+     * @param vipCode 兑换码
+     * @return 兑换成功返回 true
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean exchangeVip(User user, String vipCode) {
         // 1. 参数校验
-        if (user == null || StrUtil.isBlank(vipCode)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        if (user == null || user.getId() == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
-        // 2. 读取并校验兑换码
-        VipCode targetCode = validateAndMarkVipCode(vipCode);
-        // 3. 更新用户信息
-        updateUserVipInfo(user, targetCode.getCode());
+        if (StrUtil.isBlank(vipCode)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请输入兑换码");
+        }
+        String code = vipCode.trim();
+        // 2. 原子占用兑换码：返回 0 说明码不存在或已被使用
+        int claimed = vipCodeMapper.claim(code, user.getId());
+        ThrowUtils.throwIf(claimed <= 0, ErrorCode.PARAMS_ERROR, "无效的兑换码");
+        // 3. 开通会员（失败则整个事务回滚，占用一并撤销）
+        updateUserVipInfo(user, code);
         return true;
-    }
-
-    /**
-     * 校验兑换码并标记为已使用
-     */
-    private VipCode validateAndMarkVipCode(String vipCode) {
-        fileLock.lock(); // 加锁保证文件操作原子性
-        try {
-            // 读取 JSON 文件
-            JSONArray jsonArray = readVipCodeFile();
-
-            // 查找匹配的未使用兑换码
-            List<VipCode> codes = JSONUtil.toList(jsonArray, VipCode.class);
-            VipCode target = codes.stream()
-                    .filter(code -> code.getCode().equals(vipCode) && !code.isHasUsed())
-                    .findFirst()
-                    .orElseThrow(() -> new BusinessException(ErrorCode.PARAMS_ERROR, "无效的兑换码"));
-
-            // 标记为已使用
-            target.setHasUsed(true);
-
-            // 写回文件
-            writeVipCodeFile(JSONUtil.parseArray(codes));
-            return target;
-        } finally {
-            fileLock.unlock();
-        }
-    }
-
-    /**
-     * 读取兑换码文件
-     */
-    private JSONArray readVipCodeFile() {
-        try {
-            org.springframework.core.io.Resource resource =
-                    resourceLoader.getResource("classpath:biz/vipCode.json");
-            String content = FileUtil.readString(resource.getFile(), StandardCharsets.UTF_8);
-            return JSONUtil.parseArray(content);
-        } catch (IOException e) {
-            log.error("读取兑换码文件失败", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统繁忙");
-        }
-    }
-
-    /**
-     * 写入兑换码文件
-     */
-    private void writeVipCodeFile(JSONArray jsonArray) {
-        try {
-            org.springframework.core.io.Resource resource =
-                    resourceLoader.getResource("classpath:biz/vipCode.json");
-            FileUtil.writeString(jsonArray.toStringPretty(), resource.getFile(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("更新兑换码文件失败", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "系统繁忙");
-        }
     }
 
     /**

@@ -61,11 +61,14 @@ export async function markAllNotificationRead(): Promise<API.BaseResponseBoolean
 
 /**
  * 管理员发布系统消息（targetUserId 为空表示全员）
+ *
+ * targetUserId 同时接受 string：用户 id 是雪花 id，超出 JS 安全整数范围，
+ * 必须以字符串传输，否则末位会被 Number() 抹掉而发给错误的用户。
  */
 export async function sendSystemNotification(body: {
   title: string
   content?: string
-  targetUserId?: number
+  targetUserId?: number | string
 }): Promise<API.BaseResponseInteger> {
   return (await myAxios.post('/api/notification/send', body)).data
 }

@@ -28,7 +28,8 @@ import { CHART_PALETTE, useChartTheme } from './chartTheme.ts'
 interface Props {
   queryAll?: boolean
   queryPublic?: boolean
-  spaceId?: number
+  /** 雪花 id 需保持字符串以免精度丢失（见 utils/firstQueryValue），故两种形态都接受 */
+  spaceId?: number | string
 }
 
 const props = withDefaults(defineProps<Props>(), {

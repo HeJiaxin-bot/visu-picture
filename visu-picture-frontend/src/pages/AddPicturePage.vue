@@ -181,7 +181,7 @@ import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-desi
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
-import { toNumberOrUndefined } from '@/utils'
+import { firstQueryValue } from '@/utils'
 
 const router = useRouter()
 const route = useRoute()
@@ -220,9 +220,13 @@ const formatPicSize = (size: number) => {
     : `${(size / 1024).toFixed(1)} KB`
 }
 // 空间 id
-// route.query 的值是 string | null | (string|null)[]，而子组件与接口都要求 number，
-// 因此统一归一化为 number | undefined（非法值返回 undefined = 未指定空间）
-const spaceId = computed<number | undefined>(() => toNumberOrUndefined(route.query?.spaceId))
+//
+// ⚠️ 必须保持字符串形态，不能转 Number。
+// 雪花 id（如 2095809185840291841）超出 Number.MAX_SAFE_INTEGER，
+// Number() 会把末位抹掉（...1841 → ...1800），
+// 后端拿着这个不存在的 id 查空间，直接抛「未找到空间信息」——表现为"在自己空间里传不了图"。
+// 后端 JsonConfig 把 Long 序列化为 String 正是为此，前端必须对称处理。
+const spaceId = computed<string | undefined>(() => firstQueryValue(route.query?.spaceId))
 
 // 批量上传入口（带上当前空间，保持上传目标一致）
 const batchUploadPath = computed(() =>
@@ -403,8 +407,8 @@ const handleSubmit = async () => {
 
 // 获取老数据
 const getOldPicture = async () => {
-  // 获取到 id（route.query.id 需归一化为数字后传给接口）
-  const id = toNumberOrUndefined(route.query?.id)
+  // route.query.id 同样必须保持字符串（雪花 id 精度问题，理由见 spaceId 处注释）
+  const id = firstQueryValue(route.query?.id)
   if (id) {
     const res = await getPictureVoByIdUsingGet({
       id,
