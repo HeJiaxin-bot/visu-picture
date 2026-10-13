@@ -503,7 +503,9 @@ const doAiEdit = async () => {
       }
       message.success('AI 配文完成，请确认后保存')
     } else {
-      message.error('AI 配文失败，' + res.data.message)
+      // 后端返回的 message 已自带「AI 配文失败：<原因>」前缀，
+      // 这里不再拼接，否则界面上会出现"AI 配文失败，AI 配文失败"。
+      message.error(res.data.message || 'AI 配文失败')
     }
   } finally {
     aiEditLoading.value = false

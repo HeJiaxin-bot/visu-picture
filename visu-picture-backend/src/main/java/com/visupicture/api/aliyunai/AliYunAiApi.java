@@ -25,7 +25,9 @@ public class AliYunAiApi {
     private String apiKey;
 
     // AI 配文使用的多模态模型（图片理解）
-    @Value("${aliYunAi.aiEditModel:qwen3-vl-flash}")
+    // 默认值必须是「真实存在且支持图片输入」的模型：原先默认 qwen3-vl-flash 已下线，
+    // 任何未显式配置 aiEditModel 的环境（曾包括线上 profile）都会 404 而功能全废。
+    @Value("${aliYunAi.aiEditModel:qwen3-vl-plus}")
     private String aiEditModel;
 
     // 创建任务地址
@@ -132,7 +134,7 @@ public class AliYunAiApi {
     }
 
     /**
-     * 图片理解对话（OpenAI 兼容接口，多模态模型，如 qwen3-vl-flash）
+     * 图片理解对话（OpenAI 兼容接口，多模态模型，如 qwen3-vl-plus）
      *
      * @param imageUrl 图片公网可访问地址
      * @param prompt   提示词
@@ -173,11 +175,17 @@ public class AliYunAiApi {
                 .body(requestBody.toString())
                 .timeout(60000)
                 .execute()) {
+            String responseBody = httpResponse.body();
             if (!httpResponse.isOk()) {
-                log.error("AI 配文请求异常：{}", httpResponse.body());
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 配文失败");
+                // 把上游原因带到错误信息里：原先只报笼统的"AI 配文失败"，
+                // 导致「模型名不存在」这类配置错误在界面上完全看不出线索。
+                String upstream = extractUpstreamError(responseBody);
+                log.error("AI 配文请求异常：model={}, status={}, body={}",
+                        aiEditModel, httpResponse.getStatus(), responseBody);
+                throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                        "AI 配文失败" + (upstream == null ? "" : "：" + upstream));
             }
-            JSONObject response = JSONUtil.parseObj(httpResponse.body());
+            JSONObject response = JSONUtil.parseObj(responseBody);
             // 兼容错误响应（如 {"code":"...","message":"..."}）
             if (response.getStr("code") != null) {
                 String errorMessage = response.getStr("message");
@@ -186,7 +194,7 @@ public class AliYunAiApi {
             }
             JSONArray choices = response.getJSONArray("choices");
             if (choices == null || choices.isEmpty()) {
-                log.error("AI 配文响应异常：{}", httpResponse.body());
+                log.error("AI 配文响应异常：{}", responseBody);
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 配文失败，响应为空");
             }
             String resultContent = choices.getJSONObject(0).getJSONObject("message").getStr("content");
@@ -194,6 +202,36 @@ public class AliYunAiApi {
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 配文失败，模型未返回内容");
             }
             return resultContent;
+        }
+    }
+
+    /**
+     * 从 DashScope 错误响应中提取可读原因
+     * <p>兼容两种格式：OpenAI 风格的 {@code {"error":{"message":"..."}}}
+     * 与 DashScope 原生的 {@code {"code":"...","message":"..."}}。</p>
+     *
+     * @return 可读错误信息；无法解析时返回 null
+     */
+    private String extractUpstreamError(String responseBody) {
+        if (StrUtil.isBlank(responseBody)) {
+            return null;
+        }
+        try {
+            JSONObject json = JSONUtil.parseObj(responseBody);
+            JSONObject error = json.getJSONObject("error");
+            if (error != null) {
+                String message = error.getStr("message");
+                if (StrUtil.isNotBlank(message)) {
+                    // 模型名错误时明确提示配置项，便于直接定位
+                    String code = error.getStr("code");
+                    return "model_not_found".equals(code) ? message + "（请检查 aliYunAi.aiEditModel 配置）" : message;
+                }
+            }
+            String message = json.getStr("message");
+            return StrUtil.isBlank(message) ? null : message;
+        } catch (Exception e) {
+            // 响应体不是 JSON（如网关返回的 HTML），截断后原样带出，避免信息丢失
+            return StrUtil.maxLength(responseBody.replaceAll("\\s+", " ").trim(), 120);
         }
     }
 }
