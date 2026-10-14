@@ -4,54 +4,97 @@
     v-model:visible="visible"
     title="AI 扩图"
     :footer="false"
+    :width="720"
+    centered
     @cancel="closeModal"
   >
-    <a-row gutter="16">
-      <a-col span="12">
-        <h4>原始图片</h4>
-        <img :src="picture?.url" :alt="picture?.name" style="max-width: 100%" />
-      </a-col>
-      <a-col span="12">
-        <h4>扩图结果</h4>
-        <img
-          v-if="resultImageUrl"
-          :src="resultImageUrl"
-          :alt="picture?.name"
-          style="max-width: 100%"
+    <!-- 展陈区：原图 → 结果 -->
+    <div class="exhibit">
+      <div class="exhibit-frame">
+        <div class="exhibit-label"><span class="label-dot" />原图</div>
+        <div class="frame-media">
+          <img :src="picture?.url" :alt="picture?.name" />
+        </div>
+        <div class="frame-caption">{{ picture?.name }}</div>
+      </div>
+      <div class="exhibit-arrow">
+        <ArrowRightOutlined />
+      </div>
+      <div class="exhibit-frame">
+        <div class="exhibit-label"><span class="label-dot accent" />扩图结果</div>
+        <div class="frame-media">
+          <img v-if="resultImageUrl" :src="resultImageUrl" alt="扩图结果" />
+          <div v-else-if="taskId" class="frame-state">
+            <a-spin size="large" />
+            <span>展厅布展中，请稍候…</span>
+          </div>
+          <div v-else class="frame-state">
+            <PictureOutlined class="state-icon" />
+            <span>生成结果将在此呈现</span>
+          </div>
+        </div>
+        <div class="frame-caption">{{ resultImageUrl ? '点击「应用结果」保存到空间' : '等待生成' }}</div>
+      </div>
+    </div>
+
+    <!-- 控制区 -->
+    <div class="controls">
+      <div class="control-row">
+        <span class="control-label">扩展比例</span>
+        <a-slider
+          v-model:value="expandScale"
+          class="scale-slider"
+          :min="1"
+          :max="2"
+          :step="0.1"
+          :tooltip="{ open: false }"
         />
-      </a-col>
-    </a-row>
-    <div style="margin-bottom: 16px" />
-    <a-form layout="inline" style="margin-bottom: 16px">
-      <a-form-item label="扩展比例">
-        <a-input-number v-model:value="expandScale" :min="1" :max="2" :step="0.1" />
-      </a-form-item>
-      <a-form-item label="提示词">
-        <a-input
+        <span class="scale-value">{{ expandScale.toFixed(1) }}×</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label">提示词</span>
+        <a-textarea
           v-model:value="prompt"
-          placeholder="选填，引导扩展区域内容，留空使用默认"
-          style="width: 240px"
+          class="prompt-input"
+          placeholder="选填，描述扩展区域的画面，留空使用默认"
+          :auto-size="{ minRows: 1, maxRows: 3 }"
         />
-      </a-form-item>
-    </a-form>
-    <div v-if="taskId" style="max-width: 420px; margin: 0 auto 12px">
+      </div>
+      <div class="preset-row">
+        <span class="preset-hint">灵感</span>
+        <span v-for="p in presets" :key="p" class="preset-pill" @click="prompt = p">{{ p }}</span>
+      </div>
+    </div>
+
+    <!-- 进度 -->
+    <div v-if="taskId" class="progress-wrap">
       <a-progress :percent="progress" status="active" />
     </div>
-    <!-- 积分提示：剩余积分与本次消耗 -->
-    <div class="points-tip">
-      剩余积分：<b>{{ loginUserStore.loginUser.points ?? 0 }}</b> 分，本次扩图消耗 20 分
+
+    <!-- 积分条 -->
+    <div class="cost-strip">
+      <span class="cost-item">剩余积分 <b class="mono">{{ loginUserStore.loginUser.points ?? 0 }}</b> 分</span>
+      <span class="cost-divider" />
+      <span class="cost-item">本次消耗 <b class="mono cost-num">20</b> 积分</span>
     </div>
-    <a-flex justify="center" gap="16">
+
+    <!-- 操作区 -->
+    <a-flex justify="center" gap="12" class="actions">
       <a-button
+        v-if="resultImageUrl"
         type="primary"
+        :loading="uploadLoading"
+        @click="handleUpload"
+      >
+        应用结果
+      </a-button>
+      <a-button
+        :type="resultImageUrl ? 'default' : 'primary'"
         :loading="!!taskId"
-        ghost
         @click="createTask"
       >
-        生成图片（-20 积分）
-      </a-button>
-      <a-button v-if="resultImageUrl" type="primary" :loading="uploadLoading" @click="handleUpload">
-        应用结果
+        {{ resultImageUrl ? '再生成一次' : '生成图片' }}
+        <span class="btn-cost">-20 积分</span>
       </a-button>
     </a-flex>
   </a-modal>
@@ -59,6 +102,7 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue'
+import { ArrowRightOutlined, PictureOutlined } from '@ant-design/icons-vue'
 import {
   createPictureOutPaintingTaskUsingPost,
   getPictureOutPaintingTaskUsingGet,
@@ -68,6 +112,9 @@ import { message, Modal } from 'ant-design-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 const loginUserStore = useLoginUserStore()
+
+// 提示词灵感预设：点击填入
+const presets = ['自然延伸画面', '向两侧展开辽阔视野', '延续光影与氛围', '扩展为宽阔构图']
 
 interface Props {
   picture?: API.PictureVO
@@ -274,28 +321,238 @@ defineExpose({
 
 <style>
 .image-out-painting {
-  text-align: center;
+  text-align: left;
 }
 
-/* 剩余积分提示 */
-.points-tip {
-  margin: 0 auto 16px;
+/* ===== 展陈区：原图 → 结果 ===== */
+.image-out-painting .exhibit {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.image-out-painting .exhibit-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.image-out-painting .exhibit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.image-out-painting .label-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-color);
+}
+
+.image-out-painting .label-dot.accent {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--glow-ring);
+}
+
+.image-out-painting .frame-media {
+  position: relative;
+  height: 200px;
+  border-radius: var(--card-radius);
+  background: rgba(127, 127, 127, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.image-out-painting .frame-media img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.image-out-painting .frame-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.image-out-painting .frame-state .state-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.image-out-painting .frame-caption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-out-painting .exhibit-arrow {
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: 18px;
+  opacity: 0.6;
+}
+
+/* ===== 控制区 ===== */
+.image-out-painting .controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.image-out-painting .control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.image-out-painting .control-label {
+  flex-shrink: 0;
+  width: 60px;
+  text-align: right;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
-.points-tip b {
+.image-out-painting .scale-slider {
+  flex: 1;
+  margin: 0 4px;
+}
+
+.image-out-painting .scale-value {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: center;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 13px;
   color: var(--accent);
-  font-size: 15px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.image-out-painting .prompt-input {
+  flex: 1;
+}
+
+/* ===== 灵感预设药丸 ===== */
+.image-out-painting .preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 72px;
+  flex-wrap: wrap;
+}
+
+.image-out-painting .preset-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.image-out-painting .preset-pill {
+  font-size: 12px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.image-out-painting .preset-pill:hover {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+/* ===== 进度 / 积分条 ===== */
+.image-out-painting .progress-wrap {
+  max-width: 420px;
+  margin: 0 auto 12px;
+}
+
+.image-out-painting .cost-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.image-out-painting .cost-strip .mono {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+}
+
+.image-out-painting .cost-strip b {
+  color: var(--accent);
+  font-weight: 600;
   margin: 0 2px;
 }
 
-/* 深色模式 */
-html.dark .points-tip {
-  color: rgba(179, 179, 179, 0.6);
+.image-out-painting .cost-strip .cost-num {
+  color: var(--accent);
 }
 
-html.dark .points-tip b {
-  color: var(--accent);
+.image-out-painting .cost-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--border-color);
+}
+
+/* ===== 操作区 ===== */
+.image-out-painting .actions {
+  margin-bottom: 4px;
+}
+
+.image-out-painting .btn-cost {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* ===== 移动端：展陈纵向堆叠 ===== */
+@media (max-width: 640px) {
+  .image-out-painting .exhibit {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .image-out-painting .exhibit-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+
+  .image-out-painting .frame-media {
+    height: 180px;
+  }
+
+  .image-out-painting .preset-row {
+    padding-left: 0;
+  }
+
+  .image-out-painting .control-label {
+    width: auto;
+    text-align: left;
+  }
 }
 </style>

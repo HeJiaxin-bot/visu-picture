@@ -21,13 +21,15 @@
       <a-tab-pane key="latest" tab="最新" />
       <a-tab-pane v-for="category in categoryList" :tab="category" :key="category" />
     </a-tabs>
-    <!-- 图片列表（滚动加载） -->
+    <!-- 图片列表（滚动加载）；空分类时展示空状态 -->
     <PictureList
+      v-if="loading || dataList.length > 0"
       :dataList="dataList"
       :loading="loading"
       :finished="finished"
       @load-more="onLoadMore"
     />
+    <a-empty v-else description="该分类下还没有图片，换个分类看看，或上传第一张" />
   </div>
 </template>
 
@@ -206,12 +208,32 @@ onMounted(() => {
   max-width: 640px;
   margin: 0 auto;
   background: var(--bg-card);
-  padding: 8px;
-  border-radius: 16px;
+  padding: 6px 6px 6px 20px;
+  border-radius: 999px;
   border: 1px solid var(--border-color);
   box-shadow: var(--card-shadow);
   position: relative;
   z-index: 1;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* 聚焦时光晕环：呼应 DESIGN.md 搜索厅签名组件 */
+#homePage .search-bar:focus-within {
+  border-color: rgba(64, 169, 255, 0.45);
+  box-shadow:
+    var(--card-shadow),
+    0 0 0 3px rgba(64, 169, 255, 0.18);
+}
+
+/* 占位符对比度 ≥4.5:1（暗色/浅色分别覆盖 antd 默认值） */
+#homePage .search-bar :deep(.ant-input)::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+html:not(.dark) #homePage .search-bar :deep(.ant-input)::placeholder {
+  color: rgba(0, 0, 0, 0.45);
 }
 
 #homePage .search-bar :deep(.ant-input) {
@@ -225,7 +247,7 @@ onMounted(() => {
 }
 
 #homePage .search-bar :deep(.ant-input-search-button) {
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 /* 浅色模式文字色适配（Hero 已无卡片背景） */
@@ -245,5 +267,28 @@ html:not(.dark) #homePage .hero-desc {
 #homePage .category-tabs :deep(.ant-tabs-nav-list) {
   margin: 0 auto;
   margin-bottom: 20px;
+}
+
+/* 移动端：压缩 hero 与搜索栏，保持药丸形态 */
+@media (max-width: 560px) {
+  #homePage .hero {
+    padding: 36px 16px 32px;
+  }
+
+  #homePage .hero-title {
+    font-size: 30px;
+  }
+
+  #homePage .hero-desc {
+    margin-bottom: 20px;
+  }
+
+  #homePage .search-bar {
+    padding: 4px 4px 4px 16px;
+  }
+
+  #homePage .search-bar :deep(.ant-input-search-button) {
+    padding-inline: 14px;
+  }
 }
 </style>

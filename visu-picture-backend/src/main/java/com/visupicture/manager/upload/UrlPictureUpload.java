@@ -44,10 +44,12 @@ public class UrlPictureUpload extends PictureUploadTemplate {
         //    原实现只校验协议前缀，攻击者可让服务端请求 127.0.0.1、169.254.169.254 等。
         SsrfUtils.validateExternalUrl(fileUrl);
 
-        // 5. 发送 HEAD 请求验证文件是否存在
+        // 5. 发送 GET 请求验证文件是否存在
+        //    注意：不能用 HEAD——AI 扩图结果的 DashScope OSS 签名地址对 HEAD 返回 403（GET 正常，2026-10 实测），
+        //    会误伤「应用结果」流程；此处 GET 后不读取响应体，仅取状态码与响应头。
         HttpResponse httpResponse = null;
         try {
-            httpResponse = HttpUtil.createRequest(Method.HEAD, fileUrl)
+            httpResponse = HttpUtil.createRequest(Method.GET, fileUrl)
                     // 禁止跟随重定向：否则可用 302 跳到内网地址绕过第 4 步的校验
                     .setMaxRedirectCount(0)
                     .timeout(5000)

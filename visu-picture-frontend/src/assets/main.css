@@ -111,6 +111,8 @@ html.dark {
 html,
 body {
   height: 100%;
+  /* 装饰粒子/宽元素不产生横向滚动；clip 不会破坏 sticky 顶栏 */
+  overflow-x: clip;
 }
 
 body {
@@ -285,27 +287,10 @@ html.dark .team-panel .item-icon {
   color: var(--text-secondary);
 }
 
-/* 搜索卡片与标签药丸（首页） */
+/* 首页搜索卡片 */
 html.dark #homePage .search-bar {
   background: var(--bg-card);
   border-color: var(--border-color);
-}
-
-/* 注意：main.css 是全局样式，:deep() 不是合法选择器会导致整条规则失效，直接写类名 */
-/* 双类名 .ant-tag.ant-tag-checkable 提高优先级，压过组件 scoped 的浅色规则 */
-html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable {
-  background: var(--bg-card);
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-}
-
-html.dark #homePage .tag-bar .ant-tag.ant-tag-checkable:hover {
-  color: var(--accent);
-  border-color: var(--accent-soft);
-}
-
-html.dark #homePage .tag-label {
-  color: var(--text-secondary);
 }
 
 /* 首页副标题 */

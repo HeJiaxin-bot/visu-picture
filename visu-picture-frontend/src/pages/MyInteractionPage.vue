@@ -5,30 +5,22 @@
       <p class="page-sub">{{ activeMeta.sub }}</p>
     </div>
 
-    <a-tabs v-model:activeKey="activeTab" class="interaction-tabs" @change="onTabChange">
-      <a-tab-pane key="favorite">
-        <template #tab>
-          <StarFilled v-if="activeTab === 'favorite'" />
-          <StarOutlined v-else />
-          我的收藏
-          <a-badge v-if="counts.favorite" :count="counts.favorite" :overflow-count="99" class="tab-badge" />
-        </template>
-      </a-tab-pane>
-      <a-tab-pane key="like">
-        <template #tab>
-          <HeartFilled v-if="activeTab === 'like'" />
-          <HeartOutlined v-else />
-          我的点赞
-          <a-badge v-if="counts.like" :count="counts.like" :overflow-count="99" class="tab-badge" />
-        </template>
-      </a-tab-pane>
-      <a-tab-pane key="history">
-        <template #tab>
-          <HistoryOutlined />
-          最近查看
-        </template>
-      </a-tab-pane>
-    </a-tabs>
+    <!-- 分段药丸切换（The Pill Language Rule） -->
+    <div class="seg-bar" role="tablist">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="seg-item"
+        :class="{ active: activeTab === tab.key }"
+        role="tab"
+        :aria-selected="activeTab === tab.key"
+        @click="switchTab(tab.key)"
+      >
+        <component :is="activeTab === tab.key ? tab.activeIcon : tab.icon" />
+        <span class="seg-text">{{ tab.label }}</span>
+        <span v-if="counts[tab.key] > 0" class="seg-count">{{ counts[tab.key] }}</span>
+      </button>
+    </div>
 
     <div class="toolbar">
       <span class="toolbar-count">共 {{ total }} 条</span>
@@ -54,7 +46,11 @@
         show-op
         @load-more="loadMore"
       />
-      <a-empty v-else-if="!loading" :description="activeMeta.empty" />
+      <div v-else-if="!loading" class="empty-wrap">
+        <a-empty :description="activeMeta.empty">
+          <a-button type="primary" @click="router.push('/')">{{ activeMeta.cta }}</a-button>
+        </a-empty>
+      </div>
     </a-spin>
   </div>
 </template>
@@ -81,24 +77,39 @@ import { useRoute, useRouter } from 'vue-router'
 
 type TabKey = 'favorite' | 'like' | 'history'
 
+// 分段药丸配置（图标区分选中态）
+const tabs: Array<{
+  key: TabKey
+  label: string
+  icon: any
+  activeIcon: any
+}> = [
+  { key: 'favorite', label: '我的收藏', icon: StarOutlined, activeIcon: StarFilled },
+  { key: 'like', label: '我的点赞', icon: HeartOutlined, activeIcon: HeartFilled },
+  { key: 'history', label: '最近查看', icon: HistoryOutlined, activeIcon: HistoryOutlined },
+]
+
 const route = useRoute()
 const router = useRouter()
 
-const TAB_META: Record<TabKey, { title: string; sub: string; empty: string }> = {
+const TAB_META: Record<TabKey, { title: string; sub: string; empty: string; cta: string }> = {
   favorite: {
     title: '我的收藏',
     sub: '你收藏过的图片都会出现在这里，方便随时回看',
-    empty: '还没有收藏任何图片，去图库逛逛吧',
+    empty: '还没有收藏任何图片',
+    cta: '去图库逛逛',
   },
   like: {
     title: '我的点赞',
     sub: '你点赞过的图片',
     empty: '还没有点赞任何图片',
+    cta: '去图库逛逛',
   },
   history: {
     title: '最近查看',
     sub: '按查看时间倒序，同一张图只保留最近一次',
     empty: '还没有浏览记录',
+    cta: '先去逛几张图',
   },
 }
 
@@ -157,10 +168,11 @@ const loadMore = () => {
   load()
 }
 
-const onTabChange = (key: string | number) => {
-  activeTab.value = key as TabKey
-  // 同步到 URL，便于分享/刷新后停留在同一标签
-  router.replace({ query: { ...route.query, tab: activeTab.value } })
+// 切换标签：同步到 URL，便于分享/刷新后停留在同一标签
+const switchTab = (key: TabKey) => {
+  if (key === activeTab.value) return
+  activeTab.value = key
+  router.replace({ query: { ...route.query, tab: key } })
   load(true)
 }
 
@@ -212,7 +224,7 @@ onMounted(() => {
 }
 
 .page-head {
-  margin: 8px 0 4px;
+  margin: 12px 0 0;
 }
 
 .page-title {
@@ -228,25 +240,76 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-.interaction-tabs {
-  margin-top: 8px;
+/* ===== 分段药丸切换器 ===== */
+.seg-bar {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-top: 16px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
 }
 
-.tab-badge {
-  margin-left: 6px;
+.seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.seg-item:hover {
+  color: var(--accent);
+}
+
+.seg-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.seg-count {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.seg-item.active .seg-count {
+  background: rgba(64, 169, 255, 0.18);
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 0 12px;
+  margin: 16px 0 12px;
   min-height: 28px;
 }
 
 .toolbar-count {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.empty-wrap {
+  padding: 40px 0 64px;
 }
 
 html.dark .page-title {

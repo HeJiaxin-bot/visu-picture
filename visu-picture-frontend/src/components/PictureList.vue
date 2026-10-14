@@ -93,10 +93,10 @@
         </div>
       </div>
     </div>
-    <!-- 滚动加载哨兵：进入视口时触发 loadMore -->
+    <!-- 滚动加载哨兵：进入视口时触发 loadMore（空列表时不显示"没有更多了"） -->
     <div ref="sentinelRef" class="load-more-sentinel">
       <a-spin v-if="loading && dataList.length > 0" size="small" />
-      <span v-else-if="finished" class="no-more-text">没有更多了</span>
+      <span v-else-if="finished && dataList.length > 0" class="no-more-text">没有更多了</span>
     </div>
     <ShareModal ref="shareModalRef" :picture-id="sharePictureId" />
     <!-- 图片详情弹窗 -->
