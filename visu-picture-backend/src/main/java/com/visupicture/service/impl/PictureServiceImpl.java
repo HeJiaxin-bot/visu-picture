@@ -30,9 +30,11 @@ import com.visupicture.model.dto.file.UploadPictureResult;
 import com.visupicture.model.dto.picture.*;
 import com.visupicture.model.entity.Picture;
 import com.visupicture.model.entity.Space;
+import com.visupicture.model.entity.SpaceUser;
 import com.visupicture.model.entity.User;
 import com.visupicture.model.enums.PictureReviewStatusEnum;
 import com.visupicture.model.vo.PictureVO;
+import com.visupicture.service.SpaceUserService;
 import com.visupicture.model.vo.UserVO;
 import com.visupicture.service.NotificationService;
 import com.visupicture.service.PictureInteractionService;
@@ -107,6 +109,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private SpaceUserService spaceUserService;
 
     @Resource
     private PictureInteractionService pictureInteractionService;
@@ -927,9 +932,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
             }
         } else {
-            // 私有空间，仅空间管理员可操作
-            if (!picture.getUserId().equals(loginUserId)) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+            // 空间图片（私有/团队）：所有者本人或平台管理员直接放行；
+            // 团队空间的其他成员按角色权限操作（picture:edit/delete 已由注解鉴权完成），
+            // 此处仅需确认操作者确实是该空间成员，防止非成员借用 spaceId 越权。
+            if (!picture.getUserId().equals(loginUserId) && !userService.isAdmin(loginUser)) {
+                boolean isMember = spaceUserService.lambdaQuery()
+                        .eq(SpaceUser::getSpaceId, spaceId)
+                        .eq(SpaceUser::getUserId, loginUserId)
+                        .exists();
+                ThrowUtils.throwIf(!isMember, ErrorCode.NO_AUTH_ERROR);
             }
         }
     }

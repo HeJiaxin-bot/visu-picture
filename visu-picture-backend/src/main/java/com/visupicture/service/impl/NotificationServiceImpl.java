@@ -53,7 +53,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
                     ? picName.substring(0, 20) + "…" : picName;
             if (pass) {
                 notification.setTitle("你的图片「" + shortName + "」已通过审核");
-                notification.setContent("恭喜！图片已发布到公共图库，其他用户现在可以看到它了。");
+                notification.setContent("审核已通过，您现在可以查看您的图片！");
             } else {
                 notification.setTitle("你的图片「" + shortName + "」未通过审核");
                 notification.setContent("审核意见：" + (reviewMessage == null || reviewMessage.isBlank()

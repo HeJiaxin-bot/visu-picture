@@ -10,6 +10,7 @@ import com.visupicture.manager.websocket.model.PictureEditActionEnum;
 import com.visupicture.manager.websocket.model.PictureEditMessageTypeEnum;
 import com.visupicture.manager.websocket.model.PictureEditRequestMessage;
 import com.visupicture.manager.websocket.model.PictureEditResponseMessage;
+import com.visupicture.model.vo.UserVO;
 import com.visupicture.model.entity.User;
 import com.visupicture.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,6 +71,27 @@ public class PictureEditHandler extends TextWebSocketHandler {
         pictureEditResponseMessage.setUser(userService.getUserVO(user));
         // 广播给所有用户
         broadcastToPicture(pictureId, pictureEditResponseMessage);
+        // 向新加入的会话推送当前在线协作者名单（不含自己）：
+        // 加入广播只有一份，先到者不会出现在后来者的界面上，造成头像不同步
+        Set<WebSocketSession> sessionSet = pictureSessions.get(pictureId);
+        if (CollUtil.isNotEmpty(sessionSet)) {
+            List<UserVO> onlineUserList = new ArrayList<>();
+            for (WebSocketSession s : sessionSet) {
+                if (s.equals(session)) {
+                    continue;
+                }
+                User onlineUser = (User) s.getAttributes().get("user");
+                if (onlineUser != null) {
+                    onlineUserList.add(userService.getUserVO(onlineUser));
+                }
+            }
+            if (CollUtil.isNotEmpty(onlineUserList)) {
+                PictureEditResponseMessage rosterMessage = new PictureEditResponseMessage();
+                rosterMessage.setType(PictureEditMessageTypeEnum.ONLINE_USERS.getValue());
+                rosterMessage.setUsers(onlineUserList);
+                sendToSession(session, rosterMessage);
+            }
+        }
     }
 
     /**
@@ -242,6 +266,20 @@ public class PictureEditHandler extends TextWebSocketHandler {
      */
     private void broadcastToPicture(Long pictureId, PictureEditResponseMessage pictureEditResponseMessage) throws IOException {
         broadcastToPicture(pictureId, pictureEditResponseMessage, null);
+    }
+
+    /**
+     * 点对点发送给单个会话（如新加入者的在线名单推送）
+     */
+    private void sendToSession(WebSocketSession session, PictureEditResponseMessage pictureEditResponseMessage) throws IOException {
+        if (session.isOpen()) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(Long.class, ToStringSerializer.instance);
+            module.addSerializer(Long.TYPE, ToStringSerializer.instance);
+            objectMapper.registerModule(module);
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(pictureEditResponseMessage)));
+        }
     }
 }
 

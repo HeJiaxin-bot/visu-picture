@@ -265,6 +265,27 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     }
 
     /**
+     * 校验空间查看权限（只读接口专用）：所有者/管理员/团队空间成员可查看；
+     * 私有空间仍仅限所有者。编辑类操作请继续使用 checkSpaceAuth（仅所有者）。
+     */
+    @Override
+    public void checkSpaceViewAuth(User loginUser, Space space) {
+        if (space.getUserId().equals(loginUser.getId()) || userService.isAdmin(loginUser)) {
+            return;
+        }
+        // 团队空间：成员（任意角色）可查看空间详情
+        if (space.getSpaceType() != null && space.getSpaceType().equals(SpaceTypeEnum.TEAM.getValue())) {
+            boolean isMember = spaceUserService.lambdaQuery()
+                    .eq(SpaceUser::getSpaceId, space.getId())
+                    .eq(SpaceUser::getUserId, loginUser.getId())
+                    .exists();
+            ThrowUtils.throwIf(!isMember, ErrorCode.NO_AUTH_ERROR);
+            return;
+        }
+        throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+    }
+
+    /**
      * 校验用户是否有权使用指定空间级别
      * 普通版：所有用户可自助开通；专业版：仅会员；旗舰版：暂不开放自助开通（仅管理员）
      */

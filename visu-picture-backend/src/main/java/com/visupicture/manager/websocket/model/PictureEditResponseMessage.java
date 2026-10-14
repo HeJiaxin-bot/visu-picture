@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 图片编辑响应消息
  */
@@ -14,7 +16,7 @@ import lombok.NoArgsConstructor;
 public class PictureEditResponseMessage {
 
     /**
-     * 消息类型，例如 "INFO", "ERROR", "ENTER_EDIT", "EXIT_EDIT", "EDIT_ACTION"
+     * 消息类型，例如 "INFO", "ERROR", "ENTER_EDIT", "EXIT_EDIT", "EDIT_ACTION", "ONLINE_USERS"
      */
     private String type;
 
@@ -32,4 +34,9 @@ public class PictureEditResponseMessage {
      * 用户信息
      */
     private UserVO user;
+
+    /**
+     * 在线用户名单（ONLINE_USERS 消息专用，推送给新加入的协作者）
+     */
+    private List<UserVO> users;
 }

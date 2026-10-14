@@ -171,7 +171,7 @@ public class SpaceController {
         Space space = spaceService.getById(id);
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
         // 【安全修复】补齐归属校验：原实现查完直接返回，任何登录用户都能读取他人私有空间元数据。
-        spaceService.checkSpaceAuth(userService.getLoginUser(request), space);
+        spaceService.checkSpaceViewAuth(userService.getLoginUser(request), space);
         SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
         User loginUser = userService.getLoginUser(request);
         List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);

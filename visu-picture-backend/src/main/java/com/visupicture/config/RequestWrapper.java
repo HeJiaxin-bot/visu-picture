@@ -106,6 +106,18 @@ public class RequestWrapper extends HttpServletRequestWrapper {
         return new String(bodyBytes, StandardCharsets.UTF_8);
     }
 
+    /**
+     * 【编码修复】显式声明 UTF-8：hutool 的 ServletUtil.getBody 等工具按
+     * {@code request.getCharacterEncoding()} 解码请求体（缺省回落 ISO-8859-1），
+     * 中文请求体会被解码成乱码，导致 StpInterfaceImpl 解析权限上下文时
+     * JSON 反序列化抛异常 —— 表现为所有带 @SaSpaceCheckPermission 的接口
+     * 一遇中文请求体就返回「系统错误」。
+     */
+    @Override
+    public String getCharacterEncoding() {
+        return StandardCharsets.UTF_8.name();
+    }
+
     @Override
     public int getContentLength() {
         return bodyBytes.length;
