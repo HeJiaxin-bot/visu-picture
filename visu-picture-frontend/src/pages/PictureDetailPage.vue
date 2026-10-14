@@ -39,13 +39,15 @@
           <!-- 互动状态：点赞 / 收藏 -->
           <div class="interaction-row">
             <button
+              :key="`like-${likeBumpKey}`"
               class="interact-btn like"
-              :class="{ active: likeStore.isLiked(picture.id) }"
+              :class="{ active: likeStore.isLiked(picture.id), bump: likeBumpKey > 0 }"
               @click="doLike"
             >
               <HeartFilled v-if="likeStore.isLiked(picture.id)" />
               <HeartOutlined v-else />
               <span>{{ picture.likeCount ?? 0 }}</span>
+              <span v-if="showPlusOne" class="plus-one">+1</span>
             </button>
             <button
               class="interact-btn favorite"
@@ -187,8 +189,20 @@ onMounted(async () => {
 })
 
 // 点赞 / 收藏
+// 点赞缩放弹跳动画 + 数字 +1 漂浮效果
+const likeBumpKey = ref(0)
+const showPlusOne = ref(false)
 const doLike = () => {
+  const wasLiked = likeStore.isLiked(picture.value.id)
   likeStore.toggle(picture.value)
+  if (!wasLiked) {
+    // 换 key 强制重放弹跳动画
+    likeBumpKey.value++
+    showPlusOne.value = true
+    window.setTimeout(() => {
+      showPlusOne.value = false
+    }, 800)
+  }
 }
 const doFavorite = () => {
   likeStore.toggleFavorite(picture.value)
@@ -616,6 +630,52 @@ html.dark .author-name {
   max-width: 92vw;
   max-height: 90vh;
   border-radius: 8px;
+}
+
+/* 点赞弹跳动画 + 数字 +1 漂浮（移动端体验） */
+.interaction-row {
+  position: relative;
+}
+
+.interact-btn.bump {
+  animation: like-bump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes like-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.plus-one {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff4d6d;
+  animation: plus-one-rise 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes plus-one-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
 }
 </style>
 

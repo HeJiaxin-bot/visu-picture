@@ -25,13 +25,15 @@
         <div class="top-actions">
           <!-- 点赞（替代参考样式中的浏览数） -->
           <button
+            :key="`like-${likeBumpKey}`"
             class="pill-btn like-btn"
-            :class="{ liked: likeStore.isLiked(picture.id) }"
+            :class="{ liked: likeStore.isLiked(picture.id), bump: likeBumpKey > 0 }"
             @click="doLike"
           >
             <HeartFilled v-if="likeStore.isLiked(picture.id)" />
             <HeartOutlined v-else />
             <b>{{ picture.likeCount ?? 0 }}</b>
+            <span v-if="showPlusOne" class="plus-one">+1</span>
           </button>
           <!-- 收藏 -->
           <button
@@ -274,8 +276,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 defineExpose({ openModal })
 
 // ----- 点赞 / 取消点赞 -----
+// 点赞缩放弹跳动画 + 数字 +1 漂浮效果
+const likeBumpKey = ref(0)
+const showPlusOne = ref(false)
 const doLike = () => {
+  const wasLiked = likeStore.isLiked(picture.value.id)
   likeStore.toggle(picture.value)
+  if (!wasLiked) {
+    // 换 key 强制重放弹跳动画
+    likeBumpKey.value++
+    showPlusOne.value = true
+    window.setTimeout(() => {
+      showPlusOne.value = false
+    }, 800)
+  }
 }
 
 // ----- 收藏 / 取消收藏 -----
@@ -433,6 +447,7 @@ const formatDate = (time?: string) => {
 }
 
 .pill-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -471,6 +486,48 @@ const formatDate = (time?: string) => {
   color: #ff4d4f;
   border-color: #ff4d4f;
   background: rgba(255, 77, 79, 0.06);
+}
+
+/* 点赞弹跳动画 + 数字 +1 漂浮 */
+.pill-btn.bump {
+  animation: like-bump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes like-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.plus-one {
+  position: absolute;
+  top: -10px;
+  right: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff4d6d;
+  animation: plus-one-rise 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes plus-one-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
 }
 
 .like-btn.liked {

@@ -47,9 +47,9 @@
         @load-more="loadMore"
       />
       <div v-else-if="!loading" class="empty-wrap">
-        <a-empty :description="activeMeta.empty">
+        <EmptyState :description="activeMeta.empty">
           <a-button type="primary" @click="router.push('/')">{{ activeMeta.cta }}</a-button>
-        </a-empty>
+        </EmptyState>
       </div>
     </a-spin>
   </div>
@@ -67,6 +67,7 @@ import {
   StarOutlined,
 } from '@ant-design/icons-vue'
 import PictureList from '@/components/PictureList.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import {
   clearMyViewHistory,
   pageMyFavorites,

@@ -361,3 +361,16 @@ html.dark .justified-item img {
 html.dark .no-more-text {
   color: var(--text-secondary);
 }
+
+/* ===== 移动端适配：安全区 + 全局防缩放（viewport user-scalable=no 配合） ===== */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+@media (max-width: 768px) {
+  body {
+    /* 防止 iOS 上字体自动放大 */
+    -webkit-text-size-adjust: 100%;
+  }
+}

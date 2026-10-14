@@ -64,7 +64,7 @@
         </div>
       </div>
       <div v-else-if="!loading" class="empty-wrap">
-        <a-empty description="回收站是空的，删除的图片会出现在这里" />
+        <EmptyState description="回收站是空的，删除的图片会出现在这里" />
       </div>
     </a-spin>
 
@@ -83,6 +83,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { useRouter } from 'vue-router'
 import {
   deleteRecycledBatch,

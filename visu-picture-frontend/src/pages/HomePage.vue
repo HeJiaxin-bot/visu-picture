@@ -55,15 +55,39 @@
       <a-tab-pane key="latest" tab="最新" />
       <a-tab-pane v-for="category in categoryList" :tab="category" :key="category" />
     </a-tabs>
-    <!-- 图片列表（滚动加载）；空分类时展示空状态 -->
-    <PictureList
-      v-if="loading || dataList.length > 0"
-      :dataList="dataList"
-      :loading="loading"
-      :finished="finished"
-      @load-more="onLoadMore"
-    />
-    <a-empty v-else description="该分类下还没有图片，换个分类看看，或上传第一张" />
+    <!-- 下拉刷新（移动端启用；首屏骨架屏按真实宽高比占位，CLS≈0） -->
+    <van-pull-refresh
+      v-model="refreshing"
+      :disabled="!isMobile"
+      success-text="刷新成功"
+      @refresh="onRefresh"
+    >
+      <!-- 首屏骨架屏：宽高比占位防跳动 -->
+      <div v-if="loading && !dataList.length" class="skeleton-grid">
+        <div v-for="i in 12" :key="i" class="skeleton-card">
+          <div
+            class="skeleton-thumb"
+            :style="{ aspectRatio: skeletonRatios[i % skeletonRatios.length] }"
+          ></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
+      <!-- 图片列表（滚动加载）；空分类时展示空状态 -->
+      <PictureList
+        v-else-if="loading || dataList.length > 0"
+        :dataList="dataList"
+        :loading="loading"
+        :finished="finished"
+        @load-more="onLoadMore"
+      />
+      <EmptyState
+        v-else
+        description="没有找到相关图片，换个分类或关键词试试"
+      >
+        <a-button type="primary" @click="searchParams.searchText = ''; doSearch()">浏览全部图片</a-button>
+      </EmptyState>
+    </van-pull-refresh>
   </div>
 </template>
 
@@ -80,9 +104,33 @@ import {
 } from '@/api/pictureController.ts'
 import { getHotSearchKeywords } from '@/api/search.ts'
 import { message } from 'ant-design-vue'
+import { PullRefresh as VanPullRefresh } from 'vant'
+import 'vant/es/pull-refresh/style'
 import PictureList from '@/components/PictureList.vue' // 定义数据
+import EmptyState from '@/components/EmptyState.vue'
+import { useIsMobile } from '@/composables/useIsMobile.ts'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const { isMobile } = useIsMobile()
+
+// 下拉刷新状态
+const refreshing = ref(false)
+const onRefresh = async () => {
+  searchParams.current = 1
+  try {
+    await fetchData()
+  } finally {
+    refreshing.value = false
+  }
+}
+
+// 首屏骨架屏的宽高比序列（模拟真实图片的多样比例）
+const skeletonRatios = ['3 / 4', '1 / 1', '4 / 3', '3 / 4', '4 / 5', '1 / 1']
 
 // 定义数据
+defineOptions({ name: 'HomePage' })
+
 const dataList = ref<API.PictureVO[]>([])
 const total = ref(0)
 const loading = ref(true)
@@ -475,3 +523,65 @@ html:not(.dark) #homePage .hero-desc {
   }
 }
 </style>
+
+/* ===== 首屏骨架屏：宽高比占位，避免加载完成后页面跳动（CLS≈0） ===== */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .skeleton-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.skeleton-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: var(--card-shadow);
+  padding-bottom: 10px;
+}
+
+.skeleton-thumb {
+  width: 100%;
+  background: linear-gradient(
+    100deg,
+    rgba(127, 127, 127, 0.08) 40%,
+    rgba(127, 127, 127, 0.16) 50%,
+    rgba(127, 127, 127, 0.08) 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-line {
+  height: 12px;
+  margin: 10px 10px 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    rgba(127, 127, 127, 0.08) 40%,
+    rgba(127, 127, 127, 0.16) 50%,
+    rgba(127, 127, 127, 0.08) 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-line.short {
+  width: 55%;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}

@@ -54,7 +54,16 @@ myAxios.interceptors.response.use(
   },
   function (error) {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
+    // 断网 / 超时 / 无响应：给出友好提示而不是静默失败导致白屏
+    if (!error.response) {
+      if (!navigator.onLine) {
+        message.error('网络似乎断开了，请检查网络后重试')
+      } else if (error.code === 'ECONNABORTED') {
+        message.error('请求超时，请稍后重试')
+      } else {
+        message.error('网络异常，请稍后重试')
+      }
+    }
     return Promise.reject(error)
   },
 )

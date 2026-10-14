@@ -6,6 +6,7 @@ import router from './router'
 
 // ant-design-vue 已按需引入（见 vite.config.ts），此处仅引入重置样式
 import 'ant-design-vue/dist/reset.css'
+import 'vant/lib/index.css'
 import '@/assets/main.css'
 import '@/access.ts'
 
