@@ -199,13 +199,9 @@ declare namespace API {
   }
 
   type CreatePictureOutPaintingTaskRequest = {
-    /** 可选，四方向统一扩展比例，范围 [1.0, 2.0]（wanx2.1-imageedit 模型使用） */
+    /** 可选，四方向统一扩展比例，范围 [1.0, 2.0]，不传时由模型自动决定扩展幅度 */
     expandScale?: number
-    /** 扩图模型：image-out-painting（默认，专用扩图）/ wanx2.1-imageedit（万相通用图像编辑） */
-    model?: string
-    /** 扩图参数 */
-    parameters?: Parameters
-    /** 可选，扩图提示词（wanx2.1-imageedit 模型使用） */
+    /** 可选，扩图提示词，用于引导扩展区域的内容；不传时后端使用默认提示词 */
     prompt?: string
     pictureId?: number | string
   }

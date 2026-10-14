@@ -23,28 +23,16 @@
     </a-row>
     <div style="margin-bottom: 16px" />
     <a-form layout="inline" style="margin-bottom: 16px">
-      <a-form-item label="扩图模型">
-        <a-select v-model:value="model" style="width: 240px">
-          <a-select-option value="image-out-painting">专用扩图</a-select-option>
-          <a-select-option value="wanx2.1-imageedit">万相编辑</a-select-option>
-        </a-select>
+      <a-form-item label="扩展比例">
+        <a-input-number v-model:value="expandScale" :min="1" :max="2" :step="0.1" />
       </a-form-item>
-      <template v-if="model === 'image-out-painting'">
-        <a-form-item label="横向比例">
-          <a-input-number v-model:value="xScale" :min="1" :max="3" :step="0.1" />
-        </a-form-item>
-        <a-form-item label="纵向比例">
-          <a-input-number v-model:value="yScale" :min="1" :max="3" :step="0.1" />
-        </a-form-item>
-      </template>
-      <template v-else>
-        <a-form-item label="扩展比例">
-          <a-input-number v-model:value="expandScale" :min="1" :max="2" :step="0.1" />
-        </a-form-item>
-        <a-form-item required label="提示词">
-          <a-input v-model:value="prompt" placeholder="请输入提示词，引导扩图内容" style="width: 200px" />
-        </a-form-item>
-      </template>
+      <a-form-item label="提示词">
+        <a-input
+          v-model:value="prompt"
+          placeholder="选填，引导扩展区域内容，留空使用默认"
+          style="width: 240px"
+        />
+      </a-form-item>
     </a-form>
     <div v-if="taskId" style="max-width: 420px; margin: 0 auto 12px">
       <a-progress :percent="progress" status="active" />
@@ -58,7 +46,6 @@
         type="primary"
         :loading="!!taskId"
         ghost
-        :disabled="model === 'wanx2.1-imageedit' && !prompt.trim()"
         @click="createTask"
       >
         生成图片（-20 积分）
@@ -93,12 +80,9 @@ const props = defineProps<Props>()
 
 const resultImageUrl = ref<string>('')
 
-// 扩图模型：image-out-painting（专用扩图）/ wanx2.1-imageedit（万相通用图像编辑）
-const model = ref<string>('image-out-painting')
-// 专用扩图模型参数：横纵向扩展比例
-const xScale = ref<number>(1.3)
-const yScale = ref<number>(1.3)
-// 万相编辑模型参数：四方向统一扩展比例与提示词
+// 扩图统一使用万相编辑模型（wanx2.1-imageedit，function = expand）：
+// 专用扩图模型 image-out-painting 已下架（实测 Model not exist），故移除模型选择。
+// 参数：四方向统一扩展比例与提示词（提示词留空时后端使用默认值）
 const expandScale = ref<number>(1.3)
 const prompt = ref<string>('')
 
@@ -137,16 +121,8 @@ const createTask = async () => {
   }
   const params: API.CreatePictureOutPaintingTaskRequest = {
     pictureId: props.picture.id,
-    model: model.value,
-  }
-  if (model.value === 'image-out-painting') {
-    params.parameters = {
-      xScale: xScale.value,
-      yScale: yScale.value,
-    }
-  } else {
-    params.expandScale = expandScale.value
-    params.prompt = prompt.value || undefined
+    expandScale: expandScale.value,
+    prompt: prompt.value || undefined,
   }
   const res = await createPictureOutPaintingTaskUsingPost(params)
   if (res.data.code === 0 && res.data.data) {

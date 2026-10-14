@@ -12,7 +12,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.visupicture.api.aliyunai.AliYunAiApi;
 import com.visupicture.api.aliyunai.model.CreateImageEditTaskRequest;
-import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.visupicture.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.visupicture.api.pexels.PexelsApi;
 import com.visupicture.constant.PictureTagCategoryConstant;
@@ -948,34 +947,26 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(!deducted, ErrorCode.OPERATION_ERROR,
                 StrUtil.format("积分不足，AI 扩图一次需要 {} 积分（可在个人中心每日签到获取积分）", UserConstant.OUT_PAINTING_POINTS));
         try {
-            // 可切换扩图模型，默认使用专用扩图模型 image-out-painting
-            String model = StrUtil.blankToDefault(createPictureOutPaintingTaskRequest.getModel(), "image-out-painting");
-            if ("wanx2.1-imageedit".equals(model)) {
-                // 万相通用图像编辑模型扩图（function = expand，按四方向比例扩展）
-                CreateImageEditTaskRequest editTaskRequest = new CreateImageEditTaskRequest();
-                CreateImageEditTaskRequest.Input input = new CreateImageEditTaskRequest.Input();
-                input.setBaseImageUrl(picture.getUrl());
-                input.setPrompt(createPictureOutPaintingTaskRequest.getPrompt());
-                editTaskRequest.setInput(input);
-                CreateImageEditTaskRequest.Parameters editParameters = new CreateImageEditTaskRequest.Parameters();
-                Float expandScale = createPictureOutPaintingTaskRequest.getExpandScale();
-                if (expandScale != null) {
-                    editParameters.setTopScale(expandScale);
-                    editParameters.setBottomScale(expandScale);
-                    editParameters.setLeftScale(expandScale);
-                    editParameters.setRightScale(expandScale);
-                }
-                editTaskRequest.setParameters(editParameters);
-                return aliYunAiApi.createImageEditTask(editTaskRequest);
+            // 扩图统一使用万相通用图像编辑模型（wanx2.1-imageedit，function = expand）：
+            // 专用扩图模型 image-out-painting 及其继任 wanx2.1-imageoutpaint 已于 2026-10 实测下架（Model not exist），
+            // wan2.7-image-pro 则仅在新 maas 域名提供服务，故收敛为单模型。
+            CreateImageEditTaskRequest editTaskRequest = new CreateImageEditTaskRequest();
+            CreateImageEditTaskRequest.Input input = new CreateImageEditTaskRequest.Input();
+            input.setBaseImageUrl(picture.getUrl());
+            // expand 模式下 prompt 必填，未填写时使用默认提示词
+            input.setPrompt(StrUtil.blankToDefault(createPictureOutPaintingTaskRequest.getPrompt(),
+                    "将图片画布自然扩展，保持原图内容和风格不变"));
+            editTaskRequest.setInput(input);
+            CreateImageEditTaskRequest.Parameters editParameters = new CreateImageEditTaskRequest.Parameters();
+            Float expandScale = createPictureOutPaintingTaskRequest.getExpandScale();
+            if (expandScale != null) {
+                editParameters.setTopScale(expandScale);
+                editParameters.setBottomScale(expandScale);
+                editParameters.setLeftScale(expandScale);
+                editParameters.setRightScale(expandScale);
             }
-            // 创建扩图任务
-            CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
-            CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();
-            input.setImageUrl(picture.getUrl());
-            createOutPaintingTaskRequest.setInput(input);
-            createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskRequest.getParameters());
-            // 创建任务
-            return aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
+            editTaskRequest.setParameters(editParameters);
+            return aliYunAiApi.createImageEditTask(editTaskRequest);
         } catch (Exception e) {
             // 任务创建失败，退还积分
             userService.update(new LambdaUpdateWrapper<User>()
