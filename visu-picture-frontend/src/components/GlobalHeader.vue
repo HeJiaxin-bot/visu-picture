@@ -62,6 +62,10 @@
             </div>
             <template #overlay>
               <div class="team-panel">
+                <div class="team-panel-item" @click="router.push('/admin/dashboard')">
+                  <div class="item-title">数据看板</div>
+                  <div class="item-desc">全站核心指标总览</div>
+                </div>
                 <div class="team-panel-item" @click="router.push('/admin/userManage')">
                   <div class="item-title">用户管理</div>
                   <div class="item-desc">账号与角色维护</div>

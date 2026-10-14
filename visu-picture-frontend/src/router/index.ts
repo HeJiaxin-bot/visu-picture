@@ -21,6 +21,8 @@ const SearchPicturePage = () => import('@/pages/SearchPicturePage.vue')
 const SpaceAnalyzePage = () => import('@/pages/SpaceAnalyzePage.vue')
 const SpaceUserManagePage = () => import('@/pages/admin/SpaceUserManagePage.vue')
 const InvitePage = () => import('@/pages/user/InvitePage.vue')
+const RecycleBinPage = () => import('@/pages/RecycleBinPage.vue')
+const AdminDashboardPage = () => import('@/pages/admin/AdminDashboardPage.vue')
 const AgreementPage = () => import('@/pages/user/AgreementPage.vue')
 const UserProfilePage = () => import('@/pages/user/UserProfilePage.vue')
 const NotificationPage = () => import('@/pages/user/NotificationPage.vue')
@@ -149,6 +151,16 @@ const router = createRouter({
       path: '/my/interaction',
       name: '我的互动',
       component: MyInteractionPage,
+    },
+    {
+      path: '/recycle',
+      name: '回收站',
+      component: RecycleBinPage,
+    },
+    {
+      path: '/admin/dashboard',
+      name: '数据看板',
+      component: AdminDashboardPage,
     },
     {
       // 公开分享页：无需登录，凭 shareCode 访问

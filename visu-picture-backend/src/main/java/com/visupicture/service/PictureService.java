@@ -174,4 +174,29 @@ public interface PictureService extends IService<Picture> {
      * @return 操作后的点赞数
      */
     int likePicture(long pictureId, long userId, boolean isLike);
+
+    /**
+     * 回收站：分页查询当前用户已删除的图片
+     */
+    Page<Picture> listMyRecycle(long current, long size, User loginUser);
+
+    /**
+     * 回收站：恢复图片（回置 isDelete 并归还空间额度）
+     */
+    void restoreFromRecycle(long pictureId, User loginUser);
+
+    /**
+     * 回收站：彻底删除（物理删除行 + 清理对象存储文件）
+     */
+    void deleteFromRecycle(long pictureId, User loginUser);
+
+    /**
+     * 记录公共图库搜索关键词（Redis ZSet，用于热门搜索统计）
+     */
+    void recordSearchKeyword(String keyword);
+
+    /**
+     * 热门搜索词（按热度倒序）
+     */
+    List<String> getHotSearchKeywords(int limit);
 }

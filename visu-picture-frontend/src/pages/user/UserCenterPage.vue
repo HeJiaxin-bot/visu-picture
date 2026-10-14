@@ -148,6 +148,11 @@
             <div class="entry-title">我的空间</div>
             <div class="entry-desc">管理我的私人空间</div>
           </div>
+          <div class="entry-item" @click="router.push('/recycle')">
+            <RestOutlined class="entry-icon" style="color: #13c2c2" />
+            <div class="entry-title">回收站</div>
+            <div class="entry-desc">恢复或彻底删除图片</div>
+          </div>
           <div class="entry-item" @click="router.push('/add_space?type=1')">
             <TeamOutlined class="entry-icon" style="color: #52c41a" />
             <div class="entry-title">创建团队</div>
@@ -276,6 +281,7 @@ import {
   LoadingOutlined,
   NotificationOutlined,
   PictureOutlined,
+  RestOutlined,
   SettingOutlined,
   TeamOutlined,
   UserDeleteOutlined,

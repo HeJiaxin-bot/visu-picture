@@ -25,13 +25,22 @@
       <!-- 左栏：上传 / 预览 / 编辑 -->
       <section class="card stage-card">
         <div class="stage-head">
+          <div v-if="onlineUsers.length" class="collab-presence">
+            <a-avatar-group :max-count="3" size="24">
+              <a-tooltip v-for="u in onlineUsers" :key="u.id" :title="u.userName">
+                <a-avatar :src="u.userAvatar" size="24">
+                  {{ u.userName?.[0] ?? '客' }}
+                </a-avatar>
+              </a-tooltip>
+            </a-avatar-group>
+          </div>
           <span class="stage-status" :class="`is-${stageStatus.key}`">
             <i class="stage-dot" />
             {{ stageStatus.text }}
           </span>
         </div>
 
-        <div class="stage-frame">
+        <div class="stage-frame" :style="frameStyle">
           <PictureUpload
             ref="pictureUploadRef"
             defer-upload
@@ -72,6 +81,43 @@
           >
             AI 扩图
           </a-button>
+        </div>
+
+        <!-- 协同编辑：动作全端同步，在线协作者可见 -->
+        <div v-if="picture?.id" class="collab-bar">
+          <span v-if="editingUser && !editingByMe" class="collab-lock-hint">
+            {{ editingUser.userName }} 正在编辑
+          </span>
+          <a-tooltip title="左旋（同步到所有协作者）">
+            <a-button class="tool-btn" size="small" @click="doCollabAction('ROTATE_LEFT')">
+              <template #icon><UndoOutlined /></template>
+            </a-button>
+          </a-tooltip>
+          <a-tooltip title="右旋（同步到所有协作者）">
+            <a-button class="tool-btn" size="small" @click="doCollabAction('ROTATE_RIGHT')">
+              <template #icon><RedoOutlined /></template>
+            </a-button>
+          </a-tooltip>
+          <a-tooltip title="放大（同步）">
+            <a-button class="tool-btn" size="small" @click="doCollabAction('ZOOM_IN')">
+              <template #icon><ZoomInOutlined /></template>
+            </a-button>
+          </a-tooltip>
+          <a-tooltip title="缩小（同步）">
+            <a-button class="tool-btn" size="small" @click="doCollabAction('ZOOM_OUT')">
+              <template #icon><ZoomOutOutlined /></template>
+            </a-button>
+          </a-tooltip>
+          <a-button
+            v-if="!editingByMe"
+            size="small"
+            type="primary"
+            ghost
+            @click="doCollabAction('ENTER_EDIT')"
+          >
+            进入协同编辑
+          </a-button>
+          <span v-else class="collab-active">协同编辑中</span>
         </div>
         <ImageCropper
           ref="imageCropperRef"
@@ -177,7 +223,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 import ImageCropper from '@/components/ImageCropper.vue'
 import PictureMetaPicker from '@/components/PictureMetaPicker.vue'
-import { EditOutlined, FullscreenOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, FullscreenOutlined, ThunderboltOutlined, UndoOutlined, RedoOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-vue'
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
@@ -232,6 +278,126 @@ const spaceId = computed<string | undefined>(() => firstQueryValue(route.query?.
 const batchUploadPath = computed(() =>
   spaceId.value ? `/add_picture/batch-upload?spaceId=${spaceId.value}` : '/add_picture/batch-upload',
 )
+
+// ==================== 协同编辑（WebSocket 在线协作者 + 编辑动作同步） ====================
+// 后端：/ws/picture/edit（PictureEditHandler + Disruptor 异步广播）
+// 协议：加入/离开广播 INFO（携带 UserVO），ENTER_EDIT/EXIT_EDIT 编辑锁，EDIT_ACTION 编辑动作
+const loginUserStore = useLoginUserStore()
+const pictureWs = ref<WebSocket | null>(null)
+// 在线协作者（加入/离开由后端 INFO 广播驱动）
+const onlineUsers = ref<Array<{ id: number; userName?: string; userAvatar?: string }>>([])
+// 当前持有编辑锁的用户（null = 没有人在编辑）
+const editingUser = ref<{ id: number; userName?: string } | null>(null)
+const editingByMe = computed(() => {
+  const meId = loginUserStore.loginUser.id
+  return !!editingUser.value && String(editingUser.value.id) === String(meId)
+})
+// 预览变换：本地与远端动作同步应用
+const previewTransform = reactive({ rotate: 0, scale: 1 })
+
+const frameStyle = computed(() => ({
+  transform: `rotate(${previewTransform.rotate}deg) scale(${previewTransform.scale})`,
+  transition: 'transform 0.3s ease',
+}))
+
+const applyTransform = (action: string) => {
+  switch (action) {
+    case 'ROTATE_LEFT':
+      previewTransform.rotate -= 90
+      break
+    case 'ROTATE_RIGHT':
+      previewTransform.rotate += 90
+      break
+    case 'ZOOM_IN':
+      previewTransform.scale = Math.min(3, previewTransform.scale + 0.2)
+      break
+    case 'ZOOM_OUT':
+      previewTransform.scale = Math.max(1, previewTransform.scale - 0.2)
+      break
+  }
+}
+
+const connectPictureWs = (pictureId: string | number) => {
+  if (pictureWs.value) return
+  // WS 直连后端（cookie 与 localhost 域共享，握手拦截器据此鉴权）
+  const wsBase = import.meta.env.DEV ? 'ws://localhost:8123/api' : `ws://${window.location.host}/api`
+  const socket = new WebSocket(`${wsBase}/ws/picture/edit?pictureId=${pictureId}`)
+  socket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data)
+      const user = msg.user ?? null
+      if (msg.type === 'INFO') {
+        if (user?.id) {
+          if (msg.message?.includes('加入')) {
+            onlineUsers.value = [
+              ...onlineUsers.value.filter((u) => String(u.id) !== String(user.id)),
+              user,
+            ]
+          } else if (msg.message?.includes('离开')) {
+            onlineUsers.value = onlineUsers.value.filter(
+              (u) => String(u.id) !== String(user.id),
+            )
+          }
+        }
+      } else if (msg.type === 'ENTER_EDIT') {
+        editingUser.value = user
+      } else if (msg.type === 'EXIT_EDIT') {
+        if (editingUser.value && user && String(editingUser.value.id) === String(user.id)) {
+          editingUser.value = null
+        }
+      } else if (msg.type === 'EDIT_ACTION') {
+        applyTransform(msg.editAction)
+      }
+    } catch {
+      // 忽略无法解析的消息
+    }
+  }
+  socket.onclose = () => {
+    pictureWs.value = null
+    onlineUsers.value = []
+    editingUser.value = null
+  }
+  pictureWs.value = socket
+}
+
+const disconnectPictureWs = () => {
+  pictureWs.value?.close()
+  pictureWs.value = null
+}
+
+// 编辑模式（已有图片 id）才建立协同连接
+watchEffect(() => {
+  const id = picture.value?.id
+  if (id && !pictureWs.value) {
+    connectPictureWs(id)
+  }
+})
+
+onUnmounted(() => {
+  disconnectPictureWs()
+})
+
+const sendCollabMessage = (type: string, editAction?: string) => {
+  if (!pictureWs.value || pictureWs.value.readyState !== WebSocket.OPEN) {
+    message.warning('协同连接未建立，请稍后再试')
+    return
+  }
+  pictureWs.value.send(JSON.stringify({ type, editAction }))
+}
+
+// 点击动作：未持锁先抢占（ENTER_EDIT）；持有锁才广播动作并本地应用
+const doCollabAction = (action: 'ROTATE_LEFT' | 'ROTATE_RIGHT' | 'ZOOM_IN' | 'ZOOM_OUT' | 'ENTER_EDIT') => {
+  if (action === 'ENTER_EDIT') {
+    sendCollabMessage('ENTER_EDIT')
+    return
+  }
+  if (!editingByMe.value) {
+    sendCollabMessage('ENTER_EDIT')
+    return
+  }
+  sendCollabMessage('EDIT_ACTION', action)
+  applyTransform(action)
+}
 
 /**
  * 图片上传成功
@@ -639,6 +805,44 @@ watchEffect(() => {
   padding: 12px;
   border-radius: 12px;
   background: var(--bg-body);
+}
+
+/* ===== 协同编辑 ===== */
+.collab-presence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+
+.collab-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.collab-lock-hint {
+  font-size: 12px;
+  color: #faad14;
+}
+
+.collab-active {
+  font-size: 12px;
+  color: #389e0d;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.collab-active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #389e0d;
+  box-shadow: 0 0 6px rgba(56, 158, 13, 0.6);
 }
 
 .upload-divider {

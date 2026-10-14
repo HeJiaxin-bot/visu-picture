@@ -15,6 +15,25 @@
         />
       </div>
     </div>
+    <!-- 热门搜索 / 搜索历史 -->
+    <div v-if="hotKeywords.length" class="search-extra">
+      <span class="extra-label"><FireOutlined /> 热门</span>
+      <span v-for="kw in hotKeywords" :key="`hot-${kw}`" class="extra-pill" @click="searchKeyword(kw)">
+        {{ kw }}
+      </span>
+    </div>
+    <div v-if="searchHistory.length" class="search-extra">
+      <span class="extra-label"><HistoryOutlined /> 历史</span>
+      <span
+        v-for="kw in searchHistory"
+        :key="`his-${kw}`"
+        class="extra-pill"
+        @click="searchKeyword(kw)"
+      >
+        {{ kw }}
+      </span>
+      <span class="extra-clear" title="清空历史" @click="clearHistory"><ClearOutlined /></span>
+    </div>
     <!-- 分类筛选：推荐（默认）/最新 + 业务分类 -->
     <a-tabs v-model:active-key="selectedCategory" class="category-tabs" @change="doSearch">
       <a-tab-pane key="all" tab="推荐" />
@@ -36,9 +55,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  ClearOutlined,
+  FireOutlined,
+  HistoryOutlined,
+} from '@ant-design/icons-vue'
+import {
   listPictureTagCategoryUsingGet,
   listPictureVoByPageUsingPost,
 } from '@/api/pictureController.ts'
+import { getHotSearchKeywords } from '@/api/search.ts'
 import { message } from 'ant-design-vue'
 import PictureList from '@/components/PictureList.vue' // 定义数据
 
@@ -120,8 +145,41 @@ const onLoadMore = () => {
 const doSearch = () => {
   // 重置搜索条件
   searchParams.current = 1
+  // 记录搜索历史（本地）与热门统计（后端 Redis ZSet）
+  const kw = (searchParams.searchText ?? '').trim()
+  if (kw) pushHistory(kw)
   fetchData()
 }
+
+// ==================== 搜索历史 + 热门搜索 ====================
+const HISTORY_KEY = 'visu_search_history'
+const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]'))
+const hotKeywords = ref<string[]>([])
+
+const pushHistory = (keyword: string) => {
+  const kw = keyword.trim()
+  if (!kw) return
+  // 去重置顶，最多保留 10 条
+  searchHistory.value = [kw, ...searchHistory.value.filter((k) => k !== kw)].slice(0, 10)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(searchHistory.value))
+}
+
+const clearHistory = () => {
+  searchHistory.value = []
+  localStorage.removeItem(HISTORY_KEY)
+}
+
+const searchKeyword = (keyword: string) => {
+  searchParams.searchText = keyword
+  doSearch()
+}
+
+onMounted(async () => {
+  const res = await getHotSearchKeywords(8)
+  if (res.code === 0 && res.data) {
+    hotKeywords.value = res.data
+  }
+})
 
 // 分类列表
 const categoryList = ref<string[]>([])
@@ -248,6 +306,56 @@ html:not(.dark) #homePage .search-bar :deep(.ant-input)::placeholder {
 
 #homePage .search-bar :deep(.ant-input-search-button) {
   border-radius: 999px;
+}
+
+/* ===== 热门搜索 / 搜索历史 ===== */
+.search-extra {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.extra-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.extra-pill {
+  font-size: 12px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.extra-pill:hover {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.extra-clear {
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: color 0.2s ease;
+}
+
+.extra-clear:hover {
+  color: #ff4d4f;
+  opacity: 1;
 }
 
 /* 浅色模式文字色适配（Hero 已无卡片背景） */

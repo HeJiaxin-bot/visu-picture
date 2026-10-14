@@ -777,8 +777,83 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
             return true;
         });
-        // 异步清理文件
-        this.clearPictureFile(oldPicture);
+        // 对象存储文件暂不清理：保留至回收站「彻底删除」时再清理，删除的图片可在回收站恢复
+    }
+
+    // ==================== 回收站 ====================
+
+    @Override
+    public Page<Picture> listMyRecycle(long current, long size, User loginUser) {
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        long total = baseMapper.countMyRecycled(loginUser.getId());
+        Page<Picture> page = new Page<>(current, size, total);
+        if (total > 0) {
+            long offset = (Math.max(current, 1) - 1) * size;
+            page.setRecords(baseMapper.listMyRecycled(loginUser.getId(), offset, size));
+        }
+        return page;
+    }
+
+    @Override
+    public void restoreFromRecycle(long pictureId, User loginUser) {
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        Picture picture = baseMapper.selectMyRecycledById(pictureId, loginUser.getId());
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "回收站中不存在该图片");
+        int restored = baseMapper.restoreRecycled(pictureId, loginUser.getId());
+        ThrowUtils.throwIf(restored <= 0, ErrorCode.OPERATION_ERROR, "恢复失败，请稍后重试");
+        // 归还空间额度（软删除时已释放；空间已被删除时静默跳过）
+        if (picture.getSpaceId() != null && picture.getPicSize() != null) {
+            spaceService.lambdaUpdate()
+                    .eq(Space::getId, picture.getSpaceId())
+                    .setSql("totalSize = totalSize + " + picture.getPicSize())
+                    .setSql("totalCount = totalCount + 1")
+                    .update();
+        }
+    }
+
+    @Override
+    public void deleteFromRecycle(long pictureId, User loginUser) {
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NO_AUTH_ERROR);
+        Picture picture = baseMapper.selectMyRecycledById(pictureId, loginUser.getId());
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "回收站中不存在该图片");
+        int deleted = baseMapper.deleteRecycledPhysically(pictureId, loginUser.getId());
+        ThrowUtils.throwIf(deleted <= 0, ErrorCode.OPERATION_ERROR, "删除失败，请稍后重试");
+        // 软删除阶段文件被保留以支持恢复，物理删除时才真正清理对象存储文件
+        this.clearPictureFile(picture);
+    }
+
+    // ==================== 热门搜索 ====================
+
+    private static final String SEARCH_HOT_KEY = "picture:search:hot";
+
+    @Override
+    public void recordSearchKeyword(String keyword) {
+        if (StrUtil.isBlank(keyword)) {
+            return;
+        }
+        String kw = keyword.trim();
+        if (kw.length() > 50) {
+            kw = kw.substring(0, 50);
+        }
+        try {
+            stringRedisTemplate.opsForZSet().incrementScore(SEARCH_HOT_KEY, kw, 1);
+            // 只保留热度前 100 名，防止 ZSet 无限膨胀
+            stringRedisTemplate.opsForZSet().removeRange(SEARCH_HOT_KEY, 0, -101);
+        } catch (Exception e) {
+            log.warn("记录热门搜索词失败", e);
+        }
+    }
+
+    @Override
+    public List<String> getHotSearchKeywords(int limit) {
+        try {
+            Set<String> keywords = stringRedisTemplate.opsForZSet()
+                    .reverseRange(SEARCH_HOT_KEY, 0, Math.max(1, Math.min(limit, 20)) - 1L);
+            return keywords == null ? new ArrayList<>() : new ArrayList<>(keywords);
+        } catch (Exception e) {
+            log.warn("查询热门搜索词失败", e);
+            return new ArrayList<>();
+        }
     }
 
     @Override

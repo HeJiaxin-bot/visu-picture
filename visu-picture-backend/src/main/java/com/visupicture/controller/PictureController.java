@@ -254,6 +254,8 @@ public class PictureController {
             // 普通用户默认只能看到审核通过的数据
             pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
             pictureQueryRequest.setNullSpaceId(true);
+            // 记录搜索关键词（热门搜索统计，Redis ZSet）
+            pictureService.recordSearchKeyword(pictureQueryRequest.getSearchText());
         } else {
             boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
             ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
@@ -499,5 +501,50 @@ public class PictureController {
         ThrowUtils.throwIf(StrUtil.isBlank(taskId), ErrorCode.PARAMS_ERROR);
         GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
         return ResultUtils.success(task);
+    }
+
+    // ==================== 回收站 ====================
+
+    /**
+     * 回收站：分页查询当前用户已删除的图片
+     */
+    @GetMapping("/recycle/list")
+    public BaseResponse<Page<Picture>> listRecycle(long current, long pageSize, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        long cur = current <= 0 ? 1 : current;
+        long size = Math.min(pageSize <= 0 ? 10 : pageSize, 50);
+        return ResultUtils.success(pictureService.listMyRecycle(cur, size, loginUser));
+    }
+
+    /**
+     * 回收站：恢复图片（归还空间额度）
+     */
+    @PostMapping("/recycle/restore")
+    public BaseResponse<Boolean> restoreRecycledPicture(@RequestBody DeleteRequest deleteRequest,
+                                                        HttpServletRequest request) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.restoreFromRecycle(deleteRequest.getId(), loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 回收站：彻底删除（物理删除行并清理对象存储文件，不可恢复）
+     */
+    @PostMapping("/recycle/delete")
+    public BaseResponse<Boolean> deleteRecycledPicture(@RequestBody DeleteRequest deleteRequest,
+                                                       HttpServletRequest request) {
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.deleteFromRecycle(deleteRequest.getId(), loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 热门搜索词（公开图库搜索统计，Redis ZSet）
+     */
+    @GetMapping("/search/hot")
+    public BaseResponse<List<String>> getHotSearchKeywords(@RequestParam(defaultValue = "10") int limit) {
+        return ResultUtils.success(pictureService.getHotSearchKeywords(limit));
     }
 }
