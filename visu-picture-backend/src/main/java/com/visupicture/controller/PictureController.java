@@ -541,6 +541,28 @@ public class PictureController {
     }
 
     /**
+     * 回收站：批量恢复（逐张校验归属，返回成功数量）
+     */
+    @PostMapping("/recycle/batch/restore")
+    public BaseResponse<Integer> restoreRecycledBatch(@RequestBody List<Long> pictureIds,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureIds == null || pictureIds.isEmpty(), ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(pictureService.restoreFromRecycleBatch(pictureIds, loginUser));
+    }
+
+    /**
+     * 回收站：批量彻底删除（逐张校验归属，返回成功数量）
+     */
+    @PostMapping("/recycle/batch/delete")
+    public BaseResponse<Integer> deleteRecycledBatch(@RequestBody List<Long> pictureIds,
+                                                     HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureIds == null || pictureIds.isEmpty(), ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(pictureService.deleteFromRecycleBatch(pictureIds, loginUser));
+    }
+
+    /**
      * 热门搜索词（公开图库搜索统计，Redis ZSet）
      */
     @GetMapping("/search/hot")

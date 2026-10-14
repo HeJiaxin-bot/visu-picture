@@ -822,6 +822,41 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         this.clearPictureFile(picture);
     }
 
+    @Override
+    public int restoreFromRecycleBatch(List<Long> pictureIds, User loginUser) {
+        if (CollUtil.isEmpty(pictureIds)) {
+            return 0;
+        }
+        // 逐张校验归属并恢复：单张失败不影响其余
+        int success = 0;
+        for (Long id : pictureIds) {
+            try {
+                this.restoreFromRecycle(id, loginUser);
+                success++;
+            } catch (Exception e) {
+                log.warn("恢复图片失败, pictureId={}", id, e);
+            }
+        }
+        return success;
+    }
+
+    @Override
+    public int deleteFromRecycleBatch(List<Long> pictureIds, User loginUser) {
+        if (CollUtil.isEmpty(pictureIds)) {
+            return 0;
+        }
+        int success = 0;
+        for (Long id : pictureIds) {
+            try {
+                this.deleteFromRecycle(id, loginUser);
+                success++;
+            } catch (Exception e) {
+                log.warn("彻底删除图片失败, pictureId={}", id, e);
+            }
+        }
+        return success;
+    }
+
     // ==================== 热门搜索 ====================
 
     private static final String SEARCH_HOT_KEY = "picture:search:hot";

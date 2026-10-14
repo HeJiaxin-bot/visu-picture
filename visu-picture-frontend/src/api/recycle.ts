@@ -45,3 +45,21 @@ export async function deleteRecycledPicture(id: string | number) {
     message?: string
   }
 }
+
+/** 回收站：批量恢复（返回成功数量） */
+export async function restoreRecycledBatch(ids: Array<string | number>) {
+  return (await myAxios.post('/api/picture/recycle/batch/restore', ids)).data as {
+    code: number
+    data?: number
+    message?: string
+  }
+}
+
+/** 回收站：批量彻底删除（返回成功数量） */
+export async function deleteRecycledBatch(ids: Array<string | number>) {
+  return (await myAxios.post('/api/picture/recycle/batch/delete', ids)).data as {
+    code: number
+    data?: number
+    message?: string
+  }
+}

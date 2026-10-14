@@ -4,7 +4,7 @@
     <div class="hero">
       <h1 class="hero-title">视界云图库</h1>
       <p class="hero-desc">企业级智能协同云图库，海量图片素材免费获取</p>
-      <!-- 搜索框 -->
+      <!-- 搜索框：聚焦时下拉展示热门搜索与历史 -->
       <div class="search-bar">
         <a-input-search
           v-model:value="searchParams.searchText"
@@ -12,27 +12,42 @@
           enter-button="搜索"
           size="large"
           @search="doSearch"
+          @focus="searchPanelVisible = true"
+          @blur="onSearchBlur"
         />
+        <!-- 聚焦下拉：热门搜索 + 搜索历史（mousedown.prevent 防止点击前失焦） -->
+        <div
+          v-if="searchPanelVisible && (hotKeywords.length || searchHistory.length)"
+          class="search-panel"
+          @mousedown.prevent
+        >
+          <div v-if="hotKeywords.length" class="panel-section">
+            <div class="panel-label"><span><FireOutlined /> 热门搜索</span></div>
+            <div class="panel-pills">
+              <span
+                v-for="(kw, index) in hotKeywords"
+                :key="`hot-${kw}`"
+                class="panel-pill"
+                @click="searchKeyword(kw)"
+              >
+                <i v-if="index < 3" class="hot-rank" :class="`top-${index + 1}`">{{ index + 1 }}</i>
+                {{ kw }}
+              </span>
+            </div>
+          </div>
+          <div v-if="searchHistory.length" class="panel-section">
+            <div class="panel-label">
+              <span><HistoryOutlined /> 搜索历史</span>
+              <span class="panel-clear" @click="clearHistory"><ClearOutlined /> 清空</span>
+            </div>
+            <div class="panel-pills">
+              <span v-for="kw in searchHistory" :key="`his-${kw}`" class="panel-pill" @click="searchKeyword(kw)">
+                {{ kw }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <!-- 热门搜索 / 搜索历史 -->
-    <div v-if="hotKeywords.length" class="search-extra">
-      <span class="extra-label"><FireOutlined /> 热门</span>
-      <span v-for="kw in hotKeywords" :key="`hot-${kw}`" class="extra-pill" @click="searchKeyword(kw)">
-        {{ kw }}
-      </span>
-    </div>
-    <div v-if="searchHistory.length" class="search-extra">
-      <span class="extra-label"><HistoryOutlined /> 历史</span>
-      <span
-        v-for="kw in searchHistory"
-        :key="`his-${kw}`"
-        class="extra-pill"
-        @click="searchKeyword(kw)"
-      >
-        {{ kw }}
-      </span>
-      <span class="extra-clear" title="清空历史" @click="clearHistory"><ClearOutlined /></span>
     </div>
     <!-- 分类筛选：推荐（默认）/最新 + 业务分类 -->
     <a-tabs v-model:active-key="selectedCategory" class="category-tabs" @change="doSearch">
@@ -148,13 +163,22 @@ const doSearch = () => {
   // 记录搜索历史（本地）与热门统计（后端 Redis ZSet）
   const kw = (searchParams.searchText ?? '').trim()
   if (kw) pushHistory(kw)
+  searchPanelVisible.value = false
   fetchData()
 }
 
 // ==================== 搜索历史 + 热门搜索 ====================
 const HISTORY_KEY = 'visu_search_history'
+const searchPanelVisible = ref(false)
 const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]'))
 const hotKeywords = ref<string[]>([])
+
+// 失焦延迟收起：给面板点击留出时间窗口
+const onSearchBlur = () => {
+  setTimeout(() => {
+    searchPanelVisible.value = false
+  }, 150)
+}
 
 const pushHistory = (keyword: string) => {
   const kw = keyword.trim()
@@ -171,6 +195,7 @@ const clearHistory = () => {
 
 const searchKeyword = (keyword: string) => {
   searchParams.searchText = keyword
+  searchPanelVisible.value = false
   doSearch()
 }
 
@@ -308,55 +333,105 @@ html:not(.dark) #homePage .search-bar :deep(.ant-input)::placeholder {
   border-radius: 999px;
 }
 
-/* ===== 热门搜索 / 搜索历史 ===== */
-.search-extra {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  position: relative;
-  z-index: 1;
+/* ===== 聚焦下拉面板：热门搜索 + 历史 ===== */
+.search-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  padding: 14px 16px;
+  text-align: left;
+  z-index: 20;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
-.extra-label {
-  display: inline-flex;
+.panel-section + .panel-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.panel-label {
+  display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.extra-pill {
+.panel-clear {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.7;
+  transition: color 0.2s ease;
+}
+
+.panel-clear:hover {
+  color: #ff4d4f;
+  opacity: 1;
+}
+
+.panel-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.panel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  padding: 2px 10px;
+  padding: 3px 12px;
   cursor: pointer;
   transition:
     color 0.2s ease,
     border-color 0.2s ease;
 }
 
-.extra-pill:hover {
+.panel-pill:hover {
   color: var(--accent);
   border-color: var(--accent-soft);
 }
 
-.extra-clear {
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  opacity: 0.7;
-  transition: color 0.2s ease;
+.hot-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(127, 127, 127, 0.4);
 }
 
-.extra-clear:hover {
-  color: #ff4d4f;
-  opacity: 1;
+.hot-rank.top-1 {
+  background: #ff4d4f;
 }
+
+.hot-rank.top-2 {
+  background: #fa8c16;
+}
+
+.hot-rank.top-3 {
+  background: #faad14;
+}
+
+/* ===== 热门搜索 / 搜索历史（旧常驻样式，已被下拉面板取代） ===== */
 
 /* 浅色模式文字色适配（Hero 已无卡片背景） */
 html:not(.dark) #homePage .hero-title {

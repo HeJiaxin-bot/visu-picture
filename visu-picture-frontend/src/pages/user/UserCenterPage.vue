@@ -192,8 +192,13 @@
       </a-card>
 
       <!-- 管理员功能（仅管理员可见） -->
-      <a-card v-if="loginUser.userRole === 'admin'" class="entry-card admin-card" title="管理员功能">
+      <a-card v-if="loginUser.userRole === 'admin'" class="entry-card admin-card" title="管理员快捷入口">
         <div class="entry-grid">
+          <div class="entry-item" @click="router.push('/admin/dashboard')">
+            <DashboardOutlined class="entry-icon" style="color: #40a9ff" />
+            <div class="entry-title">数据看板</div>
+            <div class="entry-desc">全站核心指标总览</div>
+          </div>
           <div class="entry-item" @click="router.push('/admin/userManage')">
             <UserOutlined class="entry-icon" style="color: #40a9ff" />
             <div class="entry-title">用户管理</div>
@@ -275,6 +280,7 @@ import {
   CloudDownloadOutlined,
   CopyOutlined,
   CrownOutlined,
+  DashboardOutlined,
   DeploymentUnitOutlined,
   EditOutlined,
   FolderOutlined,

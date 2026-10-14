@@ -191,6 +191,16 @@ public interface PictureService extends IService<Picture> {
     void deleteFromRecycle(long pictureId, User loginUser);
 
     /**
+     * 回收站：批量恢复（逐张校验归属，返回成功数量）
+     */
+    int restoreFromRecycleBatch(List<Long> pictureIds, User loginUser);
+
+    /**
+     * 回收站：批量彻底删除（逐张校验归属，返回成功数量）
+     */
+    int deleteFromRecycleBatch(List<Long> pictureIds, User loginUser);
+
+    /**
      * 记录公共图库搜索关键词（Redis ZSet，用于热门搜索统计）
      */
     void recordSearchKeyword(String keyword);
