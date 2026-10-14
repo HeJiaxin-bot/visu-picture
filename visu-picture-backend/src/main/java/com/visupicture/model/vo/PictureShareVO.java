@@ -46,5 +46,10 @@ public class PictureShareVO implements Serializable {
      */
     private Date createTime;
 
+    /**
+     * 当前用户是否可管理该分享（所有者/管理员）：决定前端是否展示有效期调整与撤销入口
+     */
+    private Boolean canManage;
+
     private static final long serialVersionUID = 1L;
 }

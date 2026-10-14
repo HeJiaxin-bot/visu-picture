@@ -64,6 +64,34 @@ public class PictureShareServiceImpl implements PictureShareService {
     private UserService userService;
 
     /**
+     * 是否为图片所有者或管理员
+     */
+    private boolean isOwnerOrAdmin(Picture picture, User loginUser) {
+        return (picture.getUserId() != null && picture.getUserId().equals(loginUser.getId()))
+                || userService.isAdmin(loginUser);
+    }
+
+    /**
+     * 分享目标校验（开放分享权限后的宽松版）：
+     * 所有者/管理员可直接分享；其他登录用户仅可转发「公开图库 + 已过审」的图片，
+     * 私有/团队空间与未过审内容一律拒绝——防止分享链接绕过空间权限与审核机制。
+     */
+    private Picture requireShareTarget(long pictureId, User loginUser) {
+        ThrowUtils.throwIf(loginUser == null || loginUser.getId() == null, ErrorCode.NOT_LOGIN_ERROR);
+        ThrowUtils.throwIf(pictureId <= 0, ErrorCode.PARAMS_ERROR, "图片 id 不合法");
+        Picture picture = pictureMapper.selectById(pictureId);
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
+        if (isOwnerOrAdmin(picture, loginUser)) {
+            return picture;
+        }
+        boolean publicPassed = picture.getSpaceId() == null
+                && picture.getReviewStatus() != null
+                && picture.getReviewStatus() == PictureReviewStatusEnum.PASS.getValue();
+        ThrowUtils.throwIf(!publicPassed, ErrorCode.NO_AUTH_ERROR, "仅支持分享公开图库中已通过审核的图片");
+        return picture;
+    }
+
+    /**
      * 校验当前用户对图片的分享管理权限：所有者或管理员，并返回图片
      */
     private Picture requireOwnership(long pictureId, User loginUser) {
@@ -90,13 +118,16 @@ public class PictureShareServiceImpl implements PictureShareService {
 
     @Override
     public PictureShareVO createShare(long pictureId, Integer expireDays, User loginUser) {
-        Picture picture = requireOwnership(pictureId, loginUser);
+        Picture picture = requireShareTarget(pictureId, loginUser);
+        boolean canManage = isOwnerOrAdmin(picture, loginUser);
         Date newExpire = expireDays == null || expireDays <= 0 ? null : calcExpireTime(expireDays);
 
-        // 已有有效链接：复用，并在需要时续期（不缩短，避免误伤已发出的链接）
+        // 已有有效链接：复用，并在需要时续期（不缩短，避免误伤已发出的链接）。
+        // 续期仅限所有者/管理员：转发者不应能改动作者的链接有效期。
         if (hasValidShare(picture)) {
             Date current = picture.getShareExpireTime();
-            boolean needExtend = newExpire != null
+            boolean needExtend = canManage
+                    && newExpire != null
                     && (current == null || current.before(newExpire));
             if (needExtend) {
                 pictureMapper.update(null, new UpdateWrapper<Picture>()
@@ -104,7 +135,7 @@ public class PictureShareServiceImpl implements PictureShareService {
                         .set("shareExpireTime", newExpire));
                 picture.setShareExpireTime(newExpire);
             }
-            return toVO(picture);
+            return toVO(picture, canManage);
         }
 
         // 无有效链接（未分享 / 已撤销 / 已过期）：生成新分享码覆盖写入。
@@ -119,7 +150,7 @@ public class PictureShareServiceImpl implements PictureShareService {
         Picture updated = pictureMapper.selectById(pictureId);
         ThrowUtils.throwIf(updated == null || StrUtil.isBlank(updated.getShareCode()),
                 ErrorCode.OPERATION_ERROR, "创建分享链接失败");
-        return toVO(updated);
+        return toVO(updated, canManage);
     }
 
     @Override
@@ -139,8 +170,9 @@ public class PictureShareServiceImpl implements PictureShareService {
 
     @Override
     public PictureShareVO getShareByPictureId(long pictureId, User loginUser) {
-        Picture picture = requireOwnership(pictureId, loginUser);
-        return hasValidShare(picture) ? toVO(picture) : null;
+        Picture picture = requireShareTarget(pictureId, loginUser);
+        boolean canManage = isOwnerOrAdmin(picture, loginUser);
+        return hasValidShare(picture) ? toVO(picture, canManage) : null;
     }
 
     @Override
@@ -152,8 +184,9 @@ public class PictureShareServiceImpl implements PictureShareService {
                 .and(w -> w.isNull("shareExpireTime").or().gt("shareExpireTime", new Date()))
                 .orderByDesc("shareCreateTime").orderByDesc("id"));
         List<PictureShareVO> result = new ArrayList<>();
+        User user = userService.getById(userId);
         for (Picture picture : list) {
-            result.add(toVO(picture));
+            result.add(toVO(picture, user != null && isOwnerOrAdmin(picture, user)));
         }
         return result;
     }
@@ -229,8 +262,10 @@ public class PictureShareServiceImpl implements PictureShareService {
 
     /**
      * 图片实体 → 分享 VO
+     *
+     * @param canManage 当前用户是否可管理该分享（所有者/管理员）
      */
-    private PictureShareVO toVO(Picture picture) {
+    private PictureShareVO toVO(Picture picture, boolean canManage) {
         PictureShareVO vo = new PictureShareVO();
         vo.setId(picture.getId());
         vo.setShareCode(picture.getShareCode());
@@ -238,6 +273,7 @@ public class PictureShareServiceImpl implements PictureShareService {
         vo.setExpireTime(picture.getShareExpireTime());
         vo.setViewCount(picture.getShareViewCount() == null ? 0 : picture.getShareViewCount());
         vo.setCreateTime(picture.getShareCreateTime());
+        vo.setCanManage(canManage);
         // 站点地址已配置则给绝对地址，否则给相对路径，由前端拼 origin
         String path = "/share/" + picture.getShareCode();
         vo.setShareUrl(StrUtil.isBlank(siteUrl) ? path : StrUtil.removeSuffix(siteUrl, "/") + path);

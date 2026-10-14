@@ -48,6 +48,8 @@ export interface PictureShareVO {
   expireTime?: string
   viewCount?: number
   createTime?: string
+  /** 当前用户是否可管理（所有者/管理员）：决定是否展示有效期调整与撤销入口 */
+  canManage?: boolean
 }
 
 /**
