@@ -1,10 +1,19 @@
 <template>
   <div id="notificationPage">
-    <!-- 顶部页头：去掉大图标，标题 + 计数更清爽 -->
+    <!-- 顶部页头：普通态=标题+未读徽标；选择态=全选 | 标题 | 取消（手机信息式） -->
     <div class="page-header">
-      <div class="title-line">
-        <h2 class="page-title">消息中心</h2>
-        <span v-if="unreadCount > 0" class="title-badge">{{ unreadCount }} 条未读</span>
+      <div class="title-line" :class="{ selecting: selectMode }">
+        <template v-if="selectMode">
+          <a-button type="link" class="mode-btn" @click="selectAll">
+            {{ isAllSelected ? '取消全选' : '全选' }}
+          </a-button>
+          <h2 class="page-title">消息中心</h2>
+          <a-button type="link" class="mode-btn" @click="exitSelectMode">取消</a-button>
+        </template>
+        <template v-else>
+          <h2 class="page-title">消息中心</h2>
+          <span v-if="unreadCount > 0" class="title-badge">{{ unreadCount }} 条未读</span>
+        </template>
       </div>
       <p class="page-sub">你的创作动态与审核结果都在这里</p>
     </div>
@@ -25,13 +34,23 @@
         </span>
       </div>
       <a-button
-        v-if="unreadCount > 0"
+        v-if="unreadCount > 0 && !selectMode"
         class="read-all-btn"
         type="text"
         @click="handleReadAll"
       >
         <CheckOutlined />
         全部已读
+      </a-button>
+      <!-- 进入选择模式：打勾正方形图标（手机信息式） -->
+      <a-button
+        v-if="!selectMode"
+        class="select-mode-btn"
+        type="text"
+        title="选择消息"
+        @click="selectMode = true"
+      >
+        <CheckSquareOutlined />
       </a-button>
     </div>
 
@@ -43,9 +62,16 @@
             v-for="item in list"
             :key="item.id"
             class="notify-row"
-            :class="{ unread: item.isRead === 0 }"
-            @click="handleClick(item)"
+            :class="{ unread: item.isRead === 0, selecting: selectMode }"
+            @click="selectMode ? toggleSelect(item) : handleClick(item)"
           >
+            <!-- 选择模式：行首勾选框 -->
+            <div v-if="selectMode" class="row-check" @click.stop>
+              <a-checkbox
+                :checked="selectedIds.includes(String(item.id))"
+                @change="toggleSelect(item)"
+              />
+            </div>
             <!-- 左侧类型图标 / 缩略图 -->
             <div class="row-icon" :class="iconClass(item)">
               <img v-if="item.picThumbnail" :src="item.picThumbnail" class="row-thumb-img" alt="" />
@@ -63,9 +89,17 @@
                   <RightOutlined />
                   查看图片
                 </span>
+                <span
+                  v-if="!selectMode"
+                  class="row-del"
+                  title="删除这条消息"
+                  @click.stop="handleDelete(item)"
+                >
+                  <DeleteOutlined />
+                </span>
               </div>
             </div>
-            <span v-if="item.isRead === 0" class="row-dot"></span>
+            <span v-if="item.isRead === 0 && !selectMode" class="row-dot"></span>
           </div>
         </template>
         <a-empty v-else-if="!loading" description="暂无消息" />
@@ -83,17 +117,34 @@
         />
       </div>
     </div>
+
+    <!-- 选择模式：底部悬浮操作条（手机信息式） -->
+    <div v-if="selectMode" class="select-bar">
+      <div class="select-bar-inner">
+        <button class="bar-action" :disabled="!selectedIds.length" @click="doBatchRead">
+          <CheckSquareOutlined class="bar-icon" />
+          <span>标记已读</span>
+        </button>
+        <span class="bar-divider" />
+        <button class="bar-action danger" :disabled="!selectedIds.length" @click="doBatchDelete">
+          <DeleteOutlined class="bar-icon" />
+          <span>删除</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   AppstoreOutlined,
   AuditOutlined,
   BellOutlined,
   CheckOutlined,
+  CheckSquareOutlined,
+  DeleteOutlined,
   GiftOutlined,
   HeartOutlined,
   MailOutlined,
@@ -106,6 +157,9 @@ import {
   countMyUnread,
   markNotificationRead,
   markAllNotificationRead,
+  deleteNotification,
+  markReadBatch,
+  deleteBatch,
 } from '@/api/notification.ts'
 import type { NotificationVO } from '@/api/notification.ts'
 
@@ -181,8 +235,9 @@ const fetchList = async (page = current.value) => {
   }
 }
 
-/** 分页器切换 */
+/** 分页器切换（翻页清空勾选，避免跨页误删） */
 const handlePageChange = (page: number) => {
+  selectedIds.value = []
   fetchList(page)
 }
 
@@ -192,15 +247,20 @@ const switchCategory = (key: CategoryKey) => {
     return
   }
   category.value = key
+  selectedIds.value = []
   list.value = []
   total.value = 0
   fetchList(1)
 }
 
-// 点击消息：标记已读并跳转
+// 点击消息：普通态=标记已读并跳转；长按触发后的那次点击已抑制
 // - audit（待审核提醒，发给管理员）→ 图片管理页处理审核
 // - review（审核结果，发给作者）→ 图片详情页（带 from=notify，仅保留编辑）
 const handleClick = async (item: NotificationVO) => {
+  if (suppressNextClick) {
+    suppressNextClick = false
+    return
+  }
   if (item.isRead === 0 && item.id != null) {
     await markNotificationRead(item.id)
     item.isRead = 1
@@ -210,6 +270,124 @@ const handleClick = async (item: NotificationVO) => {
     router.push('/admin/pictureManage')
   } else if (item.picId) {
     router.push({ path: `/picture/${item.picId}`, query: { from: 'notify' } })
+  }
+}
+
+// ==================== 选择模式（长按消息或右上角勾选图标进入，手机信息式） ====================
+const selectMode = ref(false)
+const selectedIds = ref<string[]>([])
+const isAllSelected = computed(
+  () => list.value.length > 0 && list.value.every((p) => selectedIds.value.includes(String(p.id))),
+)
+
+const exitSelectMode = () => {
+  selectMode.value = false
+  selectedIds.value = []
+}
+
+const toggleSelect = (item: NotificationVO) => {
+  // 长按触发后的那次点击会被抑制，这里只做纯粹的勾选切换
+  if (suppressNextClick) {
+    suppressNextClick = false
+    return
+  }
+  const id = String(item.id)
+  selectedIds.value = selectedIds.value.includes(id)
+    ? selectedIds.value.filter((v) => v !== id)
+    : [...selectedIds.value, id]
+}
+
+const selectAll = () => {
+  if (isAllSelected.value) {
+    selectedIds.value = []
+  } else {
+    selectedIds.value = list.value.map((p) => String(p.id))
+  }
+}
+
+// 长按 500ms 进入选择模式并选中该条（移动端习惯）
+let pressTimer: number | null = null
+let pressStart = { x: 0, y: 0 }
+let suppressNextClick = false
+
+const onRowPointerDown = (e: PointerEvent, item: NotificationVO) => {
+  if (selectMode.value) return
+  pressStart = { x: e.clientX, y: e.clientY }
+  pressTimer = window.setTimeout(() => {
+    pressTimer = null
+    suppressNextClick = true
+    selectMode.value = true
+    const id = String(item.id)
+    if (!selectedIds.value.includes(id)) {
+      selectedIds.value = [...selectedIds.value, id]
+    }
+  }, 500)
+}
+
+const onRowPointerMove = (e: PointerEvent) => {
+  if (pressTimer == null) return
+  // 移动超过 10px 视为滚动，取消长按
+  if (Math.abs(e.clientX - pressStart.x) > 10 || Math.abs(e.clientY - pressStart.y) > 10) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+const onRowPointerUp = () => {
+  if (pressTimer != null) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+// 批量标记已读
+const doBatchRead = async () => {
+  if (!selectedIds.value.length) return
+  const res = await markReadBatch(selectedIds.value.map(Number))
+  if (res.code === 0) {
+    message.success(`已将 ${res.data ?? 0} 条消息标为已读`)
+    list.value = list.value.map((n) =>
+      selectedIds.value.includes(String(n.id)) ? { ...n, isRead: 1 } : n,
+    )
+    unreadCount.value = Math.max(unreadCount.value - (res.data ?? 0), 0)
+  } else {
+    message.error(res.message ?? '操作失败')
+  }
+}
+
+// 批量删除
+const doBatchDelete = async () => {
+  if (!selectedIds.value.length) return
+  const res = await deleteBatch(selectedIds.value.map(Number))
+  if (res.code === 0) {
+    message.success(`已删除 ${res.data ?? 0} 条消息`)
+    await refreshUnread()
+    selectedIds.value = []
+    list.value = []
+    total.value = 0
+    fetchList(current.value)
+  } else {
+    message.error(res.message ?? '删除失败')
+  }
+}
+
+/** 删除单条通知：本地移除 + 未读数联动 */
+const handleDelete = async (item: NotificationVO) => {
+  if (item.id == null) return
+  const res = await deleteNotification(item.id)
+  if (res.code === 0) {
+    message.success('已删除')
+    if (item.isRead === 0) {
+      unreadCount.value = Math.max(unreadCount.value - 1, 0)
+    }
+    list.value = list.value.filter((n) => n.id !== item.id)
+    total.value = Math.max(total.value - 1, 0)
+    // 当前页被删空时回退一页
+    if (list.value.length === 0 && current.value > 1) {
+      fetchList(current.value - 1)
+    }
+  } else {
+    message.error(res.message ?? '删除失败')
   }
 }
 
@@ -381,9 +559,10 @@ onMounted(() => {
   min-height: 300px;
 }
 
-/* 通知行 */
+/* 通知行：选择模式下行首为勾选框，长按消息可进入选择模式 */
 .notify-row {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -394,6 +573,18 @@ onMounted(() => {
   transition: background 0.18s ease;
 }
 
+.notify-row.selecting {
+  padding-left: 6px;
+}
+
+/* 选择模式：行首勾选框 */
+.row-check {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-top: 14px;
+}
+
 .notify-row:last-of-type {
   border-bottom: none;
 }
@@ -402,9 +593,9 @@ onMounted(() => {
   background: rgba(64, 169, 255, 0.07);
 }
 
-/* 未读行：左侧蓝色竖条 + 淡蓝底，一眼可辨 */
+/* 未读行：左侧蓝色竖条 + 淡蓝底（叠在不透明卡片底色上，保证左滑遮挡） */
 .notify-row.unread {
-  background: rgba(64, 169, 255, 0.045);
+  background-image: linear-gradient(rgba(64, 169, 255, 0.045), rgba(64, 169, 255, 0.045));
 }
 
 .notify-row.unread::before {
@@ -544,6 +735,33 @@ onMounted(() => {
   gap: 14px;
 }
 
+/* 桌面悬浮删除：悬停行时淡入 */
+.row-del {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.notify-row:hover .row-del {
+  opacity: 1;
+}
+
+.row-del:hover {
+  color: #fff;
+  background: #ff4d4f;
+}
+
 .row-time {
   font-size: 12px;
   color: var(--text-disabled);
@@ -575,6 +793,90 @@ onMounted(() => {
   padding: 16px 6px 6px;
   border-top: 1px solid var(--border-color);
   margin-top: 4px;
+}
+
+/* ===== 选择模式：底部悬浮操作条 ===== */
+.select-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  display: flex;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.select-bar-inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 26px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.bar-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary-light);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 18px;
+  border-radius: 12px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.bar-action:hover:not(:disabled) {
+  background: rgba(64, 169, 255, 0.08);
+  color: var(--accent);
+}
+
+.bar-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bar-action.danger:hover:not(:disabled) {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.08);
+}
+
+.bar-icon {
+  font-size: 20px;
+}
+
+.bar-divider {
+  width: 1px;
+  height: 30px;
+  background: var(--border-color);
+}
+
+.mode-btn {
+  padding-inline: 8px;
+  font-size: 14px;
+}
+
+.title-line.selecting {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+html.dark .bar-action {
+  color: var(--text-primary);
+}
+
+html.dark .select-bar-inner {
+  background: #2d2d2d;
 }
 
 /* ===== 深色模式 ===== */

@@ -97,6 +97,36 @@ public class NotificationController {
     }
 
     /**
+     * 批量标记已读（选择模式下勾选的通知）
+     */
+    @PostMapping("/batch/read")
+    public BaseResponse<Integer> markReadBatch(@RequestBody List<Long> ids, HttpServletRequest request) {
+        ThrowUtils.throwIf(ids == null || ids.isEmpty(), ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(notificationService.markReadBatch(loginUser.getId(), ids));
+    }
+
+    /**
+     * 批量删除通知（选择模式下勾选的通知）
+     */
+    @PostMapping("/batch/delete")
+    public BaseResponse<Integer> deleteBatch(@RequestBody List<Long> ids, HttpServletRequest request) {
+        ThrowUtils.throwIf(ids == null || ids.isEmpty(), ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(notificationService.deleteBatch(loginUser.getId(), ids));
+    }
+
+    /**
+     * 删除我的通知（仅本人通知，像删除手机短信一样从列表移除）
+     */
+    @PostMapping("/delete")
+    public BaseResponse<Boolean> deleteNotification(@RequestBody Map<String, Long> body, HttpServletRequest request) {
+        ThrowUtils.throwIf(body == null || body.get("id") == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(notificationService.deleteMyNotification(loginUser.getId(), body.get("id")));
+    }
+
+    /**
      * 全部标记已读
      */
     @PostMapping("/read/all")

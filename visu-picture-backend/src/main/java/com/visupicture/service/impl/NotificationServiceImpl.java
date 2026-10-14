@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -270,6 +271,49 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
                 .eq(Notification::getUserId, userId)
                 .eq(Notification::getIsRead, 0)
                 .set(Notification::getIsRead, 1));
+    }
+
+    /**
+     * 删除我的通知：仅本人通知可删（逻辑删除，与列表查询的过滤条件一致）
+     */
+    @Override
+    public boolean deleteMyNotification(long userId, long notificationId) {
+        Notification notification = this.getById(notificationId);
+        if (notification == null || !notification.getUserId().equals(userId)) {
+            // 通知不存在或不属于当前用户：保持幂等，不抛错
+            return false;
+        }
+        return this.removeById(notificationId);
+    }
+
+    /**
+     * 批量标记已读：限定本人 + 指定 id 集合，单条 SQL 完成
+     */
+    @Override
+    public int markReadBatch(long userId, List<Long> notificationIds) {
+        if (CollUtil.isEmpty(notificationIds)) {
+            return 0;
+        }
+        boolean ok = this.update(new LambdaUpdateWrapper<Notification>()
+                .eq(Notification::getUserId, userId)
+                .in(Notification::getId, notificationIds)
+                .eq(Notification::getIsRead, 0)
+                .set(Notification::getIsRead, 1));
+        return ok ? notificationIds.size() : 0;
+    }
+
+    /**
+     * 批量删除：限定本人 + 指定 id 集合（逻辑删除），单条 SQL 完成
+     */
+    @Override
+    public int deleteBatch(long userId, List<Long> notificationIds) {
+        if (CollUtil.isEmpty(notificationIds)) {
+            return 0;
+        }
+        boolean ok = this.remove(new LambdaQueryWrapper<Notification>()
+                .eq(Notification::getUserId, userId)
+                .in(Notification::getId, notificationIds));
+        return ok ? notificationIds.size() : 0;
     }
 
     private NotificationVO toVO(Notification notification) {

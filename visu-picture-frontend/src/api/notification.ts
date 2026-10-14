@@ -60,6 +60,35 @@ export async function markAllNotificationRead(): Promise<API.BaseResponseBoolean
 }
 
 /**
+ * 删除我的通知（像删除手机短信一样从列表移除，仅本人通知）
+ */
+export async function deleteNotification(id: number): Promise<API.BaseResponseBoolean_> {
+  return (await myAxios.post('/api/notification/delete', { id })).data
+}
+
+/**
+ * 批量标记已读（选择模式勾选的通知，返回实际标记条数）
+ */
+export async function markReadBatch(ids: number[]) {
+  return (await myAxios.post('/api/notification/batch/read', ids)).data as {
+    code: number
+    data?: number
+    message?: string
+  }
+}
+
+/**
+ * 批量删除通知（选择模式勾选的通知，返回实际删除条数）
+ */
+export async function deleteBatch(ids: number[]) {
+  return (await myAxios.post('/api/notification/batch/delete', ids)).data as {
+    code: number
+    data?: number
+    message?: string
+  }
+}
+
+/**
  * 管理员发布系统消息（targetUserId 为空表示全员）
  *
  * targetUserId 同时接受 string：用户 id 是雪花 id，超出 JS 安全整数范围，

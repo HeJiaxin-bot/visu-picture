@@ -101,4 +101,30 @@ public interface NotificationService extends IService<Notification> {
      * 全部标记已读
      */
     boolean markAllRead(long userId);
+
+    /**
+     * 删除我的通知（仅本人通知，逻辑删除）
+     *
+     * @param userId
+     * @param notificationId
+     */
+    boolean deleteMyNotification(long userId, long notificationId);
+
+    /**
+     * 批量标记已读（仅作用于本人的通知）
+     *
+     * @param userId
+     * @param notificationIds
+     * @return 实际标记的条数
+     */
+    int markReadBatch(long userId, List<Long> notificationIds);
+
+    /**
+     * 批量删除通知（仅本人的通知，逻辑删除）
+     *
+     * @param userId
+     * @param notificationIds
+     * @return 实际删除的条数
+     */
+    int deleteBatch(long userId, List<Long> notificationIds);
 }
