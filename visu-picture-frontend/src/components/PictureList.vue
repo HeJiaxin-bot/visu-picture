@@ -222,6 +222,26 @@ const itemWidth = (cell: RowItem, height: number) =>
 
 onMounted(() => {
   if (listRef.value) {
+    // 挂载时同步测量兜底：ResizeObserver 的首次回调时机不保证
+    // （内嵌 WebView 等环境可能延迟或丢失），没有兜底会一直 width=0 不渲染。
+    // 挂载瞬间可能还没完成布局，用有界轮询重试（最多约 5 秒，测到即停）
+    let measureTimer: ReturnType<typeof setInterval> | undefined
+    let tries = 0
+    const measure = () => {
+      const el = listRef.value
+      if (!el) return
+      const w = el.clientWidth || el.getBoundingClientRect().width
+      if (w > 0) containerWidth.value = Math.floor(w)
+      if (containerWidth.value > 0 || ++tries > 20) {
+        if (measureTimer) clearInterval(measureTimer)
+        measureTimer = undefined
+      }
+    }
+    measure()
+    if (containerWidth.value <= 0) {
+      measureTimer = setInterval(measure, 250)
+      requestAnimationFrame(measure)
+    }
     resizeObserver = new ResizeObserver((entries) => {
       containerWidth.value = Math.floor(entries[0].contentRect.width)
     })

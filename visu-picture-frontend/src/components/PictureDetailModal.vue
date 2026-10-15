@@ -781,6 +781,88 @@ html.dark .tags-row :deep(.ant-tag) {
   padding: 20px 24px 24px;
 }
 
+/*
+  移动端适配：双栏（左图右信息）在窄屏下会把图片区挤到 0 宽，
+  改为上下堆叠 —— 图片在上（固定高度），信息与评论在下，整页自然滚动。
+*/
+@media (max-width: 768px) {
+  .picture-detail-modal :deep(.ant-modal-content) {
+    padding: 14px 16px 18px;
+  }
+
+  /* 顶栏改纵向：作者一行，操作按钮横向滚动一行 */
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .top-author {
+    align-self: flex-start;
+  }
+
+  .top-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .top-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pill-btn {
+    flex-shrink: 0;
+  }
+
+  /* 关闭按钮固定在按钮行首：横向滚动时不至于滚出屏幕外关不掉 */
+  .pill-btn.icon-only {
+    order: -1;
+    margin-right: 4px;
+  }
+
+  .detail-body {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .preview-area {
+    height: 42vh;
+    min-height: 240px;
+    padding: 12px 0;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  html.dark .preview-area {
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .info-area {
+    width: 100%;
+    height: auto;
+    padding: 16px 0 0;
+  }
+
+  /* 元信息不再限高，跟随页面滚动 */
+  .info-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* 评论区限高内部滚动，避免撑出超长空白 */
+  .comment-zone {
+    flex: none;
+    max-height: 46vh;
+  }
+
+  /* 键盘切换提示在触屏上无意义 */
+  .switch-tip {
+    display: none;
+  }
+}
+
 /* 深色模式 */
 html.dark .intro-block {
   color: rgba(179, 179, 179, 0.8);
