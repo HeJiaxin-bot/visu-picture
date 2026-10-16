@@ -63,6 +63,35 @@
           <button class="pill-btn icon-only" @click="visible = false">
             <CloseOutlined />
           </button>
+          <!-- 移动端更多菜单：右键菜单在触屏上无法呼出，用 ⋯ 按钮承载同一份操作 -->
+          <a-dropdown :trigger="['click']" placement="bottomRight">
+            <button class="pill-btn icon-only mobile-menu-btn">
+              <MoreOutlined />
+            </button>
+            <template #overlay>
+              <a-menu @click="onMenuClick">
+                <a-menu-item key="copy">
+                  <CopyOutlined /> 复制图片链接
+                </a-menu-item>
+                <a-menu-item key="search">
+                  <SearchOutlined /> 以图搜图
+                </a-menu-item>
+                <a-menu-item key="download">
+                  <DownloadOutlined /> 下载图片
+                </a-menu-item>
+                <a-menu-item key="share">
+                  <ShareAltOutlined /> 分享
+                </a-menu-item>
+                <a-menu-divider v-if="canEdit || canDelete" />
+                <a-menu-item v-if="canEdit" key="edit">
+                  <EditOutlined /> 编辑图片
+                </a-menu-item>
+                <a-menu-item v-if="canDelete" key="delete" danger>
+                  <DeleteOutlined /> 删除图片
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
         </div>
       </div>
 
@@ -82,6 +111,9 @@
               <a-menu-item key="copy">
                 <CopyOutlined /> 复制图片链接
               </a-menu-item>
+              <a-menu-item key="search">
+                <SearchOutlined /> 以图搜图
+              </a-menu-item>
               <a-menu-item key="download">
                 <DownloadOutlined /> 下载图片
               </a-menu-item>
@@ -98,6 +130,38 @@
             </a-menu>
           </template>
         </a-dropdown>
+
+        <!-- 移动端互动行：图片下方，左点赞/收藏/分享，右下载（桌面隐藏） -->
+        <div class="mobile-actions">
+          <div class="ma-left">
+            <button
+              :key="`m-like-${likeBumpKey}`"
+              class="ma-btn"
+              :class="{ liked: likeStore.isLiked(picture.id), bump: likeBumpKey > 0 }"
+              @click="doLike"
+            >
+              <HeartFilled v-if="likeStore.isLiked(picture.id)" />
+              <HeartOutlined v-else />
+              <b>{{ picture.likeCount ?? 0 }}</b>
+              <span v-if="showPlusOne" class="plus-one">+1</span>
+            </button>
+            <button
+              class="ma-btn"
+              :class="{ favorited: likeStore.isFavorited(picture.id) }"
+              @click="doFavorite"
+            >
+              <StarFilled v-if="likeStore.isFavorited(picture.id)" />
+              <StarOutlined v-else />
+              <b>{{ picture.favoriteCount ?? 0 }}</b>
+            </button>
+            <button class="ma-btn" @click="doShare">
+              <ShareAltOutlined />
+            </button>
+          </div>
+          <button class="ma-download" @click="download">
+            <DownloadOutlined /> 下载
+          </button>
+        </div>
 
         <!-- 右：信息与评论（排版式布局，无卡片嵌套） -->
         <div class="info-area">
@@ -174,6 +238,7 @@ import {
   ExclamationCircleOutlined,
   HeartFilled,
   HeartOutlined,
+  MoreOutlined,
   SearchOutlined,
   ShareAltOutlined,
   StarFilled,
@@ -314,6 +379,9 @@ const onMenuClick = ({ key }: { key: string }) => {
   switch (key) {
     case 'copy':
       doCopyLink()
+      break
+    case 'search':
+      doSearch()
       break
     case 'download':
       download()
@@ -782,67 +850,193 @@ html.dark .tags-row :deep(.ant-tag) {
 }
 
 /*
-  移动端适配：双栏（左图右信息）在窄屏下会把图片区挤到 0 宽，
-  改为上下堆叠 —— 图片在上（固定高度），信息与评论在下，整页自然滚动。
+  移动端适配（小红书式详情页）：
+  双栏（左图右信息）在窄屏下会把图片区挤到 0 宽，改为上下堆叠 ——
+  吸顶作者栏 + 全幅出血大图 + 图下互动行 + 大标题排版，整页自然滚动。
 */
+/* 移动端专属元素：桌面默认隐藏 */
+.mobile-menu-btn,
+.mobile-actions {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* 弹窗内容零内边距：图片全幅出血，各区块自管留白 */
   .picture-detail-modal :deep(.ant-modal-content) {
-    padding: 14px 16px 18px;
+    padding: 0 0 10px;
   }
 
-  /* 顶栏改纵向：作者一行，操作按钮横向滚动一行 */
+  /* 吸顶栏：作者在左，关闭/更多在右 */
   .top-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .top-author {
-    align-self: flex-start;
+    padding: 0;
+    min-width: 0;
   }
 
+  .author-name {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .author-tip {
+    margin-top: 1px;
+  }
+
+  /* 顶栏只保留关闭与更多菜单，其余胶囊按钮让位给图下互动行 */
   .top-actions {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .top-actions::-webkit-scrollbar {
-    display: none;
-  }
-
-  .pill-btn {
+    gap: 2px;
     flex-shrink: 0;
   }
 
-  /* 关闭按钮固定在按钮行首：横向滚动时不至于滚出屏幕外关不掉 */
-  .pill-btn.icon-only {
-    order: -1;
-    margin-right: 4px;
+  .top-actions .pill-btn {
+    display: none;
   }
 
+  .top-actions .pill-btn.icon-only,
+  .top-actions .pill-btn.mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .top-actions .pill-btn.icon-only {
+    order: -1;
+    border: none;
+    background: transparent;
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .mobile-menu-btn {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    font-size: 17px;
+    color: var(--text-primary-light);
+  }
+
+  /* 主体上下堆叠 */
   .detail-body {
     flex-direction: column;
     height: auto;
     min-height: 0;
+    margin-top: 0;
+    border-top: none;
   }
 
+  /* 全幅出血大图：暗色信箱底，无圆角 */
   .preview-area {
-    height: 42vh;
-    min-height: 240px;
-    padding: 12px 0;
+    height: 46vh;
+    min-height: 260px;
+    padding: 0;
     border-right: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+    background: #0d0d12;
   }
 
-  html.dark .preview-area {
-    border-bottom-color: rgba(255, 255, 255, 0.14);
+  .preview-area :deep(img) {
+    border-radius: 0;
   }
 
+  /* 图下互动行：左点赞/收藏/分享，右主下载按钮 */
+  .mobile-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 2px;
+  }
+
+  .ma-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .ma-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary-light);
+    font-size: 16px;
+    padding: 4px 0;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .ma-btn b {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .ma-btn:active {
+    transform: scale(0.92);
+  }
+
+  .ma-btn.liked {
+    color: #ff4d6a;
+  }
+
+  .ma-btn.favorited {
+    color: #faad14;
+  }
+
+  .ma-btn.bump {
+    animation: like-bump 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .ma-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #40a9ff, #1677ff);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .ma-download:active {
+    transform: scale(0.95);
+  }
+
+  /* 信息区：大标题 + 通栏排版 */
   .info-area {
     width: 100%;
     height: auto;
-    padding: 16px 0 0;
+    padding: 10px 16px 0;
+    gap: 12px;
+  }
+
+  .pic-title {
+    font-size: 20px;
+    line-height: 1.35;
+  }
+
+  /* 简介改通栏段落（引用线在窄屏上显窄） */
+  .intro-block {
+    padding-left: 0;
+    border-left: none;
   }
 
   /* 元信息不再限高，跟随页面滚动 */
@@ -854,7 +1048,7 @@ html.dark .tags-row :deep(.ant-tag) {
   /* 评论区限高内部滚动，避免撑出超长空白 */
   .comment-zone {
     flex: none;
-    max-height: 46vh;
+    max-height: 48vh;
   }
 
   /* 键盘切换提示在触屏上无意义 */

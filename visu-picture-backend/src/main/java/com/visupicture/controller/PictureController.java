@@ -214,8 +214,14 @@ public class PictureController {
             space = spaceService.getById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
         }
-        // 获取权限列表（公共图库图片本人可编辑/删除自己上传的图片）
-        User loginUser = userService.getLoginUser(request);
+        // 尽力获取登录用户：公共图库图片允许未登录浏览（未登录时权限列表为空，仅可查看），
+        // 不能直接 getLoginUser —— 它对未登录抛 40100，会把匿名访客重定向到登录页
+        User loginUser = null;
+        try {
+            loginUser = userService.getLoginUser(request);
+        } catch (BusinessException e) {
+            // 未登录，忽略
+        }
         List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser, picture);
         PictureVO pictureVO = pictureService.getPictureVO(picture, request);
         pictureVO.setPermissionList(permissionList);
