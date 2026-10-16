@@ -168,24 +168,34 @@ public class UserController {
     }
 
     /**
-     * 根据 id 获取包装类
+     * 根据 id 获取用户公开信息（用户主页）
      *
-     * 【安全修复】原实现内部调用 {@code getUserById(id)}，而 Spring AOP 基于代理，
-     * 同类内部自调用不经过代理，导致该方法上的 @AuthCheck(mustRole = ADMIN_ROLE) 完全失效，
-     * 且本端点自身无注解、无登录校验 → 匿名即可读取任意用户信息（含邮箱、会员兑换码）。
-     * 现在：必须登录，且仅本人或管理员可查。
+     * 【安全沿革】原实现内部调用 {@code getUserById(id)}，而 Spring AOP 基于代理，
+     * 同类内部自调用不经过代理，导致方法上的 @AuthCheck 完全失效，匿名即可读取任意
+     * 用户信息（含邮箱、会员兑换码），因此一度收紧为「仅本人或管理员可查」。
+     * 但用户主页是公开页面（从图片详情点作者进入），收紧后他人主页直接 40101。
+     * 现在：匿名/任意登录用户可读取公开资料；敏感字段（会员兑换码）仅本人或管理员视角返回。
      */
     @GetMapping("/get/vo")
     public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        User loginUser = userService.getLoginUser(request);
         User user = userService.getById(id);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
-        // 仅本人或管理员可查看他人用户信息
-        if (!loginUser.getId().equals(id) && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        // 尽力获取登录用户：匿名访客也可查看公开主页
+        User loginUser = null;
+        try {
+            loginUser = userService.getLoginUser(request);
+        } catch (BusinessException e) {
+            // 未登录，按匿名视角返回脱敏资料
         }
-        return ResultUtils.success(userService.getUserVO(user));
+        UserVO userVO = userService.getUserVO(user);
+        // 敏感字段脱敏：会员兑换码仅本人或管理员可见
+        boolean selfOrAdmin = loginUser != null
+                && (loginUser.getId().equals(id) || userService.isAdmin(loginUser));
+        if (!selfOrAdmin) {
+            userVO.setVipCode(null);
+        }
+        return ResultUtils.success(userVO);
     }
 
     /**
