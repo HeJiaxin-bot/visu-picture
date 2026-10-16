@@ -208,13 +208,13 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         QueryWrapper<Notification> wrapper = new QueryWrapper<>();
         wrapper.eq("userId", userId);
         // 分类筛选（category 与 NotificationTypeEnum 对齐，all/unread 为特殊值）：
-        // interact = 互动消息（评论/回复）；审核 = 审核结果 + 待审核提醒；系统 = 其余类型；未读 = isRead=0
+        // interact = 互动消息（评论/回复）；审核 = 审核结果 + 待审核提醒；系统 = 系统公告；未读 = isRead=0
         if (NotificationTypeEnum.INTERACT.getValue().equals(category)) {
             wrapper.eq("type", category);
         } else if (NotificationTypeEnum.REVIEW.getValue().equals(category)) {
             wrapper.in("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
         } else if (NotificationTypeEnum.SYSTEM.getValue().equals(category)) {
-            wrapper.notIn("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
+            wrapper.eq("type", category);
         } else if ("unread".equals(category)) {
             wrapper.eq("isRead", 0);
         }
