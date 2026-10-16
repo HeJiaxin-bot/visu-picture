@@ -76,6 +76,9 @@
                 <a-menu-item key="search">
                   <SearchOutlined /> 以图搜图
                 </a-menu-item>
+                <a-menu-item key="specs">
+                  <InfoCircleOutlined /> 属性信息
+                </a-menu-item>
                 <a-menu-item key="download">
                   <DownloadOutlined /> 下载图片
                 </a-menu-item>
@@ -113,6 +116,9 @@
               </a-menu-item>
               <a-menu-item key="search">
                 <SearchOutlined /> 以图搜图
+              </a-menu-item>
+              <a-menu-item key="specs">
+                <InfoCircleOutlined /> 属性信息
               </a-menu-item>
               <a-menu-item key="download">
                 <DownloadOutlined /> 下载图片
@@ -221,12 +227,46 @@
         </div>
       </div>
     </a-spin>
+    <!-- 属性信息：规格表收纳（移动端从 ⋯ 菜单打开） -->
+    <a-modal
+      v-model:open="specsVisible"
+      title="属性信息"
+      :footer="null"
+      :width="340"
+      centered
+    >
+      <dl class="spec-list specs-modal-list">
+        <div class="spec-row">
+          <dt>格式</dt>
+          <dd>{{ picture.picFormat ?? '—' }}</dd>
+        </div>
+        <div class="spec-row">
+          <dt>尺寸</dt>
+          <dd>{{ picture.picWidth ?? '—' }} × {{ picture.picHeight ?? '—' }}</dd>
+        </div>
+        <div class="spec-row">
+          <dt>宽高比</dt>
+          <dd>{{ picture.picScale ?? '—' }}</dd>
+        </div>
+        <div class="spec-row">
+          <dt>大小</dt>
+          <dd>{{ formatSize(picture.picSize) }}</dd>
+        </div>
+        <div class="spec-row" v-if="picture.picColor">
+          <dt>主色调</dt>
+          <dd class="color-value">
+            {{ picture.picColor }}
+            <i class="color-dot" :style="{ background: toHexColor(picture.picColor) }" />
+          </dd>
+        </div>
+      </dl>
+    </a-modal>
     <ShareModal ref="shareModalRef" :picture-id="picture.id" />
   </a-modal>
 </template>
 
 <script setup lang="ts">
-import { computed, createVNode, onMounted, onUnmounted, ref } from 'vue'
+import { computed, createVNode, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import {
@@ -238,6 +278,7 @@ import {
   ExclamationCircleOutlined,
   HeartFilled,
   HeartOutlined,
+  InfoCircleOutlined,
   MoreOutlined,
   SearchOutlined,
   ShareAltOutlined,
@@ -271,6 +312,28 @@ const {
 } = usePictureDetail()
 
 const visible = ref(false)
+
+// 属性信息弹窗（移动端规格表收纳在 ⋯ 菜单里）
+const specsVisible = ref(false)
+
+// 主弹窗关闭时联动收起属性弹窗，避免下次打开时残留；
+// 同时处理滚动位置：antd 锁 body 滚动在部分布局下会把页面滚动重置到顶部，
+// 打开前记住位置，关闭并解除滚动锁后恢复，保证关闭后仍停留在原浏览位置
+let savedScrollY = 0
+watch(visible, async (v) => {
+  if (v) {
+    specsVisible.value = false
+    savedScrollY = window.scrollY
+    return
+  }
+  // 等待 antd 解除 body 滚动锁（关闭动画结束后），最多等 3s
+  const body = document.body
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 100))
+    if (getComputedStyle(body).overflow !== 'hidden') break
+  }
+  if (savedScrollY > 0) window.scrollTo(0, savedScrollY)
+})
 
 // ----- 键盘左右切换（需外部传入同组图片 id 列表） -----
 const idList = ref<(string | number)[]>([])
@@ -382,6 +445,9 @@ const onMenuClick = ({ key }: { key: string }) => {
       break
     case 'search':
       doSearch()
+      break
+    case 'specs':
+      specsVisible.value = true
       break
     case 'download':
       download()
@@ -1055,6 +1121,16 @@ html.dark .tags-row :deep(.ant-tag) {
   .switch-tip {
     display: none;
   }
+
+  /* 规格表收纳进 ⋯ 菜单的属性信息弹窗，信息区更聚焦内容 */
+  .info-area .spec-list {
+    display: none;
+  }
+}
+
+/* 属性信息弹窗里的规格表：留白比内联版宽松 */
+.specs-modal-list {
+  padding: 4px 2px;
 }
 
 /* 深色模式 */

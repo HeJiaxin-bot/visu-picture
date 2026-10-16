@@ -110,7 +110,11 @@ html.dark {
 
 html,
 body {
-  height: 100%;
+  /* 覆盖 antd reset.css 的 height:100%：height 会把 html/body 钉在视口高度，
+     antd 弹窗锁滚动（body overflow:hidden）时文档滚动区间塌陷，
+     页面滚动位置会被重置到顶部。auto + min-height 让根元素随内容生长 */
+  height: auto;
+  min-height: 100%;
   /* 装饰粒子/宽元素不产生横向滚动；clip 不会破坏 sticky 顶栏 */
   overflow-x: clip;
 }
