@@ -83,9 +83,11 @@ public interface NotificationService extends IService<Notification> {
      * @param userId   用户 id
      * @param current  页码
      * @param pageSize 每页条数
-     * @param category 分类：all-全部 / review-审核通知 / system-系统通知 / unread-未读
+     * @param category 分类：all-全部 / comment-评论 / reply-回复 / review-审核通知 / system-系统通知 / unread-未读
+     * @param keyword  搜索关键词（匹配标题或内容，可空）
      */
-    Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category);
+    Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category,
+                                             String keyword);
 
     /**
      * 我的未读通知数量

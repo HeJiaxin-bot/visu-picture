@@ -11,7 +11,7 @@ import com.visupicture.exception.ErrorCode;
 import com.visupicture.exception.ThrowUtils;
 import com.visupicture.model.dto.notification.NotificationSendRequest;
 import com.visupicture.model.entity.User;
-import com.visupicture.model.enums.NotificationCategoryEnum;
+import com.visupicture.model.enums.NotificationTypeEnum;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
 import com.visupicture.service.UserService;
@@ -26,6 +26,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 站内通知接口
@@ -39,6 +40,15 @@ public class NotificationController {
 
     @Resource
     private UserService userService;
+
+    /**
+     * 消息中心支持的分类白名单：直接复用 NotificationTypeEnum 的值，
+     * all/unread 为两个不对应存储类型的特殊值
+     */
+    private static final Set<String> VALID_CATEGORIES =
+            Set.of("all", NotificationTypeEnum.INTERACT.getValue(),
+                    NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.SYSTEM.getValue(),
+                    "unread");
 
     /**
      * 分页获取我的通知（onlyUnread=true 时只看未读）
@@ -59,20 +69,24 @@ public class NotificationController {
     /**
      * 分页获取我的通知（带总数，供消息中心分页器使用）
      *
-     * @param category 分类：all-全部 / review-审核通知 / system-系统通知 / unread-未读
+     * 分类参数直接复用 NotificationTypeEnum 的值（all/unread 为两个特殊值）：
+     * all-全部 / interact-互动(评论回复) / review-审核通知 / system-系统通知 / unread-未读
+     *
+     * @param keyword 搜索关键词，匹配标题或内容，可空
      */
     @GetMapping("/list/page")
     public BaseResponse<Page<NotificationVO>> pageMyNotifications(
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "10") long pageSize,
             @RequestParam(defaultValue = "all") String category,
+            @RequestParam(required = false) String keyword,
             HttpServletRequest request) {
         ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(NotificationCategoryEnum.getEnumByValue(category) == null,
+        ThrowUtils.throwIf(!VALID_CATEGORIES.contains(category),
                 ErrorCode.PARAMS_ERROR, "不支持的消息分类");
         User loginUser = userService.getLoginUser(request);
         Page<NotificationVO> page = notificationService.pageMyNotifications(
-                loginUser.getId(), current, pageSize, category);
+                loginUser.getId(), current, pageSize, category, keyword);
         return ResultUtils.success(page);
     }
 

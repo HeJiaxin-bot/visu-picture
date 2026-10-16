@@ -15,7 +15,6 @@ import com.visupicture.exception.ThrowUtils;
 import com.visupicture.mapper.NotificationMapper;
 import com.visupicture.model.entity.Notification;
 import com.visupicture.model.entity.User;
-import com.visupicture.model.enums.NotificationCategoryEnum;
 import com.visupicture.model.enums.NotificationTypeEnum;
 import com.visupicture.model.vo.NotificationVO;
 import com.visupicture.service.NotificationService;
@@ -202,18 +201,26 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
     }
 
     @Override
-    public Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category) {
+    public Page<NotificationVO> pageMyNotifications(long userId, long current, long pageSize, String category,
+                                                    String keyword) {
         long page = Math.max(current, 1);
         long size = Math.min(Math.max(pageSize, 1), 50);
         QueryWrapper<Notification> wrapper = new QueryWrapper<>();
         wrapper.eq("userId", userId);
-        // 分类筛选：审核通知 = 审核结果(review) + 待审核提醒(audit)；系统通知 = 其余类型；未读 = isRead=0
-        if (NotificationCategoryEnum.REVIEW.getValue().equals(category)) {
+        // 分类筛选（category 与 NotificationTypeEnum 对齐，all/unread 为特殊值）：
+        // interact = 互动消息（评论/回复）；审核 = 审核结果 + 待审核提醒；系统 = 其余类型；未读 = isRead=0
+        if (NotificationTypeEnum.INTERACT.getValue().equals(category)) {
+            wrapper.eq("type", category);
+        } else if (NotificationTypeEnum.REVIEW.getValue().equals(category)) {
             wrapper.in("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
-        } else if (NotificationCategoryEnum.SYSTEM.getValue().equals(category)) {
+        } else if (NotificationTypeEnum.SYSTEM.getValue().equals(category)) {
             wrapper.notIn("type", NotificationTypeEnum.REVIEW.getValue(), NotificationTypeEnum.AUDIT.getValue());
-        } else if (NotificationCategoryEnum.UNREAD.getValue().equals(category)) {
+        } else if ("unread".equals(category)) {
             wrapper.eq("isRead", 0);
+        }
+        // 关键词搜索：标题或内容任一命中
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like("title", keyword).or().like("content", keyword));
         }
         wrapper.orderByDesc("createTime").orderByDesc("id");
         Page<Notification> entityPage = this.page(new Page<>(page, size), wrapper);

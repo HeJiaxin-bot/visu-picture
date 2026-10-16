@@ -28,12 +28,15 @@ export async function listMyNotifications(params: {
 /**
  * 分页获取我的通知（带总数，供消息中心分页器使用）
  *
- * @param category all-全部 / review-审核通知 / system-系统通知 / unread-未读
+ * @param category 与后端 NotificationTypeEnum 对齐：all-全部 / interact-互动(评论回复) /
+ *                 review-审核通知 / system-系统通知 / unread-未读
+ * @param keyword  搜索关键词（匹配标题或内容，可空）
  */
 export async function pageMyNotifications(params: {
   current?: number
   pageSize?: number
-  category?: 'all' | 'review' | 'system' | 'unread'
+  category?: 'all' | 'interact' | 'review' | 'system' | 'unread'
+  keyword?: string
 }): Promise<API.BaseResponseNotificationPage> {
   return (await myAxios.get('/api/notification/list/page', { params })).data
 }
