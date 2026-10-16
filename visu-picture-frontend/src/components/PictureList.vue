@@ -126,7 +126,8 @@ import {
 import { deletePictureUsingPost } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import ShareModal from '@/components/ShareModal.vue'
-import PictureDetailModal from '@/components/PictureDetailModal.vue'
+// ?v=2 版本参数：Vite 模块 URL 变更，强制浏览器重新拉取（改样式后若见旧效果可递增）
+import PictureDetailModal from '@/components/PictureDetailModal.vue?v=2'
 import { useLikeStore } from '@/stores/useLikeStore.ts'
 import { PIC_REVIEW_STATUS_ENUM, PIC_REVIEW_STATUS_MAP } from '@/constants/picture.ts'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'

@@ -932,15 +932,12 @@ html.dark .tags-row :deep(.ant-tag) {
   border: 1px solid rgba(64, 169, 255, 0.16);
 }
 
-/* 弹窗整体 padding 微调 */
-.picture-detail-modal :deep(.ant-modal-content) {
-  padding: 20px 24px 24px;
-}
-
 /*
   移动端适配（小红书式详情页）：
   双栏（左图右信息）在窄屏下会把图片区挤到 0 宽，改为上下堆叠 ——
   吸顶作者栏 + 全幅出血大图 + 图下互动行 + 大标题排版，整页自然滚动。
+  注：弹窗容器级规则（.picture-detail-modal 前缀）在 picture-detail-modal.global.css，
+  因为 wrap 是 antd 内部节点、不携带组件 scope 属性，scoped 选择器匹配不上。
 */
 /* 移动端专属元素：桌面默认隐藏 */
 .mobile-menu-btn,
@@ -949,10 +946,6 @@ html.dark .tags-row :deep(.ant-tag) {
 }
 
 @media (max-width: 768px) {
-  /* 弹窗内容零内边距：图片全幅出血，各区块自管留白 */
-  .picture-detail-modal :deep(.ant-modal-content) {
-    padding: 0 0 10px;
-  }
 
   /* 吸顶栏：作者在左，关闭/更多在右 */
   .top-bar {
@@ -1139,10 +1132,11 @@ html.dark .tags-row :deep(.ant-tag) {
     overflow: visible;
   }
 
-  /* 评论区限高内部滚动，避免撑出超长空白 */
+  /* 评论区随页面滚动，底部留出固定输入条的空间 */
   .comment-zone {
     flex: none;
-    max-height: 48vh;
+    max-height: none;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
 
   /* 键盘切换提示在触屏上无意义 */
@@ -1183,5 +1177,70 @@ html.dark .pill-btn:hover {
 html.dark .pill-btn.danger:hover {
   color: #ff4d4f;
   border-color: #ff4d4f;
+}
+</style>
+
+<style>
+/*
+ * 弹窗容器级规则（全局）：.picture-detail-modal 挂在 antd 的 wrap 节点上，
+ * 该节点不携带组件 scope 属性，scoped 选择器永远匹配不上，因此这部分必须全局书写。
+ * 类名由 wrap-class-name 命名空间隔离，不会外泄。
+ */
+/*
+ * 图片详情弹窗 —— 容器级规则（全局样式）
+ *
+ * 为什么单独一个文件且不 scoped：.picture-detail-modal 是挂在 .ant-modal-wrap
+ * 上的 wrap-class-name，而 wrap 是 antd 内部节点，不携带本组件的 scope 属性，
+ * scoped 选择器 `.picture-detail-modal[data-v-x] ...` 永远匹配不上。
+ * 类名已由 wrap-class-name 命名空间隔离，全局书写不会外泄。
+ */
+
+.picture-detail-modal .ant-modal-content {
+  padding: 20px 24px 24px;
+}
+
+@media (max-width: 768px) {
+  /* 全屏页面式弹窗：铺满整屏，像打开了一个新页面。
+     width 用 !important 压过 antd 通过内联 style 写入的宽度；
+     wrap 顶部对齐（覆盖 antd centered 的垂直居中） */
+  .picture-detail-modal {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .picture-detail-modal .ant-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .picture-detail-modal .ant-modal-content {
+    padding: 0;
+    border-radius: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* 评论列表不再内部滚动，跟随整页 */
+  .picture-detail-modal .cmt__scroll {
+    overflow: visible;
+    max-height: none;
+  }
+
+  /* 评论输入条固定在视口底部（全屏页面式，一直可见） */
+  .picture-detail-modal .cmt__composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    background: var(--bg-card);
+    margin-top: 0;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.06);
+  }
 }
 </style>
