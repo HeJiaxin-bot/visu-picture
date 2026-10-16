@@ -113,6 +113,11 @@ public class PictureVO implements Serializable {
     private Integer favoriteCount;
 
     /**
+     * 浏览量（打开详情 +1，含匿名）
+     */
+    private Long viewCount;
+
+    /**
      * 当前登录用户是否已点赞（未登录时为 false）
      * 由服务端下发，取代前端 localStorage 的本地推断，多端/清缓存后状态依然准确
      */

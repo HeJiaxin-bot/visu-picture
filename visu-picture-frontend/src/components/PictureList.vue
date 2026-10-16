@@ -66,6 +66,11 @@
                 <span class="author-name">{{ cell.picture.user?.userName ?? '未知用户' }}</span>
               </div>
               <div class="meta-actions">
+                <!-- 浏览量（仅展示） -->
+                <div class="pic-views" title="浏览量">
+                  <EyeOutlined />
+                  {{ formatCount(Number(cell.picture.viewCount ?? 0)) }}
+                </div>
                 <!-- 收藏 -->
                 <div
                   class="pic-favorite"
@@ -109,6 +114,7 @@ import { useRouter } from 'vue-router'
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   HeartFilled,
   HeartOutlined,
   SearchOutlined,
@@ -544,6 +550,17 @@ html.dark .pic-name {
   transition:
     color 0.2s,
     transform 0.15s;
+}
+
+/* 浏览量：只展示不可点击 */
+.pic-views {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-disabled);
+  font-variant-numeric: tabular-nums;
 }
 
 .pic-like:hover {

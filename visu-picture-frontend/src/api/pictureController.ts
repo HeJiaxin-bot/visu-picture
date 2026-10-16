@@ -107,6 +107,17 @@ export async function getPictureVoByIdUsingGet(
   })
 }
 
+/** incrementPictureView POST /api/picture/view/{pictureId}（浏览量 +1，匿名可调） */
+export async function incrementPictureViewUsingPost(
+  pictureId: string | number,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean_>(`/api/picture/view/${pictureId}`, {
+    method: 'POST',
+    ...(options || {}),
+  })
+}
+
 /** listPictureByPage POST /api/picture/list/page */
 export async function listPictureByPageUsingPost(
   body: API.PictureQueryRequest,

@@ -99,6 +99,13 @@ public interface PictureService extends IService<Picture> {
     void clearPictureFile(Picture oldPicture);
 
     /**
+     * 浏览量原子 +1（打开图片详情时上报，允许匿名调用）
+     *
+     * @param pictureId 图片 id
+     */
+    void incrementViewCount(long pictureId);
+
+    /**
      * 删除图片
      *
      * @param pictureId

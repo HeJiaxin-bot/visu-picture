@@ -96,6 +96,7 @@ create table if not exists picture
     isAiGenerated  tinyint  default 0                 not null comment '是否 AI 生成（1-是，0-否）',
     likeCount      int      default 0                 not null comment '点赞数（计数器留在主表，列表免 COUNT）',
     favoriteCount  int      default 0                 not null comment '收藏数',
+    viewCount      bigint   default 0                 not null comment '浏览量（打开详情 +1，含匿名）',
     -- 分享字段：原 picture_share 表已并入。一张图最多一条有效分享链接，本质 1:1，
     -- 故并入主表，省掉一张表与一套 Mapper/Service。
     -- 取舍：撤销即 shareCode = NULL，不再保留历史链接痕迹（系统无分享历史页面，可接受）。
@@ -113,6 +114,7 @@ create table if not exists picture
     INDEX idx_picHash (picHash),            -- 提升重复图片检测的比对性能
     UNIQUE KEY uk_shareCode (shareCode)     -- 分享码唯一（NULL 不参与去重，正好表达"未分享"）
 ) comment '图片' engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;
+
 
 -- ==============================================================================
 -- 3. 图片互动记录（点赞 / 收藏合并为一张表）

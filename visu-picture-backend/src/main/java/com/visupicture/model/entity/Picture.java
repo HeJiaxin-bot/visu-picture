@@ -100,6 +100,11 @@ public class Picture implements Serializable {
     private Integer favoriteCount;
 
     /**
+     * 浏览量（打开图片详情时原子 +1，含匿名访问）
+     */
+    private Long viewCount;
+
+    /**
      * 分享码（NULL=未分享；非空即可通过 /share/public/{shareCode} 公开访问）
      * <p>原 picture_share 表已并入本表：一张图片最多只有一条有效分享链接
      * （createShare 复用已有链接），本质是 1:1 关系，无需独立成表。</p>

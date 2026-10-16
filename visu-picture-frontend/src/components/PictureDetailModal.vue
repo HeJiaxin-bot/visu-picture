@@ -163,6 +163,11 @@
             <button class="ma-btn" @click="doShare">
               <ShareAltOutlined />
             </button>
+            <!-- 浏览量（仅展示） -->
+            <div class="ma-btn ma-views" title="浏览量">
+              <EyeOutlined />
+              <b>{{ picture.viewCount ?? 0 }}</b>
+            </div>
           </div>
           <button class="ma-download" @click="download">
             <DownloadOutlined /> 下载
@@ -204,6 +209,10 @@
               <div class="spec-row">
                 <dt>大小</dt>
                 <dd>{{ formatSize(picture.picSize) }}</dd>
+              </div>
+              <div class="spec-row">
+                <dt>浏览量</dt>
+                <dd>{{ picture.viewCount ?? 0 }}</dd>
               </div>
               <div class="spec-row" v-if="picture.picColor">
                 <dt>主色调</dt>
@@ -252,6 +261,10 @@
           <dt>大小</dt>
           <dd>{{ formatSize(picture.picSize) }}</dd>
         </div>
+        <div class="spec-row">
+          <dt>浏览量</dt>
+          <dd>{{ picture.viewCount ?? 0 }}</dd>
+        </div>
         <div class="spec-row" v-if="picture.picColor">
           <dt>主色调</dt>
           <dd class="color-value">
@@ -276,6 +289,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
   HeartFilled,
   HeartOutlined,
   InfoCircleOutlined,
@@ -286,7 +300,7 @@ import {
   StarOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
-import { deletePictureUsingPost } from '@/api/pictureController.ts'
+import { deletePictureUsingPost, incrementPictureViewUsingPost } from '@/api/pictureController.ts'
 import { recordView } from '@/api/interaction.ts'
 import { firstQueryValue, formatSize, toHexColor } from '@/utils'
 import ShareModal from '@/components/ShareModal.vue'
@@ -346,7 +360,7 @@ const currentIndex = computed(() =>
 const switchTo = (id: string | number) => {
   currentId.value = id
   fetchDetail(id)
-  recordViewIfLoggedIn(id)
+  reportView(id)
 }
 
 const goPrev = () => {
@@ -367,20 +381,28 @@ const openModal = (id: string | number, list?: (string | number)[]) => {
   idList.value =
     list && list.length ? list : [id]
   fetchDetail(id)
-  recordViewIfLoggedIn(id)
+  reportView(id)
 }
 
 /**
- * 记录浏览历史（仅登录用户；同一张图只保留一条记录）
- * 静默失败：浏览历史是旁路数据，不应打断查看
+ * 记录浏览：浏览量旁路上报（匿名也可统计）+ 浏览历史（仅登录用户，同一张图只保留一条记录）
+ * 静默失败：都是旁路数据，不应打断查看
  *
  * id 保持字符串原样：雪花 id（如 2100942816594628609）超出 JS 安全整数，
  * 经 Number() 转换会末位失真并导致后端 404。
  */
-const recordViewIfLoggedIn = async (id: string | number) => {
-  if (!loginUserStore.loginUser?.id) return
+const reportView = async (id: string | number) => {
   const pictureId = firstQueryValue(id)
   if (!pictureId) return
+  try {
+    await incrementPictureViewUsingPost(pictureId)
+    // 乐观 +1：本次打开也计入展示（后端同一次调用已真实累加）。
+    // viewCount 经 Long→String 序列化下发，必须先转 Number，避免字符串拼接
+    picture.value.viewCount = Number(picture.value.viewCount ?? 0) + 1
+  } catch {
+    // 静默
+  }
+  if (!loginUserStore.loginUser?.id) return
   try {
     await recordView(pictureId)
   } catch {
@@ -1060,6 +1082,12 @@ html.dark .tags-row :deep(.ant-tag) {
 
   .ma-btn.favorited {
     color: #faad14;
+  }
+
+  /* 浏览量：只展示不可点击，弱化配色 */
+  .ma-views {
+    color: var(--text-secondary);
+    cursor: default;
   }
 
   .ma-btn.bump {

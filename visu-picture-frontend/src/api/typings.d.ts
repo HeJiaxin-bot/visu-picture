@@ -483,6 +483,8 @@ declare namespace API {
     likeCount?: number
     /** 收藏数 */
     favoriteCount?: number
+    /** 浏览量（打开详情 +1，含匿名） */
+    viewCount?: number
     /** 当前登录用户是否已点赞（服务端下发） */
     isLiked?: boolean
     /** 当前登录用户是否已收藏（服务端下发） */

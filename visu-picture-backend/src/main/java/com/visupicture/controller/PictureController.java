@@ -230,6 +230,17 @@ public class PictureController {
     }
 
     /**
+     * 浏览量 +1（打开详情时上报，允许匿名；IP 限流防刷）
+     */
+    @PostMapping("/view/{pictureId}")
+    @RateLimit(count = 60, period = 60, ipCount = 600, dimension = RateLimit.Dimension.IP)
+    public BaseResponse<Boolean> incrementPictureView(@PathVariable("pictureId") long pictureId) {
+        ThrowUtils.throwIf(pictureId <= 0, ErrorCode.PARAMS_ERROR);
+        pictureService.incrementViewCount(pictureId);
+        return ResultUtils.success(true);
+    }
+
+    /**
      * 分页获取图片列表（仅管理员可用）
      */
     @PostMapping("/list/page")

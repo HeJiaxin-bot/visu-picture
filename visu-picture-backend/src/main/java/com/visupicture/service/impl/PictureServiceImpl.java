@@ -734,6 +734,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     @Override
+    public void incrementViewCount(long pictureId) {
+        // 原子自增：SQL 里做 viewCount = viewCount + 1，并发下不丢计数；
+        // setSql 只触碰这一列，不会带出 updateTime/editTime 等无关更新
+        this.update(new UpdateWrapper<Picture>()
+                .eq("id", pictureId)
+                .setSql("viewCount = viewCount + 1"));
+    }
+
+    @Override
     public void deletePicturesBySpaceId(long spaceId) {
         List<Picture> pictureList = this.lambdaQuery()
                 .eq(Picture::getSpaceId, spaceId)
